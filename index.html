@@ -642,6 +642,9 @@ textarea { font: inherit; }
 .st-invoiced { background: var(--ok-weak); color: var(--ok); }
 .st-rejected { background: var(--surface-2); color: var(--muted); }
 .bar-val { white-space: nowrap; }
+/* table toolbar (filter + Add) stays visible while scrolling long lists */
+.tbl-wrap > .tbl-toolbar:first-child { position: sticky; top: var(--topbar-h, 56px); z-index: 6; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; }
+.tbl-wrap.narrow > .tbl-toolbar:first-child { background: var(--bg); padding-top: 8px; }
 
 </style>
 </head>
@@ -2747,7 +2750,9 @@ PM.registerService('calc', (function () {
    *  - a normal estimate line  ← costs linked to it (costs.estimate = line id)
    *  - all labour lines of one role together ← hours with that role (+ costs linked to those lines)
    *  - "not in estimate" rows for hours of other roles and costs that are not linked
-   * Forecast per row = the higher of estimate and actual so far (+ everything not in the estimate). */
+   * Approved / invoiced additional work uses its price (what the client pays) in the estimate column,
+   * so its difference shows the margin left on that work.
+   * Current margin = revenue (offer + approved additional work) − actual costs so far. */
   function estimateAnalysis(projectId) {
     const p = S().project(projectId) || {};
     const est = S().list('estimate', { project: projectId });
@@ -2775,7 +2780,7 @@ PM.registerService('calc', (function () {
       const counted = COUNTS(x.status);
       if (x.status === 'rejected') return;      // rejected items only appear when costs were booked on them (below)
       mk('extra|' + x.id, { kind: 'extra', subject: 'Additional work', title: x.description || x.id, id: x.id, status: x.status || 'quoted', counted,
-        estimate: counted ? U.num(x.cost_estimate) : 0, quotedCost: U.num(x.cost_estimate), revenue: counted ? U.num(x.price) : 0, price: U.num(x.price) });
+        estimate: counted ? U.num(x.price) : 0, quotedCost: U.num(x.cost_estimate), revenue: counted ? U.num(x.price) : 0, price: U.num(x.price) });
     });
     const extraRow = id => { const x = extras.find(e => e.id === id); return byKey.get('extra|' + id) || mk('extra|' + id, { kind: 'extra', subject: 'Additional work', title: x.description || x.id, id: x.id, status: x.status, counted: false, revenue: 0, price: U.num(x.price), quotedCost: U.num(x.cost_estimate) }); };
     const lineRow = id => { const e = est.find(x => x.id === id); return e && byKey.get(e.role ? 'role|' + e.role : 'line|' + e.id); };
@@ -2809,10 +2814,12 @@ PM.registerService('calc', (function () {
     const extrasRevenue = U.sum(extras.filter(x => COUNTS(x.status)), x => x.price);
     const extrasQuoted = U.sum(extras.filter(x => (x.status || 'quoted') === 'quoted'), x => x.price);
     const revenue = offer + extrasRevenue;
+    const extrasCost = U.sum(extras.filter(x => COUNTS(x.status)), x => x.cost_estimate);
     return {
-      project: projectId, offer, extrasRevenue, extrasQuoted, revenue, baseEstimate, estimate, actual, forecast,
+      project: projectId, offer, extrasRevenue, extrasCost, extrasQuoted, revenue, baseEstimate, estimate, actual, forecast,
       baseMargin: offer ? offer - baseEstimate : null, baseMarginPct: offer ? (offer - baseEstimate) / offer : null,
-      margin: revenue ? revenue - estimate : null, marginPct: revenue ? (revenue - estimate) / revenue : null,
+      margin: revenue ? revenue - (baseEstimate + extrasCost) : null, marginPct: revenue ? (revenue - (baseEstimate + extrasCost)) / revenue : null,
+      currentMargin: revenue ? revenue - actual : null, currentMarginPct: revenue ? (revenue - actual) / revenue : null,
       expectedMargin: revenue ? revenue - forecast : null, expectedMarginPct: revenue ? (revenue - forecast) / revenue : null,
       extras: extras.length,
       used: estimate ? actual / estimate : 0, progress: progress(projectId),
@@ -3955,6 +3962,11 @@ PM.app = (function () {
     root.appendChild(h('div', { class: 'main', id: 'main' },
       h('header', { class: 'topbar' }, projSel, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
       banner, viewEl));
+    // table toolbars (search + Add) stick just below the top bar; keep that offset right when the bar changes height
+    const topbar = root.querySelector('.topbar');
+    const setTop = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
+    setTop();
+    if (window.ResizeObserver) new ResizeObserver(setTop).observe(topbar);
 
     PM.events.on('status', setStatus);
     PM.events.on('files', () => setStatus(lastStatus));
@@ -7286,7 +7298,7 @@ PM.costsPdf = (function () {
  *   Estimate          preliminary cost estimate (estimate.md) + hourly rates for this project (rates.md)
  *   Additional work   extras on top of the offer price (additional-work.md): revenue + expected cost
  *   Actual costs      fixed costs and purchases (costs.md); each can be linked to an estimate line or extra
- *   Analysis          estimate vs actual per subject / line, forecast and expected margin
+ *   Analysis          estimate vs actual per subject / line and the current margin
  * Labour actuals come from Hours (matched to labour estimate lines by role, or linked to an extra).
  * Every view has a PDF export (modules/costs-pdf.js).
  * The analysis table is exposed as PM.costAnalysis for Reports and plugins.
@@ -7312,10 +7324,9 @@ PM.costsPdf = (function () {
   function statsRow(a) {
     return h('div', { class: 'stats' },
       PM.ui.stat('Revenue', a.revenue ? M(a.revenue) : '—', a.offer ? 'offer ' + M(a.offer) + (a.extrasRevenue ? ' + extras ' + M(a.extrasRevenue) : '') + (a.extrasQuoted ? ' · ' + M(a.extrasQuoted) + ' quoted' : '') : 'offer price not set — ✎ Edit project', a.offer ? '' : 'warn'),
-      PM.ui.stat('Estimated cost', M(a.estimate), a.revenue ? 'planned margin ' + M(a.margin) + ' · ' + pct(a.marginPct) : a.lines + ' estimate line(s)', a.revenue && a.margin < 0 ? 'bad' : ''),
-      PM.ui.stat('Actual so far', M(a.actual), pct(a.used) + ' of estimate · planning ' + U.fmtPct(a.progress) + ' done', a.used > Math.max(a.progress, 0) + 0.15 && a.estimate ? 'warn' : ''),
-      PM.ui.stat('Forecast final cost', M(a.forecast), a.revenue ? 'expected margin ' + M(a.expectedMargin) + ' · ' + pct(a.expectedMarginPct) : (a.forecast > a.estimate ? M(a.forecast - a.estimate) + ' above estimate' : 'on estimate'),
-        a.revenue ? (a.expectedMargin < 0 ? 'bad' : a.forecast > a.estimate + 0.005 ? 'warn' : 'accent') : (a.forecast > a.estimate + 0.005 ? 'warn' : '')));
+      PM.ui.stat('Planned margin', a.revenue ? M(a.margin) : '—', a.revenue ? pct(a.marginPct) + ' · estimated cost ' + M(a.baseEstimate + a.extrasCost) + (a.extrasRevenue ? ' (extras at their est. cost)' : '') : a.lines + ' estimate line(s)', a.revenue && a.margin < 0 ? 'bad' : ''),
+      PM.ui.stat('Actual costs so far', M(a.actual), pct(a.used) + ' of estimate · planning ' + U.fmtPct(a.progress) + ' done', a.used > Math.max(a.progress, 0) + 0.15 && a.estimate ? 'warn' : ''),
+      PM.ui.stat('Current margin', a.revenue ? M(a.currentMargin) : '—', a.revenue ? pct(a.currentMarginPct) + ' of revenue · revenue − actual costs so far' : 'set an offer price', a.revenue ? (a.currentMargin < 0 ? 'bad' : 'accent') : ''));
   }
 
   function rowLabel(r) {
@@ -7345,14 +7356,14 @@ PM.costsPdf = (function () {
 
   function table(a, opts) {
     opts = opts || {};
-    const cols = 6;
+    const cols = 5;
     const body = h('tbody');
     a.groups.forEach(g => {
       const unplanned = g.subject === 'Not in estimate';
       body.appendChild(h('tr', { class: 'ea-group' + (unplanned ? ' ea-unplanned' : '') },
         h('td', null, g.subject), h('td', { class: 'right' }, unplanned ? '—' : M(g.estimate)), h('td', { class: 'right' }, M(g.actual)),
         h('td', { class: 'right ' + (g.over && !unplanned ? 'bad-text' : '') }, unplanned ? '' : signed(g.diff)),
-        h('td', null, unplanned ? '' : PM.ui.meter(g.actual, g.estimate)), h('td', { class: 'right' }, M(g.forecast))));
+        h('td', null, unplanned ? '' : PM.ui.meter(g.actual, g.estimate))));
       g.rows.forEach(r => {
         const key = a.project + '|' + r.key;
         const open = !!state.open[key];
@@ -7365,8 +7376,7 @@ PM.costsPdf = (function () {
           h('td', { class: 'right' }, compare ? M(r.estimate) : '—'),
           h('td', { class: 'right' }, M(r.actual)),
           h('td', { class: 'right ' + (r.over && compare ? 'bad-text' : '') }, compare ? signed(r.diff) : ''),
-          h('td', null, r.estimate ? PM.ui.meter(r.actual, r.estimate) : ''),
-          h('td', { class: 'right' }, M(r.forecast)));
+          h('td', null, r.estimate ? PM.ui.meter(r.actual, r.estimate) : ''));
         if (!opts.print) tr.addEventListener('click', () => { state.open[key] = !open; opts.rerender && opts.rerender(); });
         body.appendChild(tr);
         if (open && !opts.print) body.appendChild(detailRows(r, cols));
@@ -7374,21 +7384,21 @@ PM.costsPdf = (function () {
     });
     if (!a.groups.length) body.appendChild(h('tr', null, h('td', { colspan: cols, class: 'empty' }, 'No estimate and no costs yet.')));
     const t = h('table', { class: 'data report ea-table' },
-      h('thead', null, h('tr', null, ['Subject / line', 'Estimate', 'Actual', 'Difference', 'Used', 'Forecast'].map((c, i) => h('th', { class: i && i !== 4 ? 'right' : '' }, c)))),
+      h('thead', null, h('tr', null, ['Subject / line', 'Estimate', 'Actual', 'Difference', 'Used'].map((c, i) => h('th', { class: i && i !== 4 ? 'right' : '' }, c)))),
       body,
       h('tfoot', null, h('tr', null, h('td', { class: 'total' }, 'Total'), h('td', { class: 'right total' }, M(a.estimate)), h('td', { class: 'right total' }, M(a.actual)),
-        h('td', { class: 'right total ' + (a.actual > a.estimate ? 'bad-text' : '') }, signed(a.estimate - a.actual)), h('td', { class: 'total' }, PM.ui.meter(a.actual, a.estimate)), h('td', { class: 'right total' }, M(a.forecast)))));
+        h('td', { class: 'right total ' + (a.actual > a.estimate ? 'bad-text' : '') }, signed(a.estimate - a.actual)), h('td', { class: 'total' }, PM.ui.meter(a.actual, a.estimate)))));
     const csv = h('button', { class: 'btn ghost small no-print', onclick: () => {
       const flat = [];
-      a.groups.forEach(g => g.rows.forEach(r => flat.push({ subject: g.subject, item: rowLabel(r), est_hours: r.estHours, act_hours: r.actHours, estimate: r.estimate, actual: r.actual, difference: r.diff, forecast: r.forecast })));
+      a.groups.forEach(g => g.rows.forEach(r => flat.push({ subject: g.subject, item: rowLabel(r), est_hours: r.estHours, act_hours: r.actHours, estimate: r.estimate, actual: r.actual, difference: r.diff })));
       const R = v => v == null ? '' : Math.round(v * 100) / 100;
-      U.download('estimate-vs-actual-' + a.project + '.csv', U.toCSV([['Subject', 'subject'], ['Item', 'item'], ['Est. hours', 'est_hours'], ['Actual hours', 'act_hours'], ['Estimate', 'estimate'], ['Actual', 'actual'], ['Difference', 'difference'], ['Forecast', 'forecast']]
+      U.download('estimate-vs-actual-' + a.project + '.csv', U.toCSV([['Subject', 'subject'], ['Item', 'item'], ['Est. hours', 'est_hours'], ['Actual hours', 'act_hours'], ['Estimate', 'estimate'], ['Actual', 'actual'], ['Difference', 'difference']]
         .map(([label, k]) => ({ label, value: r => typeof r[k] === 'number' ? R(r[k]) : (r[k] == null ? '' : r[k]) })), flat), 'text/csv;charset=utf-8');
     } }, 'CSV');
     const note = h('p', { class: 'muted small' }, NOTE + (opts.print ? '' : ' Click a line to see what is linked.'));
     return PM.ui.section(opts.title || 'Estimate vs actual', h('div', null, h('div', { class: 'tbl-scroll' }, t), note), csv);
   }
-  const NOTE = 'Labour: hours count against the estimate lines with the same role (or against additional work when linked). Purchases and fixed costs count when linked to an estimate line or additional work. Additional work counts once approved. Forecast per line = the higher of estimate and actual so far, plus everything not in the estimate.';
+  const NOTE = 'Labour: hours count against the estimate lines with the same role (or against additional work when linked). Purchases and fixed costs count when linked to an estimate line or additional work. Approved and invoiced additional work uses its price in the Estimate column, so its difference is the margin left on that work. Current margin = revenue (offer price + approved additional work) − actual costs so far.';
 
   PM.costAnalysis = { statsRow, table, analyse: pid => PM.services.calc.estimateAnalysis(pid) };
 
@@ -7547,11 +7557,12 @@ PM.costsPdf = (function () {
   function portfolioView(el, ctx) {
     const list = portfolioList();
     const T = k => U.sum(list, x => x[k]);
+    const cost = U.sum(list, x => x.baseEstimate + x.extrasCost), rev = T('revenue'), act = T('actual');
     el.appendChild(h('div', { class: 'stats' },
-      PM.ui.stat('Revenue', M(T('revenue')), list.length + ' project(s) · extras ' + M(T('extrasRevenue'))),
-      PM.ui.stat('Estimated cost', M(T('estimate')), T('revenue') ? 'planned margin ' + pct((T('revenue') - T('estimate')) / T('revenue')) : ''),
-      PM.ui.stat('Actual so far', M(T('actual'))),
-      PM.ui.stat('Forecast final cost', M(T('forecast')), T('revenue') ? 'expected margin ' + pct((T('revenue') - T('forecast')) / T('revenue')) : '', T('forecast') > T('estimate') ? 'warn' : 'accent')));
+      PM.ui.stat('Revenue', M(rev), list.length + ' project(s) · extras ' + M(T('extrasRevenue'))),
+      PM.ui.stat('Estimated cost', M(cost), rev ? 'planned margin ' + pct((rev - cost) / rev) : ''),
+      PM.ui.stat('Actual costs so far', M(act)),
+      PM.ui.stat('Current margin', M(rev - act), rev ? pct((rev - act) / rev) + ' of revenue' : '', rev - act < 0 ? 'bad' : 'accent')));
     el.appendChild(PM.ui.reportTable('Estimate vs actual per project', [
       { key: 'name', label: 'Project', value: x => x.p.id + ' · ' + x.p.name, format: (v, x) => h('a', { href: '#/costs?project=' + x.p.id, onclick: () => { state.view = 'analysis'; } }, v) },
       { key: 'offer', label: 'Offer price', format: v => v ? M(v) : '—' },
@@ -7561,10 +7572,9 @@ PM.costsPdf = (function () {
       { key: 'actual', label: 'Actual', format: M },
       { key: 'used', label: 'Used', value: x => x.used, format: (v, x) => PM.ui.meter(x.actual, x.estimate) },
       { key: 'progress', label: 'Planning done', value: x => x.progress, format: v => U.fmtPct(v) },
-      { key: 'forecast', label: 'Forecast', format: M },
-      { key: 'expectedMarginPct', label: 'Expected margin', align: 'right', value: x => x.expectedMarginPct, format: (v, x) => h('span', { class: v != null && v < 0 ? 'bad-text' : '' }, pct(v)) },
+      { key: 'currentMargin', label: 'Current margin', align: 'right', value: x => x.currentMargin, format: (v, x) => h('span', { class: v != null && v < 0 ? 'bad-text' : '' }, v == null ? '—' : M(v) + ' · ' + pct(x.currentMarginPct)) },
       { key: 'unlinkedCosts', label: 'Not linked', align: 'right', value: x => x.unlinkedCosts, format: v => v ? String(v) : '' }
-    ], list, { filename: 'estimate-vs-actual-portfolio', totals: { offer: M(T('offer')), extrasRevenue: M(T('extrasRevenue')), estimate: M(T('estimate')), actual: M(T('actual')), forecast: M(T('forecast')) } }));
+    ], list, { filename: 'estimate-vs-actual-portfolio', totals: { offer: M(T('offer')), extrasRevenue: M(T('extrasRevenue')), estimate: M(T('estimate')), actual: M(act), currentMargin: M(rev - act) } }));
   }
 
   /* ---------- PDF export ---------- */
@@ -7637,24 +7647,25 @@ PM.costsPdf = (function () {
     // analysis
     if (!p) {
       const list = portfolioList(), T = k => U.sum(list, x => x[k]);
-      const rows = list.map(x => ({ bad: x.expectedMarginPct != null && x.expectedMarginPct < 0 ? [9] : [], cells: [x.p.id + ' ' + x.p.name, x.offer ? M(x.offer) : '—', x.extrasRevenue ? M(x.extrasRevenue) : '', x.lines ? M(x.estimate) : 'none', pct(x.marginPct), M(x.actual), pct(x.used), U.fmtPct(x.progress), M(x.forecast), pct(x.expectedMarginPct)] }));
-      rows.push({ kind: 'total', cells: ['Total', M(T('offer')), M(T('extrasRevenue')), M(T('estimate')), T('revenue') ? pct((T('revenue') - T('estimate')) / T('revenue')) : '', M(T('actual')), '', '', M(T('forecast')), T('revenue') ? pct((T('revenue') - T('forecast')) / T('revenue')) : ''] });
+      const rev = T('revenue'), act = T('actual'), cost = U.sum(list, x => x.baseEstimate + x.extrasCost);
+      const rows = list.map(x => ({ bad: x.currentMargin != null && x.currentMargin < 0 ? [8] : [], cells: [x.p.id + ' ' + x.p.name, x.offer ? M(x.offer) : '—', x.extrasRevenue ? M(x.extrasRevenue) : '', x.lines ? M(x.estimate) : 'none', pct(x.marginPct), M(x.actual), pct(x.used), U.fmtPct(x.progress), x.currentMargin == null ? '—' : M(x.currentMargin) + ' · ' + pct(x.currentMarginPct)] }));
+      rows.push({ kind: 'total', cells: ['Total', M(T('offer')), M(T('extrasRevenue')), M(T('estimate')), rev ? pct((rev - cost) / rev) : '', M(act), '', '', rev ? M(rev - act) + ' · ' + pct((rev - act) / rev) : ''] });
       return { file: file('estimate-vs-actual'), spec: { title: 'Estimate vs actual', subtitle: sub, internal: true, orientation: 'landscape',
-        stats: [st('Revenue', M(T('revenue'))), st('Estimated cost', M(T('estimate'))), st('Actual so far', M(T('actual'))), st('Forecast final cost', M(T('forecast')))],
-        sections: [{ title: 'Per project', columns: [{ label: 'Project', w: 70 }, { label: 'Offer', w: 20, align: 'right' }, { label: 'Extras', w: 18, align: 'right' }, { label: 'Estimate', w: 20, align: 'right' }, { label: 'Pl. margin', w: 15, align: 'right' }, { label: 'Actual', w: 20, align: 'right' }, { label: 'Used', w: 12, align: 'right' }, { label: 'Planning', w: 14, align: 'right' }, { label: 'Forecast', w: 20, align: 'right' }, { label: 'Exp. margin', w: 16, align: 'right' }], rows, note: NOTE }] } };
+        stats: [st('Revenue', M(rev)), st('Estimated cost', M(cost), rev ? 'planned margin ' + pct((rev - cost) / rev) : ''), st('Actual costs so far', M(act)), st('Current margin', M(rev - act), rev ? pct((rev - act) / rev) + ' of revenue' : '', rev - act < 0)],
+        sections: [{ title: 'Per project', columns: [{ label: 'Project', w: 70 }, { label: 'Offer', w: 20, align: 'right' }, { label: 'Extras', w: 18, align: 'right' }, { label: 'Estimate', w: 20, align: 'right' }, { label: 'Pl. margin', w: 15, align: 'right' }, { label: 'Actual', w: 20, align: 'right' }, { label: 'Used', w: 12, align: 'right' }, { label: 'Planning', w: 14, align: 'right' }, { label: 'Current margin', w: 30, align: 'right' }], rows, note: NOTE }] } };
     }
     const a = calc.estimateAnalysis(p.id);
     const rows = [];
     a.groups.forEach(g => {
       const un = g.subject === 'Not in estimate';
-      rows.push({ kind: 'group', bad: g.over && !un ? [3] : [], cells: [g.subject, '', un ? '' : M(g.estimate), M(g.actual), un ? '' : signed(g.diff), un ? '' : pct(g.estimate ? g.actual / g.estimate : 0), M(g.forecast)] });
+      rows.push({ kind: 'group', bad: g.over && !un ? [3] : [], cells: [g.subject, '', un ? '' : M(g.estimate), M(g.actual), un ? '' : signed(g.diff), un ? '' : pct(g.estimate ? g.actual / g.estimate : 0)] });
       g.rows.forEach(r => { const cmp = BASE(r) || (r.kind === 'extra' && r.counted);
-        rows.push({ indent: true, bad: r.over && cmp ? [3, 4] : [], cells: [rowLabel(r) + (r.kind === 'extra' && !r.counted ? ' (' + (AW_STATUS[r.status] || r.status).toLowerCase() + ')' : ''), rowHours(r), cmp ? M(r.estimate) : '', M(r.actual), cmp ? signed(r.diff) : '', r.estimate ? pct(r.actual / r.estimate) : '', M(r.forecast)] }); });
+        rows.push({ indent: true, bad: r.over && cmp ? [3, 4] : [], cells: [rowLabel(r) + (r.kind === 'extra' && !r.counted ? ' (' + (AW_STATUS[r.status] || r.status).toLowerCase() + ')' : ''), rowHours(r), cmp ? M(r.estimate) : '', M(r.actual), cmp ? signed(r.diff) : '', r.estimate ? pct(r.actual / r.estimate) : ''] }); });
     });
-    rows.push({ kind: 'total', bad: a.actual > a.estimate ? [4] : [], cells: ['Total', '', M(a.estimate), M(a.actual), signed(a.estimate - a.actual), pct(a.used), M(a.forecast)] });
+    rows.push({ kind: 'total', bad: a.actual > a.estimate ? [4] : [], cells: ['Total', '', M(a.estimate), M(a.actual), signed(a.estimate - a.actual), pct(a.used)] });
     return { file: file('cost-analysis'), spec: { title: 'Cost analysis', subtitle: sub, internal: true,
-      stats: [st('Revenue', a.revenue ? M(a.revenue) : '—', a.extrasRevenue ? 'incl. ' + M(a.extrasRevenue) + ' additional work' : 'offer price'), st('Estimated cost', M(a.estimate), a.revenue ? 'margin ' + pct(a.marginPct) : ''), st('Actual so far', M(a.actual), pct(a.used) + ' · planning ' + U.fmtPct(a.progress)), st('Forecast', M(a.forecast), a.revenue ? 'exp. margin ' + M(a.expectedMargin) + ' · ' + pct(a.expectedMarginPct) : '', a.revenue && a.expectedMargin < 0)],
-      sections: [{ title: 'Estimate vs actual', columns: [{ label: 'Subject / line', w: 62 }, { label: 'Hours', w: 20, align: 'right' }, { label: 'Estimate', w: 19, align: 'right' }, { label: 'Actual', w: 19, align: 'right' }, { label: 'Difference', w: 19, align: 'right' }, { label: 'Used', w: 11, align: 'right' }, { label: 'Forecast', w: 19, align: 'right' }], rows, note: NOTE }] } };
+      stats: [st('Revenue', a.revenue ? M(a.revenue) : '—', a.extrasRevenue ? 'incl. ' + M(a.extrasRevenue) + ' additional work' : 'offer price'), st('Planned margin', a.revenue ? M(a.margin) : '—', a.revenue ? pct(a.marginPct) + ' · est. cost ' + M(a.baseEstimate + a.extrasCost) : '', a.revenue && a.margin < 0), st('Actual costs so far', M(a.actual), pct(a.used) + ' of estimate · planning ' + U.fmtPct(a.progress)), st('Current margin', a.revenue ? M(a.currentMargin) : '—', a.revenue ? pct(a.currentMarginPct) + ' of revenue' : '', a.revenue && a.currentMargin < 0)],
+      sections: [{ title: 'Estimate vs actual', columns: [{ label: 'Subject / line', w: 72 }, { label: 'Hours', w: 22, align: 'right' }, { label: 'Estimate', w: 21, align: 'right' }, { label: 'Actual', w: 21, align: 'right' }, { label: 'Difference', w: 21, align: 'right' }, { label: 'Used', w: 12, align: 'right' }], rows, note: NOTE }] } };
   }
 
   function pdfButton(ctx) {
