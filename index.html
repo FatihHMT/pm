@@ -722,6 +722,17 @@ textarea { font: inherit; }
 .team-row:hover .team-hide, .team-hide:focus-visible { opacity: .7; }
 @media (hover: none) { .team-hide { opacity: .45; } }
 .team-row .g-track { cursor: copy; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-align: left; font: inherit; }
+.link-btn:hover { text-decoration: underline; }
+.team-name { color: var(--text); font-weight: 600; }
+.proj-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.proj-dot::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: var(--pc); }
+.person-tasks tr.overdue td:nth-child(5) { color: var(--bad); font-weight: 600; }
+.person-tasks .pill-select { font-size: 12px; padding: 2px 6px; }
+.dlg.person-dlg { width: min(1060px, 96vw); max-width: min(1060px, 96vw); }
+.person-tasks td:nth-child(2) { min-width: 230px; }
+.person-tasks td:nth-child(3) { min-width: 140px; }
+.person-tasks .pill-select { width: auto; min-width: 0; }
 
 </style>
 </head>
@@ -1239,6 +1250,25 @@ PM.events = (function () {
       { key: 'note', label: 'Note', type: 'text' }
     ],
     title: r => r.title || r.id
+  });
+
+  /* Estimate formats: reusable sets of estimate lines (subjects, descriptions, units, optional prices). */
+  PM.defineCollection({
+    name: 'etlines', label: 'Estimate formats', scope: 'global', file: 'settings/estimate-formats.md',
+    heading: 'Estimate formats', idPrefix: 'EF-', idPad: 4,
+    intro: 'Estimate formats. Rows with the same "format" form one format; insert one in Costs → Estimate → Insert format.',
+    fields: [
+      { key: 'id', label: 'ID', type: 'id', width: 90 },
+      { key: 'format', label: 'Format', type: 'string', width: 170, required: true, suggest: true },
+      { key: 'subject', label: 'Subject', type: 'string', width: 150, suggest: true },
+      { key: 'description', label: 'Description', type: 'string', required: true },
+      { key: 'role', label: 'Role (labour)', type: 'ref', ref: 'roles', width: 150 },
+      { key: 'qty', label: 'Qty', type: 'number', width: 70 },
+      { key: 'unit', label: 'Unit', type: 'string', width: 70, suggest: true },
+      { key: 'unit_price', label: 'Unit price', type: 'money', width: 110 },
+      { key: 'note', label: 'Note', type: 'text' }
+    ],
+    title: r => r.description || r.id
   });
 
   /* Planning templates: reusable sets of planning lines (e.g. a prefab pump room).
@@ -4390,6 +4420,13 @@ PM.registerModule({
     return Math.ceil(((t - y0) / U.DAY + 1) / 7);
   }
 
+  /* A start date moved past the end date (table view, imports, plugins…): the end follows. */
+  PM.events.on('change', e => {
+    if (!e || e.collection !== 'lines' || e.action !== 'update' || !e.patch || !('start' in e.patch)) return;
+    const r = e.record;
+    if (r && r.start && r.end && r.end < r.start) PM.store.update('lines', r._key, { end: r.start });
+  });
+
   /* ---------------- shifting lines (and what comes after) ---------------- */
   /* Lines of a project affected by a shift that starts at `line`:
    *   scope 'after'  : lines starting on/after `ref` (default ref = line.start), incl. the line itself
@@ -4474,6 +4511,11 @@ PM.registerModule({
   function openLineDialog(line) {
     const pid = line.project;
     const f = PM.ui.form('lines', line, { projectId: pid });
+    // keep the end date at least the start date while editing
+    const startInp = f.el.querySelector('input[aria-label="Start"]'), endInp = f.el.querySelector('input[aria-label="End"]');
+    if (startInp && endInp) startInp.addEventListener('change', () => {
+      if (startInp.value && (!endInp.value || endInp.value < startInp.value)) { endInp.value = startInp.value; endInp.dispatchEvent(new Event('change')); }
+    });
     const taskBox = h('div', { class: 'linked-tasks' });
 
     function refresh() {
@@ -4518,7 +4560,7 @@ PM.registerModule({
         line.start ? h('button', { class: 'btn', onclick: () => { dlg.close(); shiftDialog(line); } }, 'Shift from here…') : null),
       actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, onClick: () => {
         const v = f.values();
-        if (v.start && v.end && v.end < v.start) { PM.ui.toast('End date is before start date.', 'warn'); return false; }
+        if (v.start && v.end && v.end < v.start) v.end = v.start;
         const patch = {};
         PM.collection('lines').fields.forEach(fd => { const k = fd.key; if (k !== 'id' && k in v && v[k] !== line[k]) patch[k] = v[k]; });
         if (Object.keys(patch).length) PM.store.update('lines', line._key, patch);
@@ -5628,6 +5670,58 @@ PM.registerModule({
     setTimeout(() => title.focus(), 50);
   }
 
+  /* everything assigned to one person, as a simple table */
+  function personDialog(p, ctx) {
+    const st2 = { all: false };
+    const box = h('div');
+    let dlg;
+    function rowsFor() {
+      const out = [];
+      PM.store.list('tasks', t => t.assignee === p.id).forEach(t => {
+        const pr = PM.store.project(t.project);
+        if (!pr || pr.status === 'archived') return;
+        const d = taskDates(t), line = t.line ? PM.store.find('lines', t.line, t.project) : null;
+        out.push({ kind: 'Task', rec: t, coll: 'tasks', project: pr, title: t.title, line: line ? line.title : '', start: d.start, due: t.due || d.end, status: t.status || 'todo', est: t.estimate });
+      });
+      PM.store.list('ptasks', t => t.person === p.id).forEach(t => out.push({ kind: 'Personal', rec: t, coll: 'ptasks', project: null, title: t.title, line: '', start: t.start, due: t.due, status: t.status || 'todo', est: '' }));
+      PM.store.list('lines', l => l.person === p.id).forEach(l => {
+        const pr = PM.store.project(l.project);
+        if (!pr || pr.status === 'archived') return;
+        out.push({ kind: 'Planning line', rec: l, coll: 'lines', project: pr, title: l.title, line: l.group || '', start: l.start, due: l.end, status: U.num(l.progress) >= 100 ? 'done' : (U.num(l.progress) + '%'), est: '' });
+      });
+      return out.filter(r => st2.all || r.status !== 'done').sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999') || (a.start || '').localeCompare(b.start || ''));
+    }
+    function draw() {
+      box.innerHTML = '';
+      const rs = rowsFor(), today = U.todayISO();
+      const statusSel = r => {
+        if (r.coll === 'lines') return h('span', { class: 'muted small' }, r.status);
+        const opts = r.coll === 'tasks' ? PM.constants.STATUS_TASK : ['todo', 'in-progress', 'done'];
+        const sel = h('select', { class: 'pill-select st-' + r.status, 'aria-label': 'Status of ' + r.title, onchange: e => { PM.store.update(r.coll, r.rec._key, { status: e.target.value }); draw(); } }, opts.map(o => h('option', { value: o, selected: o === r.status || null }, o)));
+        return sel;
+      };
+      const open = r => { dlg.close(); if (r.coll === 'lines') PM.planning.openLineDialog(r.rec); else if (r.coll === 'tasks') taskDialog(r.rec); else ptaskDialog(r.rec); };
+      box.appendChild(h('div', { class: 'toolbar' },
+        h('label', { class: 'check small' }, h('input', { type: 'checkbox', checked: st2.all || null, onchange: e => { st2.all = e.target.checked; draw(); } }), ' Show finished too'),
+        h('span', { class: 'spacer' }),
+        h('span', { class: 'muted small' }, rs.length + ' item' + (rs.length === 1 ? '' : 's') + (rs.some(r => r.est) ? ' · ' + U.fmtNum(U.sum(rs, r => r.est)) + ' h estimated' : ''))));
+      box.appendChild(h('div', { class: 'tbl-scroll' }, h('table', { class: 'data report person-tasks' },
+        h('thead', null, h('tr', null, ['Project', 'Task', 'Planning line / phase', 'Start', 'Due', 'Status', 'Est. h'].map((c, i) => h('th', { class: i > 5 ? 'right' : '' }, c)))),
+        h('tbody', null, rs.length ? rs.map(r => h('tr', { class: r.due && r.due < today && r.status !== 'done' && r.coll !== 'lines' ? 'overdue' : '' },
+          h('td', { class: 'nowrap' }, r.project ? h('span', { class: 'proj-dot', style: { '--pc': r.project.color || '#2f6fed' } }, r.project.id) : h('span', { class: 'muted' }, 'Personal')),
+          h('td', null, h('button', { class: 'link-btn', onclick: () => open(r), title: 'Open ' + r.kind.toLowerCase() }, r.title || r.rec.id), r.coll === 'lines' ? h('span', { class: 'muted small' }, ' (planning line)') : null),
+          h('td', { class: 'muted' }, r.line),
+          h('td', { class: 'nowrap' }, r.start ? U.fmtDate(r.start) : ''),
+          h('td', { class: 'nowrap' }, r.due ? U.fmtDate(r.due) : ''),
+          h('td', null, statusSel(r)),
+          h('td', { class: 'right' }, r.est ? U.fmtNum(r.est) : ''))) : h('tr', null, h('td', { colspan: 7, class: 'empty' }, 'Nothing assigned' + (st2.all ? '.' : ' that is still open.')))))));
+    }
+    draw();
+    dlg = PM.ui.dialog({ title: p.name, wide: true, className: 'person-dlg', content: box,
+      footLeft: h('button', { class: 'btn primary', onclick: () => { dlg.close(); addTaskDialog(ctx, { person: p.id, date: U.todayISO() }); } }, '+ Task for ' + p.name.split(' ')[0]),
+      actions: [{ label: 'Close' }] });
+  }
+
   /* choose which people are on the planning */
   function peopleDialog(ctx) {
     const hid = hiddenSet();
@@ -5714,7 +5808,7 @@ PM.registerModule({
       const r = items(p.id, from, to, opts);
       const rowH = r.lanes * LANE + 8;
       const label = h('div', { class: 'g-label team-label' },
-        h('span', { class: 'g-title grow' }, p.name),
+        h('button', { class: 'g-title grow link-btn team-name', title: 'Show all tasks of ' + p.name, onclick: () => personDialog(p, ctx) }, p.name),
         h('button', { class: 'icon-btn team-hide', title: 'Hide ' + p.name + ' from the planning', 'aria-label': 'Hide ' + p.name, onclick: () => { const s2 = hiddenSet(); s2.add(p.id); saveHidden(s2); ctx.rerender(); } }, '×'));
       const track = h('div', { class: 'g-track', title: 'Click an empty spot to add a task for ' + p.name, style: { width: W + 'px', backgroundImage: bg, backgroundPosition: bgOffset + 'px 0' } });
       track.addEventListener('click', ev => {
@@ -5877,7 +5971,7 @@ PM.registerModule({
     });
   }
 
-  PM.team = { render, items, taskDates, renderPdf, timeOffDialog, addTaskDialog };
+  PM.team = { render, items, taskDates, renderPdf, timeOffDialog, addTaskDialog, personDialog };
 })();
 
   </script>
@@ -8822,6 +8916,160 @@ PM.costsPdf = (function () {
 })();
 
   </script>
+  <script>/* js/modules/estimate-formats.js */
+/* PM Tool — modules/estimate-formats.js
+ * Estimate formats: a ready-made list of estimate lines (subjects, descriptions,
+ * quantities, units and optionally prices) to insert into a project's estimate.
+ * Stored in settings/estimate-formats.md (collection "etlines"). The built-in
+ * "Prefab pump room" format is copied into your data the first time.
+ *
+ *   PM.estimateFormats.insertDialog(projectId)
+ *   PM.estimateFormats.saveDialog(projectId)
+ *   PM.estimateFormats.renderSettings(el, rerender)
+ */
+(function () {
+  const U = PM.util, h = U.h;
+
+  // [subject, description, qty, unit] — structure only, prices are filled in per project
+  const BUILTIN = {
+    'Prefab pump room': [
+      ['Firepacks', 'Firepack pump', 1, 'pcs'],
+      ['Purchase', 'Jockeypump', 1, 'pcs'],
+      ['Purchase', 'Louvre', 4, 'pcs'],
+      ['Purchase', 'Flowmeter', 1, 'pcs'],
+      ['Purchase', 'Testset', 1, 'pcs'],
+      ['Purchase', 'Overspanningsbeveiliging', 1, 'pcs'],
+      ['Pumproom', 'Pumproom', 1, 'pcs'],
+      ['Piping & valves', 'Valves and Piping Accessories', 1, 'lot'],
+      ['Subcontracting', 'Electricity', 1, 'lot'],
+      ['Subcontracting', 'Exhaust isolation', 1, 'pcs'],
+      ['Manufacturing', 'Tanks on frame', 1, 'pcs'],
+      ['Manufacturing', 'Larger fuel tank', 1, 'pcs'],
+      ['Labour', 'Engineering E + W', 1, 'lot'],
+      ['Labour', 'Project manager', 1, 'lot'],
+      ['Transport', 'Transportation', 1, 'lot'],
+      ['Engineering', 'Calculations', 1, 'lot'],
+      ['Contingency', 'Price spike', 1, 'lot']
+    ]
+  };
+
+  PM.store.addLoader(async be => {
+    if (PM.store.list('etlines').length || !be || be.kind === 'readonly') return;
+    let existing = null;
+    try { existing = await be.readText('settings/estimate-formats.md'); } catch (e) { existing = null; }
+    if (existing != null) return;
+    Object.keys(BUILTIN).forEach(name => BUILTIN[name].forEach(r => PM.store.insert('etlines', { format: name, subject: r[0], description: r[1], qty: r[2], unit: r[3] })));
+  });
+
+  function names() {
+    const out = [];
+    PM.store.list('etlines').forEach(r => { if (r.format && !out.includes(r.format)) out.push(r.format); });
+    return out;
+  }
+  const rows = name => PM.store.list('etlines', r => r.format === name);
+  const amount = r => (r.qty === '' || r.qty == null ? 1 : U.num(r.qty)) * U.num(r.unit_price);
+
+  function insertDialog(pid) {
+    const list = names();
+    if (!list.length) { PM.ui.toast('No estimate formats yet. Save an estimate as a format first.', 'warn'); return; }
+    const st = { name: list[0], skip: {} };
+    const sel = h('select', { id: 'ef-name' }, list.map(n => h('option', { value: n }, n + ' (' + rows(n).length + ' lines)')));
+    const prices = h('input', { type: 'checkbox', checked: true, id: 'ef-prices' });
+    const preview = h('div', { class: 'tpl-preview' });
+    const summary = h('p', { class: 'muted small' });
+    function draw() {
+      const rs = rows(st.name);
+      const hasPrices = rs.some(r => U.num(r.unit_price));
+      prices.disabled = !hasPrices;
+      preview.innerHTML = '';
+      const body = h('tbody');
+      let last = null;
+      rs.forEach(r => {
+        if ((r.subject || '') !== last) { last = r.subject || ''; body.appendChild(h('tr', { class: 'tpl-group' }, h('td'), h('td', { colspan: 4 }, last || '(no subject)'))); }
+        body.appendChild(h('tr', null,
+          h('td', null, h('input', { type: 'checkbox', checked: !st.skip[r._key], 'aria-label': r.description, onchange: e => { st.skip[r._key] = !e.target.checked; count(); } })),
+          h('td', null, r.description), h('td', { class: 'right nowrap' }, (r.qty === '' || r.qty == null ? '' : U.fmtNum(r.qty)) + ' ' + (r.unit || '')),
+          h('td', { class: 'right nowrap' }, U.num(r.unit_price) ? U.fmtMoney(r.unit_price, true) : '—'),
+          h('td', { class: 'right nowrap' }, U.num(r.unit_price) ? U.fmtMoney(amount(r), true) : '')));
+      });
+      preview.appendChild(h('table', { class: 'data tpl-table' }, h('thead', null, h('tr', null, h('th'), h('th', null, 'Line'), h('th', { class: 'right' }, 'Qty'), h('th', { class: 'right' }, 'Unit price'), h('th', { class: 'right' }, 'Amount'))), body));
+      count();
+    }
+    function count() {
+      const rs = rows(st.name).filter(r => !st.skip[r._key]);
+      const tot = U.sum(rs, amount);
+      summary.textContent = rs.length + ' line(s) will be added below the current estimate' + (tot && prices.checked ? ' · ' + U.fmtMoney(tot) : '') + '. Fill in or adjust the prices afterwards.';
+    }
+    sel.addEventListener('change', () => { st.name = sel.value; st.skip = {}; draw(); });
+    prices.addEventListener('change', count);
+    draw();
+    PM.ui.dialog({
+      title: 'Insert estimate format', wide: true,
+      content: h('div', null,
+        h('div', { class: 'form-grid' }, h('label', { class: 'form-row' }, h('span', null, 'Format'), sel)),
+        h('label', { class: 'check' }, prices, ' Copy the prices of the format (when it has them)'),
+        summary, preview),
+      actions: [{ label: 'Cancel' }, { label: 'Insert lines', primary: true, onClick: () => {
+        const rs = rows(st.name).filter(r => !st.skip[r._key]);
+        if (!rs.length) { PM.ui.toast('Select at least one line.', 'warn'); return false; }
+        rs.forEach(r => PM.store.insert('estimate', { subject: r.subject, description: r.description, role: r.role, qty: r.qty === '' || r.qty == null ? 1 : r.qty, unit: r.unit,
+          unit_price: prices.checked ? r.unit_price : '', note: r.note }, pid));
+        PM.ui.toast(rs.length + ' estimate lines added from "' + st.name + '".');
+      } }]
+    });
+  }
+
+  function saveDialog(pid) {
+    const est = PM.store.list('estimate', { project: pid });
+    if (!est.length) { PM.ui.toast('This estimate has no lines yet.', 'warn'); return; }
+    const p = PM.store.project(pid);
+    const name = h('input', { type: 'text', id: 'efs-name', value: p ? p.name : '' });
+    const prices = h('input', { type: 'checkbox', id: 'efs-prices' });
+    PM.ui.dialog({
+      title: 'Save estimate as format',
+      content: h('div', null,
+        h('div', { class: 'form-grid' }, h('label', { class: 'form-row' }, h('span', null, 'Format name'), name)),
+        h('label', { class: 'check' }, prices, ' Also save the unit prices'),
+        h('p', { class: 'muted small' }, est.length + ' lines are saved with subject, description, role, quantity and unit. Without prices the format is a clean structure to fill in per project.')),
+      actions: [{ label: 'Cancel' }, { label: 'Save format', primary: true, onClick: () => {
+        const n = name.value.trim();
+        if (!n) { name.focus(); return false; }
+        const old = rows(n);
+        if (old.length && !confirm('A format "' + n + '" already exists (' + old.length + ' lines). Replace it?')) return false;
+        old.forEach(r => PM.store.remove('etlines', r._key));
+        est.forEach(e => PM.store.insert('etlines', { format: n, subject: e.subject, description: e.description, role: e.role, qty: e.qty, unit: e.unit, unit_price: prices.checked ? e.unit_price : '', note: e.note }));
+        PM.ui.toast('Format "' + n + '" saved with ' + est.length + ' lines.');
+      } }]
+    });
+  }
+
+  const sstate = { open: '' };
+  function renderSettings(el, rerender) {
+    const list = names();
+    if (sstate.open && !list.includes(sstate.open)) sstate.open = '';
+    el.appendChild(h('p', { class: 'muted' }, 'Ready-made estimate structures. Insert one in Costs → Estimate → Insert format, or save a project estimate as a format there.'));
+    el.appendChild(h('div', { class: 'tpl-cards' }, list.map(n => {
+      const rs = rows(n), tot = U.sum(rs, amount);
+      return h('div', { class: 'card tpl-card' + (sstate.open === n ? ' on' : '') },
+        h('div', { class: 'card-head' }, h('h2', null, n)),
+        h('p', { class: 'muted small' }, rs.length + ' lines · ' + Array.from(new Set(rs.map(r => r.subject).filter(Boolean))).length + ' subjects' + (tot ? ' · ' + U.fmtMoney(tot) : ' · no prices')),
+        h('div', { class: 'btn-row' },
+          h('button', { class: 'btn small', onclick: () => { sstate.open = sstate.open === n ? '' : n; rerender(); } }, sstate.open === n ? 'Close' : 'Edit lines'),
+          h('button', { class: 'btn ghost small', onclick: () => { const nn = prompt('New name for "' + n + '"', n); if (nn && nn.trim() && nn.trim() !== n) { rs.forEach(r => PM.store.update('etlines', r._key, { format: nn.trim() })); sstate.open = nn.trim(); } } }, 'Rename'),
+          h('button', { class: 'btn ghost small danger-text', onclick: () => { if (confirm('Delete format "' + n + '"? Estimates that used it keep their lines.')) rs.forEach(r => PM.store.remove('etlines', r._key)); } }, 'Delete')));
+    })));
+    if (!list.length) el.appendChild(PM.ui.empty('No estimate formats. Open a project → Costs → Estimate → Save as format.'));
+    if (sstate.open) {
+      el.appendChild(h('h3', null, 'Lines of "' + sstate.open + '"'));
+      el.appendChild(PM.ui.dataTable({ id: 'etlines', collection: 'etlines', rows: rows(sstate.open), columns: ['id', 'subject', 'description', 'role', 'qty', 'unit', 'unit_price', 'note'],
+        newRecord: () => { const rs = rows(sstate.open), last = rs[rs.length - 1]; return { format: sstate.open, subject: last ? last.subject : '', qty: 1 }; } }));
+    }
+  }
+
+  PM.estimateFormats = { BUILTIN, names, rows, insertDialog, saveDialog, renderSettings };
+})();
+
+  </script>
   <script>/* js/modules/costs.js */
 /* PM Tool — modules/costs.js
  * Costs per project, in four views:
@@ -8959,11 +9207,12 @@ PM.costsPdf = (function () {
     const calc = PM.services.calc;
     const a = calc.estimateAnalysis(ctx.projectId);
     const est = PM.store.list('estimate', { project: ctx.projectId });
-    const labourH = U.sum(est.filter(e => e.role), e => e.qty);
+    const isHours = e => e.role && (e.unit === 'h' || (!e.unit && (e.unit_price === '' || e.unit_price == null)));
+    const labourH = U.sum(est.filter(isHours), e => e.qty);
 
     el.appendChild(h('div', { class: 'stats' },
       PM.ui.stat('Offer price', a.offer ? M(a.offer) : '—', a.offer ? editLink(ctx.projectId, 'change') : editLink(ctx.projectId, 'Set offer price'), a.offer ? '' : 'warn'),
-      PM.ui.stat('Estimated cost price', M(a.baseEstimate), est.length + ' line(s) · ' + N(labourH) + ' h labour'),
+      PM.ui.stat('Estimated cost price', M(a.baseEstimate), est.length + ' line(s)' + (labourH ? ' · ' + N(labourH) + ' h labour' : '')),
       PM.ui.stat('Planned margin', a.offer ? M(a.baseMargin) : '—', a.offer ? pct(a.baseMarginPct) + ' of the offer price (without additional work)' : 'set an offer price', a.offer ? (a.baseMargin < 0 ? 'bad' : 'accent') : '')));
 
     const subj = a.groups.map(g => ({ subject: g.subject, est: U.sum(g.rows.filter(BASE), r => r.estimate) })).filter(g => g.est);
@@ -8973,12 +9222,12 @@ PM.costsPdf = (function () {
       id: 'estimate', collection: 'estimate', projectId: ctx.projectId, rows: est,
       emptyText: 'No estimate yet. Add lines per subject (Labour, Pump set, Transport…), or copy the estimate of a similar project.',
       newRecord: () => { const last = est[est.length - 1]; return { subject: last ? last.subject : 'Labour', qty: 1 }; },
-      toolbar: [h('button', { class: 'btn ghost small', onclick: () => copyDialog(ctx) }, 'Copy from project…')],
+      toolbar: [h('button', { class: 'btn ghost small', onclick: () => PM.estimateFormats.insertDialog(ctx.projectId) }, 'Insert format…'), h('button', { class: 'btn ghost small', onclick: () => PM.estimateFormats.saveDialog(ctx.projectId) }, 'Save as format…'), h('button', { class: 'btn ghost small', onclick: () => copyDialog(ctx) }, 'Copy from project…')],
       extra: [
         { key: 'price', label: 'Price used', width: 110, align: 'right', after: 'unit_price', value: e => { if (!e.role || !(e.unit_price === '' || e.unit_price == null)) return ''; const i = calc.rateInfo(e.project, e.role); return MC(i.rate) + (i.project ? ' (project)' : ' (rate)'); }, sortVal: e => calc.estimatePrice(e) },
         { key: 'amount', label: 'Amount', width: 110, align: 'right', after: 'unit_price', value: e => MC(calc.estimateAmount(e)), sortVal: e => calc.estimateAmount(e) }
       ],
-      totals: { amount: r => M(U.sum(r, calc.estimateAmount)), qty: r => { const hh = U.sum(r.filter(e => e.role), e => e.qty); return hh ? N(hh) + ' h' : ''; } }
+      totals: { amount: r => M(U.sum(r, calc.estimateAmount)), qty: r => { const hh = U.sum(r.filter(e => e.role && (e.unit === 'h' || (!e.unit && (e.unit_price === '' || e.unit_price == null)))), e => e.qty); return hh ? N(hh) + ' h' : ''; } }
     }));
     const dlist = document.getElementById('dl-estimate-subject');
     if (dlist) {
@@ -9125,8 +9374,9 @@ PM.costsPdf = (function () {
         rows.push({ kind: 'group', cells: [g.s, '', '', '', '', '', M(U.sum(g.rows, calc.estimateAmount))] });
         g.rows.forEach(e => rows.push({ indent: true, cells: [e.id + '  ' + (e.description || ''), e.role ? (calc.role(e.role) || {}).name || e.role : '', N(e.qty), e.unit || '', MC(calc.estimatePrice(e)), e.note || '', MC(calc.estimateAmount(e))] }));
       });
-      rows.push({ kind: 'total', cells: ['Total estimated cost (' + N(U.sum(est.filter(e => e.role), e => e.qty)) + ' h labour)', '', '', '', '', '', M(a.baseEstimate)] });
-      const sections = [{ title: 'Cost estimate', columns: [{ label: 'Line', w: 62 }, { label: 'Role', w: 22 }, { label: 'Qty', w: 11, align: 'right' }, { label: 'Unit', w: 9 }, { label: 'Unit price', w: 18, align: 'right' }, { label: 'Note', w: 30 }, { label: 'Amount', w: 21, align: 'right' }], rows,
+      const lh = U.sum(est.filter(e => e.role && (e.unit === 'h' || (!e.unit && (e.unit_price === '' || e.unit_price == null)))), e => e.qty);
+      rows.push({ kind: 'total', cells: ['Total estimated cost' + (lh ? ' (' + N(lh) + ' h labour)' : ''), '', '', '', '', '', M(a.baseEstimate)] });
+      const sections = [{ title: 'Cost estimate', columns: [{ label: 'Line', w: 58 }, { label: 'Role', w: 32 }, { label: 'Qty', w: 9, align: 'right' }, { label: 'Unit', w: 9 }, { label: 'Unit price', w: 19, align: 'right' }, { label: 'Note', w: 24 }, { label: 'Amount', w: 22, align: 'right' }], rows,
         note: 'Cost prices, EUR excl. VAT. Labour lines use the hourly rate of this project unless a unit price is filled in.' }];
       const rates = PM.store.list('rates', { project: p.id });
       if (rates.length) sections.push({ title: 'Hourly rates for this project', columns: [{ label: 'Role', w: 40 }, { label: 'Person', w: 40 }, { label: 'Default', w: 20, align: 'right' }, { label: 'Project rate', w: 22, align: 'right' }, { label: 'Note', w: 50 }],
@@ -9501,7 +9751,7 @@ PM.costsPdf = (function () {
     id: 'settings', title: 'Settings', icon: '⚙', order: 90,
     render(el, ctx) {
       if (ctx.params.tab && ctx.params.tab !== state.lastParam) { state.tab = ctx.params.tab; state.lastParam = ctx.params.tab; }
-      const tabs = [['company', 'Company'], ['roles', 'Roles & rates'], ['people', 'People'], ['forms', 'Forms'], ['templates', 'Planning templates'], ['presets', 'PDF presets'], ['data', 'Data & import'], ['dev', 'Extensions']];
+      const tabs = [['company', 'Company'], ['roles', 'Roles & rates'], ['people', 'People'], ['forms', 'Forms'], ['templates', 'Planning templates'], ['estformats', 'Estimate formats'], ['presets', 'PDF presets'], ['data', 'Data & import'], ['dev', 'Extensions']];
       el.appendChild(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'Shared across all projects'))));
       el.appendChild(h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, t]) => h('button', { role: 'tab', 'aria-selected': String(state.tab === k), class: state.tab === k ? 'on' : '', onclick: () => { state.tab = k; ctx.rerender(); } }, t))));
 
@@ -9516,6 +9766,8 @@ PM.costsPdf = (function () {
         el.appendChild(companyTab());
       } else if (state.tab === 'forms') {
         PM.formsEditor.renderTab(el);
+      } else if (state.tab === 'estformats') {
+        PM.estimateFormats.renderSettings(el, ctx.rerender);
       } else if (state.tab === 'templates') {
         PM.planningTemplates.renderSettings(el, ctx.rerender);
       } else if (state.tab === 'presets') {
