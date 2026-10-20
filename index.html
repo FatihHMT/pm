@@ -734,6 +734,24 @@ textarea { font: inherit; }
 .person-tasks td:nth-child(3) { min-width: 140px; }
 .person-tasks .pill-select { width: auto; min-width: 0; }
 
+/* ---------- dashboard links and comments ---------- */
+.stat-link { display: block; color: inherit; text-decoration: none; border-radius: var(--radius); }
+.stat-link:hover .stat, .stat-link:focus-visible .stat { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-weak); }
+.sec-link { color: inherit; text-decoration: none; }
+.sec-link:hover { color: var(--accent); }
+.sec-link .sec-arrow { color: var(--accent); }
+.cm-new { margin-bottom: 12px; }
+.cm-input { width: 100%; resize: vertical; }
+.cm-new .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.cm-who { max-width: 220px; }
+.comments { display: flex; flex-direction: column; gap: 8px; }
+.cm-item { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; background: var(--surface); }
+.cm-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 12.5px; margin-bottom: 4px; }
+.cm-date { font-weight: 600; }
+.cm-author { color: var(--muted); }
+.cm-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cm-edit .btn-row { display: flex; gap: 8px; margin-top: 6px; }
+
 </style>
 </head>
 <body>
@@ -1182,6 +1200,21 @@ PM.events = (function () {
     title: r => r.description || r.id
   });
 
+  /* Comments / notes on a project, with date and time (dashboard of the project). */
+  PM.defineCollection({
+    name: 'comments', label: 'Comments', scope: 'project', file: 'comments.md',
+    heading: 'Comments', idPrefix: 'N-',
+    intro: 'Comments and notes on this project, newest at the bottom. date = when it was written (YYYY-MM-DD HH:MM).',
+    fields: [
+      { key: 'id', label: 'ID', type: 'id', width: 80 },
+      { key: 'date', label: 'Date / time', type: 'string', width: 150 },
+      { key: 'author', label: 'By', type: 'ref', ref: 'people', width: 150 },
+      { key: 'text', label: 'Comment', type: 'text', multiline: true, rows: 3, required: true },
+      { key: 'edited', label: 'Edited', type: 'string', width: 150 }
+    ],
+    title: r => (r.text || '').slice(0, 60) || r.id
+  });
+
   /* Additional work (extras / change orders): revenue on top of the offer price.
    * Only "approved" and "invoiced" items count as revenue. Costs and hours can be
    * linked to an item (costs: column "estimate", hours: column "extra"). */
@@ -1599,6 +1632,10 @@ PM.storage = (function () {
     async deleteFile(path) {
       const parts = path.split('/'); const name = parts.pop();
       try { const dir = await this._dir(parts, false); await dir.removeEntry(name); } catch (e) { /* already gone */ }
+    }
+    async deleteDir(path) {
+      const parts = path.split('/'); const name = parts.pop();
+      try { const dir = await this._dir(parts, false); await dir.removeEntry(name, { recursive: true }); } catch (e) { /* already gone */ }
     }
     async listDirs(path) {
       let dir;
@@ -2540,6 +2577,35 @@ PM.store = (function () {
     return rec;
   }
 
+  /* Permanently delete a project: its records and every file in its folder (incl. photos).
+   * On GitHub the history keeps a copy. Returns the number of files removed. */
+  async function deleteProject(pid) {
+    const p = project(pid);
+    if (!p) return 0;
+    const folder = 'projects/' + p._folder;
+    const paths = new Set(['project.md'].concat(PM.collections().filter(d => d.scope === 'project').map(d => d.file)).map(f => folder + '/' + f));
+    Object.keys(docs).forEach(k => { if (k.startsWith(folder + '/')) paths.add(k); });
+    if (backend && backend.listFiles) {
+      try { (await backend.listFiles(folder + '/photos')).forEach(n => paths.add(folder + '/photos/' + n)); } catch (e) { /* no photos */ }
+      try { (await backend.listFiles(folder)).forEach(n => paths.add(folder + '/' + n)); } catch (e) { /* ignore */ }
+    }
+    // forget the records and any pending saves for this project
+    PM.collections().filter(d => d.scope === 'project').forEach(d => { records[d.name] = (records[d.name] || []).filter(r => r.project !== pid); });
+    records.projects = records.projects.filter(r => r !== p);
+    Array.from(dirty.keys()).forEach(k => { if (String(k).startsWith(folder + '/')) dirty.delete(k); });
+    let n = 0;
+    if (backend && backend.deleteFile) {
+      for (const path of paths) {
+        try { await backend.deleteFile(path); n++; } catch (e) { console.warn('Could not delete ' + path, e); }
+        delete docs[path];
+      }
+      if (backend.deleteDir) { try { await backend.deleteDir(folder); } catch (e) { /* ignore */ } }
+    }
+    PM.events.emit('change', { collection: 'projects', action: 'remove', record: p });
+    PM.events.emit('status', statusInfo());
+    return n;
+  }
+
   /* ---------- serialisation ---------- */
   function columnsFor(def, path, rows) {
     const cols = def.fields.filter(f => !f.computed).map(f => f.key);
@@ -2752,7 +2818,7 @@ PM.store = (function () {
   });
 
   return {
-    load, list, get, find, insert, update, remove, createProject, project, projects,
+    load, list, get, find, insert, update, remove, createProject, deleteProject, project, projects,
     retry() { authBlocked = false; return flush(); },
     addLoader(fn) { loaders.push(fn); },
     addExtraFiles(fn) { extraFiles.push(fn); },
@@ -3842,7 +3908,7 @@ PM.app = (function () {
       const list = groups.get(st);
       if (!list) return;
       projSel.appendChild(h('optgroup', { label: st[0].toUpperCase() + st.slice(1) },
-        list.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })).map(p => h('option', { value: p.id, selected: p.id === pid || null }, p.id + ' · ' + p.name))));
+        list.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })).map(p => h('option', { value: p.id, selected: p.id === pid || null, title: p.name }, p.id + ' · ' + (p.client ? p.client + ' · ' : '') + p.name))));
     });
   }
 
@@ -4115,8 +4181,9 @@ PM.app = (function () {
     const p = PM.store.project(pid);
     if (!p) return;
     const f = PM.ui.form('projects', p);
-    PM.ui.dialog({
+    const dlg = PM.ui.dialog({
       title: 'Edit project ' + p.id, content: f.el,
+      footLeft: h('button', { class: 'btn ghost danger-text', onclick: () => { dlg.close(); deleteProjectDialog(p.id); } }, 'Delete project…'),
       actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, onClick: () => {
         if (!f.valid()) { PM.ui.toast('Please fill in the object.', 'warn'); return false; }
         const v = f.values();
@@ -4127,6 +4194,35 @@ PM.app = (function () {
         PM.ui.toast('Project saved.', 'ok');
       } }]
     });
+  }
+
+  /* Permanently delete a project (all its files). Archiving is offered as the safer alternative. */
+  function deleteProjectDialog(pid) {
+    const p = PM.store.project(pid);
+    if (!p) return;
+    const n = c => PM.store.list(c, { project: pid }).length;
+    const counts = [['planning lines', n('lines')], ['tasks', n('tasks')], ['hour entries', n('hours')], ['cost lines', n('costs')], ['estimate lines', n('estimate')], ['forms', n('surveys')], ['comments', PM.collection('comments') ? n('comments') : 0]].filter(c => c[1]);
+    const confirmInp = h('input', { type: 'text', id: 'del-confirm', placeholder: p.id, autocomplete: 'off' });
+    const kind = PM.store.backend ? PM.store.backend.kind : '';
+    PM.ui.dialog({
+      title: 'Delete project ' + p.id + '?',
+      content: h('div', null,
+        h('p', null, h('b', null, p.name), p.client ? ' · ' + p.client : ''),
+        h('p', null, 'This permanently deletes the project and everything in it' + (counts.length ? ': ' + counts.map(c => c[1] + ' ' + c[0]).join(', ') : '') + ', including photos.'),
+        kind === 'github' ? h('p', { class: 'muted small' }, 'On GitHub the history of pm-data still keeps a copy, so it can be restored from there if needed.') : h('p', { class: 'small bad-text' }, 'This cannot be undone.'),
+        h('p', { class: 'small' }, 'Only want it out of sight? Set the status to ', h('b', null, 'archived'), ' instead – it disappears from the lists but keeps all data.'),
+        h('label', { class: 'form-row' }, h('span', null, 'Type ' + p.id + ' to confirm'), confirmInp)),
+      actions: [
+        { label: 'Cancel' },
+        { label: 'Archive instead', onClick: () => { PM.store.update('projects', p._key, { status: 'archived' }); PM.ui.toast(p.id + ' archived.', 'ok'); } },
+        { label: 'Delete permanently', danger: true, onClick: async () => {
+          if (confirmInp.value.trim().toUpperCase() !== p.id.toUpperCase()) { PM.ui.toast('Type ' + p.id + ' to confirm.', 'warn'); confirmInp.focus(); return false; }
+          const files = await PM.store.deleteProject(pid);
+          location.hash = '#/dashboard';
+          PM.ui.toast('Project ' + pid + ' deleted' + (files ? ' (' + files + ' files)' : '') + '.', 'ok');
+        } }]
+    });
+    setTimeout(() => confirmInp.focus(), 50);
   }
 
   /* ---------- boot ---------- */
@@ -4258,7 +4354,7 @@ PM.app = (function () {
 
   function isTouch() { return window.matchMedia && window.matchMedia('(pointer: coarse)').matches; }
 
-  return { boot, render, navigate, setProject, openFolder, saveToFolder, downloadZip, newProjectDialog, editProjectDialog, useBackend, connectOneDrive, copyToOneDrive, connectGitHub, copyDemoTo, isTouch, get route() { return route; } };
+  return { boot, render, navigate, setProject, openFolder, saveToFolder, downloadZip, newProjectDialog, editProjectDialog, deleteProjectDialog, useBackend, connectOneDrive, copyToOneDrive, connectGitHub, copyDemoTo, isTouch, get route() { return route; } };
 })();
 
   </script>
@@ -4288,11 +4384,12 @@ PM.registerModule({
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: st.showAll || null, onchange: e => { st.showAll = e.target.checked; ctx.rerender(); } }), ' Show completed'),
       h('button', { class: 'btn primary', onclick: () => PM.app.newProjectDialog() }, '+ New project')));
 
+    const link = (href, node) => h('a', { class: 'stat-link', href, title: 'Open' }, node);
     el.appendChild(h('div', { class: 'stats' },
-      PM.ui.stat('Hours this month', U.fmtNum(monthSum.hours), U.fmtMoney(monthSum.labour) + ' labour'),
-      PM.ui.stat('Total cost to date', U.fmtMoney(sum.total), 'budget ' + U.fmtMoney(sum.budgetCosts), sum.budgetCosts && sum.total > sum.budgetCosts ? 'bad' : ''),
-      PM.ui.stat('Hours to date', U.fmtNum(sum.hours), 'budget ' + U.fmtNum(sum.budgetHours) + ' h'),
-      PM.ui.stat('Open tasks', U.fmtNum(ts.open), ts.overdue ? ts.overdue + ' overdue' : 'none overdue', ts.overdue ? 'bad' : '')));
+      link('#/hours', PM.ui.stat('Hours this month', U.fmtNum(monthSum.hours), U.fmtMoney(monthSum.labour) + ' labour')),
+      link('#/costs', PM.ui.stat('Total cost to date', U.fmtMoney(sum.total), 'budget ' + U.fmtMoney(sum.budgetCosts), sum.budgetCosts && sum.total > sum.budgetCosts ? 'bad' : '')),
+      link('#/hours', PM.ui.stat('Hours to date', U.fmtNum(sum.hours), 'budget ' + U.fmtNum(sum.budgetHours) + ' h')),
+      link('#/tasks', PM.ui.stat('Open tasks', U.fmtNum(ts.open), ts.overdue ? ts.overdue + ' overdue' : 'none overdue', ts.overdue ? 'bad' : ''))));
 
     if (!projects.length) {
       el.appendChild(PM.ui.empty('No projects to show.', h('button', { class: 'btn primary', onclick: () => PM.app.newProjectDialog() }, 'Create the first project')));
@@ -4332,11 +4429,14 @@ PM.registerModule({
         h('button', { class: 'btn', onclick: () => PM.app.editProjectDialog(p.id) }, '✎ Edit project')));
       if (p.description) el.appendChild(h('p', { class: 'proj-desc' }, p.description));
 
+      const q = '?project=' + p.id;
+      const link = (href, node) => h('a', { class: 'stat-link', href: href + q, title: 'Open' }, node);
+      const secTitle = (text, href) => h('a', { class: 'sec-link', href: href + q }, text, h('span', { class: 'sec-arrow', 'aria-hidden': 'true' }, ' ›'));
       el.appendChild(h('div', { class: 'stats' },
-        PM.ui.stat('Planning progress', U.fmtPct(prog), PM.store.list('lines', { project: p.id }).length + ' planning lines'),
-        PM.ui.stat('Hours', U.fmtNum(s.hours) + ' h', 'of ' + U.fmtNum(p.budget_hours) + ' h budget · est. ' + U.fmtNum(s.estimateHours) + ' h', p.budget_hours && s.hours > p.budget_hours ? 'bad' : ''),
-        PM.ui.stat('Cost', U.fmtMoney(s.total), 'of ' + U.fmtMoney(p.budget_costs) + ' · ' + U.fmtPct(p.budget_costs ? s.total / p.budget_costs : NaN), p.budget_costs && s.total > p.budget_costs ? 'bad' : ''),
-        PM.ui.stat('Tasks', t.done + ' / ' + t.total + ' done', t.overdue ? t.overdue + ' overdue' : 'none overdue', t.overdue ? 'bad' : '')));
+        link('#/planning', PM.ui.stat('Planning progress', U.fmtPct(prog), PM.store.list('lines', { project: p.id }).length + ' planning lines')),
+        link('#/hours', PM.ui.stat('Hours', U.fmtNum(s.hours) + ' h', 'of ' + U.fmtNum(p.budget_hours) + ' h budget · est. ' + U.fmtNum(s.estimateHours) + ' h', p.budget_hours && s.hours > p.budget_hours ? 'bad' : '')),
+        link('#/costs', PM.ui.stat('Cost', U.fmtMoney(s.total), 'of ' + U.fmtMoney(p.budget_costs) + ' · ' + U.fmtPct(p.budget_costs ? s.total / p.budget_costs : NaN), p.budget_costs && s.total > p.budget_costs ? 'bad' : '')),
+        link('#/tasks', PM.ui.stat('Tasks', t.done + ' / ' + t.total + ' done', t.overdue ? t.overdue + ' overdue' : 'none overdue', t.overdue ? 'bad' : ''))));
 
       const grid = h('div', { class: 'two-col' });
       el.appendChild(grid);
@@ -4344,7 +4444,7 @@ PM.registerModule({
       // current & upcoming planning lines
       const lines = PM.store.list('lines', l => l.project === p.id && l.end >= today && l.start <= U.addDays(today, 21))
         .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-      grid.appendChild(PM.ui.section('Now and next 3 weeks',
+      grid.appendChild(PM.ui.section(secTitle('Planning · now and next 3 weeks', '#/planning'),
         lines.length ? h('ul', { class: 'line-list' }, lines.map(l => {
           const tasks = calc.lineTasks(p.id, l.id);
           return h('li', null,
@@ -4357,7 +4457,7 @@ PM.registerModule({
       // attention: overdue / due soon tasks
       const due = PM.store.list('tasks', x => x.project === p.id && x.status !== 'done' && x.due && x.due <= U.addDays(today, 7))
         .sort((a, b) => a.due.localeCompare(b.due));
-      grid.appendChild(PM.ui.section('Tasks due within a week',
+      grid.appendChild(PM.ui.section(secTitle('Tasks due within a week', '#/tasks'),
         due.length ? h('ul', { class: 'line-list' }, due.map(x => {
           const who = PM.store.find('people', x.assignee);
           return h('li', null,
@@ -4366,6 +4466,9 @@ PM.registerModule({
             h('span', { class: 'small ' + (x.due < today ? 'bad-text' : 'muted') }, U.fmtDate(x.due)));
         })) : h('p', { class: 'muted' }, 'No tasks due.'),
         h('a', { class: 'btn ghost small', href: '#/tasks?project=' + p.id }, 'Open tasks')));
+
+      // comments with date/time, editable
+      el.appendChild(commentsSection(p, ctx));
 
       // project details (read-only summary; edit through the dialog)
       const def = PM.collection('projects');
@@ -4382,6 +4485,54 @@ PM.registerModule({
     }
   }
 });
+
+/* Comments on the dashboard of a project: date/time, optional author, editable. */
+function commentsSection(p, ctx) {
+  const U = PM.util, h = U.h;
+  const LS_ME = 'pm.me';
+  let me = ''; try { me = localStorage.getItem(LS_ME) || ''; } catch (e) { /* ignore */ }
+  const now = () => { const d = new Date(), z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); };
+  const fmt = s => { if (!s) return ''; const [d, t] = String(s).split(' '); return U.fmtDate(d) + (t ? ' ' + t : ''); };
+  const list = h('div', { class: 'comments' });
+  const people = PM.store.list('people', x => x.active !== false);
+  const who = h('select', { class: 'cm-who', 'aria-label': 'Written by', onchange: () => { try { localStorage.setItem(LS_ME, who.value); } catch (e) { /* ignore */ } } },
+    h('option', { value: '' }, '— by —'), people.map(x => h('option', { value: x.id, selected: x.id === me || null }, x.name)));
+  const input = h('textarea', { class: 'cm-input', rows: 3, placeholder: 'Write a comment or note… (Ctrl+Enter to add)', 'aria-label': 'New comment' });
+  const add = () => {
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    PM.ui.pendingFocus = 'cm-new';
+    PM.store.insert('comments', { date: now(), author: who.value, text }, p.id);
+  };
+  input.dataset.focus = 'cm-new';
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); add(); } });
+  const items = PM.store.list('comments', { project: p.id }).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  items.forEach(c => {
+    const author = PM.store.find('people', c.author);
+    const body = h('div', { class: 'cm-text' }, c.text);
+    const item = h('div', { class: 'cm-item' },
+      h('div', { class: 'cm-head' },
+        h('span', { class: 'cm-date' }, fmt(c.date)),
+        author ? h('span', { class: 'cm-author' }, author.name) : null,
+        c.edited ? h('span', { class: 'muted small', title: 'Edited ' + fmt(c.edited) }, '(edited)') : null,
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn ghost small', onclick: () => edit() }, 'Edit'),
+        h('button', { class: 'icon-btn', title: 'Delete comment', 'aria-label': 'Delete comment', onclick: () => { if (confirm('Delete this comment?')) PM.store.remove('comments', c._key); } }, '✕')),
+      body);
+    function edit() {
+      const ta = h('textarea', { class: 'cm-input', rows: Math.max(3, String(c.text).split('\n').length + 1) }, c.text);
+      const save = () => { const v = ta.value.trim(); if (!v) { ta.focus(); return; } if (v !== c.text) PM.store.update('comments', c._key, { text: v, edited: now() }); else ctx.rerender(); };
+      ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); save(); } if (e.key === 'Escape') ctx.rerender(); });
+      body.replaceWith(h('div', { class: 'cm-edit' }, ta, h('div', { class: 'btn-row' }, h('button', { class: 'btn primary small', onclick: save }, 'Save'), h('button', { class: 'btn ghost small', onclick: () => ctx.rerender() }, 'Cancel'))));
+      ta.focus();
+    }
+    list.appendChild(item);
+  });
+  if (!items.length) list.appendChild(h('p', { class: 'muted small' }, 'No comments yet.'));
+  return PM.ui.section('Comments (' + items.length + ')', h('div', null,
+    h('div', { class: 'cm-new' }, input, h('div', { class: 'btn-row' }, who, h('span', { class: 'spacer' }), h('button', { class: 'btn primary small', onclick: add }, 'Add comment'))),
+    list));
+}
 
   </script>
   <script>/* js/modules/planning.js */
@@ -9925,6 +10076,7 @@ PM.costsPdf = (function () {
 /* Demo data — generated by tools/embed-sample.js from the data/ folder. Safe to delete or replace. */
 PM.sampleFiles = {
  "projects/P-001-vervanging-dieselpompset-dc-westpoort/additional-work.md": "---\ncollection: extras\nproject: P-001\n---\n# Additional work\n\nAdditional work on top of the offer price (EUR excl. VAT). price = what the client pays; cost_estimate = expected cost. Only approved and invoiced items count as revenue.\n\n| id     | date       | description                         | status   | reference   | price | cost_estimate | note |\n| ------ | ---------- | ----------------------------------- | -------- | ----------- | ----- | ------------- | ---- |\n| AW-001 | 2026-09-10 | Extra flexibele koppeling zuigzijde | approved | PO 45001234 | 2850  | 1900          |      |\n| AW-002 | 2026-09-28 | Verplaatsen brandstoftank 3 m       | quoted   |             | 4200  | 2900          |      |\n",
+ "projects/P-001-vervanging-dieselpompset-dc-westpoort/comments.md": "---\ncollection: comments\nproject: P-001\n---\n# Comments\n\nComments and notes on this project, newest at the bottom. date = when it was written (YYYY-MM-DD HH:MM).\n\n| id    | date             | author | text                                     | edited |\n| ----- | ---------------- | ------ | ---------------------------------------- | ------ |\n| N-001 | 2026-10-06 09:12 | U-001  | Klant wil de FAT graag in week 44. Henk de Graaf bevestigt nog. |        |\n| N-002 | 2026-10-12 14:40 | U-002  | Motor levering 1 week later volgens leverancier.<br>Planning bijgewerkt. |        |\n",
  "projects/P-001-vervanging-dieselpompset-dc-westpoort/costs.md": "---\ncollection: costs\nproject: P-001\n---\n# Costs\n\nFixed costs and purchases. Amount = qty × unit_price (EUR, excl. VAT).\n\n| id    | date       | type     | category    | description                             | supplier            | qty | unit_price | line  | estimate |\n| ----- | ---------- | -------- | ----------- | --------------------------------------- | ------------------- | --- | ---------- | ----- | -------- |\n| C-001 | 2026-09-29 | purchase | Pomp        | Brandweerpomp split-case                | Voorbeeld Pumps     | 1   | 18500      | L-007 | E-007    |\n| C-002 | 2026-09-02 | purchase | Motor       | Dieselmotor FM approved                 | Voorbeeld Engines   | 1   | 31200      | L-019 | E-008    |\n| C-003 | 2026-09-18 | purchase | Schakelkast | Pompschakelkast diesel                  | Voorbeeld Controls  | 1   | 12400      | L-013 | E-009    |\n| C-004 | 2026-09-10 | purchase | Brandstof   | Dubbelwandige brandstoftank 1000 l      | Voorbeeld Tanks     | 1   | 4850       | L-013 | E-010    |\n| C-005 | 2026-08-27 | purchase | Appendages  | Afsluiters, terugslagkleppen, flowmeter | Voorbeeld Valves    | 1   | 6900       | L-002 | E-011    |\n| C-006 | 2026-09-25 | fixed    | Transport   | Kraan en transport                      | Voorbeeld Transport | 1   | 3200       |       | E-012    |\n| C-007 | 2026-09-16 | fixed    | Reizen      | Reiskosten FAT klant                    | Diverse             | 1   | 950        |       | E-013    |\n",
  "projects/P-001-vervanging-dieselpompset-dc-westpoort/estimate.md": "---\ncollection: estimate\nproject: P-001\n---\n# Cost estimate\n\nPreliminary cost estimate (cost price, EUR excl. VAT). Amount = qty × unit_price; for labour lines (with a role) an empty unit_price uses the role rate.\n\n| id    | subject         | description                             | role  | qty | unit | unit_price | note |\n| ----- | --------------- | --------------------------------------- | ----- | --- | ---- | ---------- | ---- |\n| E-001 | Labour          | Projectleiding en klantcontact          | R-PM  | 60  | h    |            |      |\n| E-002 | Labour          | Engineering en pompselectie             | R-ENG | 140 | h    |            |      |\n| E-003 | Labour          | Tekeningen en documentatie              | R-TEK | 80  | h    |            |      |\n| E-004 | Labour          | Montage en inbedrijfstelling            | R-MON | 220 | h    |            |      |\n| E-005 | Labour          | Bekabeling en schakelkast               | R-ELE | 70  | h    |            |      |\n| E-006 | Labour          | Inkoop en werkvoorbereiding             | R-ADM | 40  | h    |            |      |\n| E-007 | Pump set        | Brandweerpomp split-case                |       | 1   | pcs  | 18000      |      |\n| E-008 | Pump set        | Dieselmotor FM approved                 |       | 1   | pcs  | 30500      |      |\n| E-009 | Controls        | Pompschakelkast diesel                  |       | 1   | pcs  | 12000      |      |\n| E-010 | Fuel system     | Brandstoftank 1000 l                    |       | 1   | pcs  | 5000       |      |\n| E-011 | Piping & valves | Afsluiters, terugslagkleppen, flowmeter |       | 1   | lot  | 6500       |      |\n| E-012 | Transport       | Kraan en transport                      |       | 1   | lot  | 3000       |      |\n| E-013 | Travel          | Reiskosten FAT                          |       | 1   | lot  | 800        |      |\n| E-014 | Contingency     | Onvoorzien (3%)                         |       | 1   | lot  | 4000       |      |\n",
  "projects/P-001-vervanging-dieselpompset-dc-westpoort/hours.md": "---\ncollection: hours\nproject: P-001\n---\n# Hours\n\nTime registration. Leave \"role\" empty to use the person's default role.\n\n| id     | date       | person | role | line  | task  | extra  | hours | note |\n| ------ | ---------- | ------ | ---- | ----- | ----- | ------ | ----- | ---- |\n| H-0001 | 2026-08-24 | U-004  |      | L-001 |       |        | 8     |      |\n| H-0002 | 2026-08-24 | U-005  |      | L-001 | T-001 |        | 3     |      |\n| H-0003 | 2026-08-24 | U-007  |      | L-001 |       |        | 4     |      |\n| H-0004 | 2026-08-25 | U-001  |      | L-001 |       |        | 2     |      |\n| H-0005 | 2026-08-25 | U-002  | R-PM | L-001 |       |        | 4     |      |\n| H-0006 | 2026-08-25 | U-004  |      | L-001 | T-001 |        | 6     |      |\n| H-0007 | 2026-08-26 | U-002  |      | L-001 |       |        | 4     |      |\n| H-0008 | 2026-08-26 | U-003  |      | L-001 | T-001 |        | 2     |      |\n| H-0009 | 2026-08-26 | U-004  |      | L-001 | T-001 |        | 4     |      |\n| H-0010 | 2026-08-27 | U-001  |      | L-001 | T-001 |        | 2     |      |\n| H-0011 | 2026-08-27 | U-002  |      | L-002 | T-002 |        | 2     |      |\n| H-0012 | 2026-08-27 | U-003  |      | L-002 |       |        | 4     |      |\n| H-0013 | 2026-08-27 | U-005  |      | L-001 | T-001 |        | 4     |      |\n| H-0014 | 2026-08-27 | U-007  |      | L-002 |       |        | 4     |      |\n| H-0015 | 2026-08-28 | U-002  |      | L-002 | T-002 |        | 4     |      |\n| H-0016 | 2026-08-28 | U-003  |      | L-002 |       |        | 8     |      |\n| H-0017 | 2026-08-28 | U-004  |      | L-002 |       |        | 2     |      |\n| H-0018 | 2026-08-28 | U-007  |      | L-002 | T-002 |        | 4     |      |\n| H-0019 | 2026-08-31 | U-001  |      | L-003 | T-003 |        | 6     |      |\n| H-0020 | 2026-08-31 | U-002  |      | L-002 | T-002 |        | 8     |      |\n| H-0021 | 2026-08-31 | U-005  |      | L-003 | T-003 |        | 2     |      |\n| H-0022 | 2026-08-31 | U-007  |      | L-003 |       |        | 6     |      |\n| H-0023 | 2026-09-01 | U-001  |      | L-003 | T-003 |        | 3     |      |\n| H-0024 | 2026-09-01 | U-004  |      | L-003 | T-003 |        | 6     |      |\n| H-0025 | 2026-09-01 | U-005  |      | L-003 |       |        | 6     |      |\n| H-0026 | 2026-09-02 | U-002  |      | L-003 | T-003 |        | 2     |      |\n| H-0027 | 2026-09-02 | U-003  |      | L-003 | T-003 |        | 4     |      |\n| H-0028 | 2026-09-02 | U-005  |      | L-003 | T-003 |        | 6     |      |\n| H-0029 | 2026-09-02 | U-007  |      | L-003 | T-003 |        | 4     |      |\n| H-0030 | 2026-09-03 | U-007  |      | L-003 | T-003 |        | 6     |      |\n| H-0031 | 2026-09-04 | U-002  |      | L-003 | T-003 |        | 3     |      |\n| H-0032 | 2026-09-04 | U-003  |      | L-003 | T-003 |        | 3     |      |\n| H-0033 | 2026-09-04 | U-005  |      | L-003 | T-003 |        | 4     |      |\n| H-0034 | 2026-09-04 | U-007  |      | L-003 | T-003 |        | 6     |      |\n| H-0035 | 2026-09-07 | U-001  |      | L-003 | T-003 |        | 2     |      |\n| H-0036 | 2026-09-07 | U-003  |      | L-003 |       |        | 4     |      |\n| H-0037 | 2026-09-07 | U-004  |      | L-003 |       |        | 4     |      |\n| H-0038 | 2026-09-07 | U-007  |      | L-003 | T-003 |        | 2     |      |\n| H-0039 | 2026-09-08 | U-002  |      | L-004 |       |        | 6     |      |\n| H-0040 | 2026-09-08 | U-004  |      | L-004 |       |        | 4     |      |\n| H-0041 | 2026-09-08 | U-007  |      | L-004 |       |        | 3     |      |\n| H-0042 | 2026-09-09 | U-002  |      | L-003 |       |        | 8     |      |\n| H-0043 | 2026-09-09 | U-007  |      | L-004 |       |        | 6     |      |\n| H-0044 | 2026-09-10 | U-001  |      | L-004 |       |        | 2     |      |\n| H-0045 | 2026-09-10 | U-004  |      | L-004 |       |        | 4     |      |\n| H-0046 | 2026-09-10 | U-005  |      | L-004 |       |        | 4     |      |\n| H-0047 | 2026-09-10 | U-007  |      | L-004 |       |        | 4     |      |\n| H-0048 | 2026-09-11 | U-002  |      | L-006 | T-004 |        | 6     |      |\n| H-0049 | 2026-09-11 | U-004  |      | L-004 |       |        | 2     |      |\n| H-0050 | 2026-09-11 | U-007  |      | L-006 | T-004 |        | 2     |      |\n| H-0051 | 2026-09-14 | U-003  |      | L-006 | T-004 |        | 6     |      |\n| H-0052 | 2026-09-14 | U-005  |      | L-006 |       |        | 4     |      |\n| H-0053 | 2026-09-15 | U-002  |      | L-006 | T-004 |        | 8     |      |\n| H-0054 | 2026-09-15 | U-003  |      | L-006 | T-004 |        | 3     |      |\n| H-0055 | 2026-09-15 | U-005  |      | L-006 |       |        | 8     |      |\n| H-0056 | 2026-09-15 | U-007  |      | L-006 | T-005 |        | 3     |      |\n| H-0057 | 2026-09-16 | U-001  |      | L-006 |       |        | 2     |      |\n| H-0058 | 2026-09-16 | U-002  |      | L-006 |       |        | 8     |      |\n| H-0059 | 2026-09-17 | U-001  |      | L-006 |       |        | 2     |      |\n| H-0060 | 2026-09-17 | U-003  |      | L-006 | T-005 |        | 3     |      |\n| H-0061 | 2026-09-17 | U-005  |      | L-006 | T-005 |        | 4     |      |\n| H-0062 | 2026-09-18 | U-001  |      | L-006 | T-005 |        | 3     |      |\n| H-0063 | 2026-09-18 | U-002  |      | L-006 |       |        | 4     |      |\n| H-0064 | 2026-09-18 | U-003  |      | L-006 |       |        | 3     |      |\n| H-0065 | 2026-09-18 | U-004  |      | L-006 |       |        | 3     |      |\n| H-0066 | 2026-09-18 | U-005  |      | L-006 | T-004 |        | 6     |      |\n| H-0067 | 2026-09-18 | U-007  |      | L-006 |       |        | 3     |      |\n| H-0068 | 2026-09-21 | U-001  |      | L-006 | T-005 |        | 4     |      |\n| H-0069 | 2026-09-21 | U-003  |      | L-006 |       |        | 3     |      |\n| H-0070 | 2026-09-21 | U-004  |      | L-006 | T-004 |        | 4     |      |\n| H-0071 | 2026-09-21 | U-005  |      | L-006 | T-004 |        | 6     |      |\n| H-0072 | 2026-09-21 | U-007  |      | L-006 | T-004 |        | 6     |      |\n| H-0073 | 2026-09-22 | U-001  |      | L-006 | T-005 |        | 8     |      |\n| H-0074 | 2026-09-23 | U-002  | R-PM | L-006 |       |        | 4     |      |\n| H-0075 | 2026-09-23 | U-003  |      | L-007 | T-007 |        | 2     |      |\n| H-0076 | 2026-09-23 | U-004  |      | L-006 | T-004 |        | 3     |      |\n| H-0077 | 2026-09-23 | U-005  |      | L-006 | T-004 |        | 3     |      |\n| H-0078 | 2026-09-23 | U-007  |      | L-006 | T-004 |        | 3     |      |\n| H-0079 | 2026-09-24 | U-001  |      | L-007 |       |        | 4     |      |\n| H-0080 | 2026-09-24 | U-002  |      | L-006 |       |        | 4     |      |\n| H-0081 | 2026-09-24 | U-003  |      | L-007 | T-007 |        | 6     |      |\n| H-0082 | 2026-09-24 | U-005  |      | L-007 | T-007 |        | 8     |      |\n| H-0083 | 2026-09-24 | U-007  |      | L-006 | T-005 |        | 6     |      |\n| H-0084 | 2026-09-25 | U-003  |      | L-007 | T-008 |        | 6     |      |\n| H-0085 | 2026-09-25 | U-004  |      | L-007 |       |        | 4     |      |\n| H-0086 | 2026-09-25 | U-005  |      | L-007 |       |        | 3     |      |\n| H-0087 | 2026-09-28 | U-001  |      | L-007 |       |        | 3     |      |\n| H-0088 | 2026-09-28 | U-002  |      | L-007 | T-008 |        | 4     |      |\n| H-0089 | 2026-09-28 | U-004  |      | L-007 | T-008 |        | 4     |      |\n| H-0090 | 2026-09-29 | U-001  |      | L-008 | T-009 |        | 2     |      |\n| H-0091 | 2026-09-29 | U-003  |      | L-007 | T-008 |        | 4     |      |\n| H-0092 | 2026-09-29 | U-004  |      | L-008 | T-009 |        | 2     |      |\n| H-0093 | 2026-09-29 | U-005  |      | L-008 | T-009 |        | 6     |      |\n| H-0094 | 2026-09-30 | U-001  |      | L-007 |       |        | 2     |      |\n| H-0095 | 2026-09-30 | U-003  |      | L-008 |       |        | 6     |      |\n| H-0096 | 2026-09-30 | U-005  |      | L-008 | T-009 |        | 2     |      |\n| H-0097 | 2026-10-01 | U-001  |      | L-007 |       |        | 8     |      |\n| H-0098 | 2026-10-01 | U-005  |      | L-008 | T-009 |        | 6     |      |\n| H-0099 | 2026-10-01 | U-007  |      | L-008 |       |        | 2     |      |\n| H-0100 | 2026-10-02 | U-001  |      | L-008 | T-009 |        | 2     |      |\n| H-0101 | 2026-10-02 | U-003  |      | L-008 |       |        | 2     |      |\n| H-0102 | 2026-10-02 | U-004  |      | L-008 | T-009 |        | 6     |      |\n| H-0103 | 2026-10-05 | U-001  |      | L-008 | T-009 |        | 4     |      |\n| H-0104 | 2026-10-05 | U-005  |      | L-008 | T-009 |        | 4     |      |\n| H-0105 | 2026-10-06 | U-005  |      | L-008 | T-009 |        | 6     |      |\n| H-0106 | 2026-10-06 | U-007  |      | L-008 | T-009 |        | 4     |      |\n| H-0107 | 2026-10-07 | U-002  |      | L-010 |       |        | 4     |      |\n| H-0108 | 2026-10-07 | U-004  |      | L-008 |       |        | 4     |      |\n| H-0109 | 2026-10-08 | U-002  | R-PM | L-008 |       |        | 3     |      |\n| H-0110 | 2026-10-08 | U-004  |      | L-010 |       | AW-001 | 3     |      |\n| H-0111 | 2026-10-08 | U-005  |      | L-008 | T-009 |        | 4     |      |\n| H-0112 | 2026-10-08 | U-007  |      | L-010 |       |        | 3     |      |\n| H-0113 | 2026-10-09 | U-001  |      | L-008 | T-009 |        | 4     |      |\n| H-0114 | 2026-10-09 | U-002  |      | L-010 |       |        | 4     |      |\n| H-0115 | 2026-10-09 | U-004  |      | L-010 |       | AW-001 | 6     |      |\n| H-0116 | 2026-10-12 | U-001  |      | L-010 |       |        | 2     |      |\n| H-0117 | 2026-10-12 | U-002  |      | L-010 |       |        | 8     |      |\n| H-0118 | 2026-10-12 | U-003  |      | L-010 |       |        | 6     |      |\n| H-0119 | 2026-10-12 | U-004  |      | L-010 |       | AW-001 | 4     |      |\n",
