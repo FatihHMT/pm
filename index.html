@@ -839,6 +839,41 @@ textarea { font: inherit; }
 @media (max-width: 860px) { .wr-grid { grid-template-columns: 1fr; } }
 .pl-host, .pl { min-width: 0; max-width: 100%; }
 
+/* move planning lines / phases up and down */
+.g-move { display: inline-flex; gap: 1px; margin-left: auto; flex: none; opacity: 0; transition: opacity .12s; }
+.g-label:hover .g-move, .g-label:focus-within .g-move, .dlg-foot .g-move { opacity: 1; }
+.g-move .icon-btn { width: 22px; height: 22px; padding: 0; font-size: 10px; line-height: 1; border-radius: 4px; color: var(--muted); }
+.g-move .icon-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+.g-move .icon-btn:disabled { opacity: .3; cursor: default; }
+.dlg-foot .g-move .icon-btn { width: 34px; height: 34px; font-size: 12px; border: 1px solid var(--border-strong); }
+@media (hover: none) { .g-move { opacity: 1; } }
+@media (max-width: 760px) { .g-label:not(.group) .g-move { display: none; } }   /* phones: move lines from the line's dialog */
+
+/* ---------- project picker (top bar) ---------- */
+.pp { position: relative; min-width: 0; }
+.pp-btn { display: flex; align-items: center; gap: 8px; min-width: 260px; max-width: 560px; height: 36px; padding: 0 10px 0 12px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--text); font: inherit; font-weight: 500; text-align: left; cursor: pointer; }
+.pp-btn:hover { border-color: var(--accent); }
+.pp-btn-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-caret { color: var(--muted); font-size: 12px; }
+.pp-panel { position: absolute; top: calc(100% + 4px); left: 0; z-index: 60; width: min(560px, calc(100vw - 24px)); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 10px 30px rgba(0,0,0,.18); padding: 8px; }
+.pp-search { width: 100%; height: 38px; margin-bottom: 6px; }
+.pp-list { max-height: min(60vh, 460px); overflow: auto; }
+.pp-group { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 8px 8px 3px; }
+.pp-opt { display: flex; gap: 10px; align-items: baseline; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
+.pp-opt:hover, .pp-opt.active { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.pp-opt.current { font-weight: 600; }
+.pp-id { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 52px; }
+.pp-name { flex: 1; min-width: 0; }
+.pp-client { flex: none; max-width: 40%; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-none { padding: 10px 8px; }
+@media (max-width: 760px) {
+  .pp { flex: 1; }
+  .pp-btn { min-width: 0; width: 100%; max-width: none; height: 40px; }
+  .pp-panel { position: fixed; top: calc(var(--topbar-h, 56px) + 4px); left: 12px; right: 12px; width: auto; }
+  .pp-opt { flex-wrap: wrap; padding: 10px 8px; }
+  .pp-client { max-width: none; flex-basis: 100%; padding-left: 62px; }
+}
+
 </style>
 </head>
 <body>
@@ -1199,8 +1234,8 @@ PM.events = (function () {
     intro: 'Each line is one bar on the timeline. Link tasks to a line via the "line" column in tasks.md.',
     fields: [
       { key: 'id', label: 'ID', type: 'id', width: 80 },
-      { key: 'group', label: 'Phase', type: 'string', width: 130 },
       { key: 'title', label: 'Title', type: 'string', required: true },
+      { key: 'group', label: 'Phase', type: 'string', width: 130, suggest: true },
       { key: 'start', label: 'Start', type: 'date', width: 130 },
       { key: 'end', label: 'End', type: 'date', width: 130 },
       { key: 'progress', label: 'Progress %', type: 'number', width: 90, default: 0 },
@@ -2650,6 +2685,21 @@ PM.store = (function () {
     PM.events.emit('change', { collection: name, action: 'remove', record: rec });
   }
 
+  /* Put the given records (all of one collection, and one project for project data) in the given order.
+   * They take the places they had together, so other records do not move. The file is written in that order. */
+  function reorder(name, ordered) {
+    const def = PM.collection(name);
+    const arr = records[name] || [];
+    const set = new Set(ordered);
+    const slots = [];
+    arr.forEach((r, i) => { if (set.has(r)) slots.push(i); });
+    if (slots.length !== ordered.length) throw new Error('reorder: unknown records');
+    slots.forEach((i, k) => { arr[i] = ordered[k]; });
+    const pids = new Set(ordered.map(r => def.scope === 'project' ? r.project : null));
+    pids.forEach(pid => markDirty(def, pid));
+    PM.events.emit('change', { collection: name, action: 'reorder' });
+  }
+
   function createProject(data) {
     const def = PM.collection('projects');
     const ids = projects().map(p => p.id);
@@ -2906,7 +2956,7 @@ PM.store = (function () {
   });
 
   return {
-    load, list, get, find, insert, update, remove, createProject, deleteProject, project, projects,
+    load, list, get, find, insert, update, remove, reorder, createProject, deleteProject, project, projects,
     retry() { authBlocked = false; return flush(); },
     addLoader(fn) { loaders.push(fn); },
     addExtraFiles(fn) { extraFiles.push(fn); },
@@ -3987,17 +4037,87 @@ PM.app = (function () {
     });
   }
 
+  /* ---------- project picker in the top bar: type to filter (number, object or client) ---------- */
+  const STATUS_ORDER = ['active', 'planned', 'on-hold', 'completed', 'archived'];
+  const projLabel = p => p.id + ' · ' + p.name + (p.client ? ' · ' + p.client : '');
+  const pick = { open: false, q: '', active: 0, items: [] };
   function renderProjectSelect() {
     const pid = route.params.project || '';
-    projSel.innerHTML = '';
-    projSel.appendChild(h('option', { value: '' }, 'All projects'));
-    const groups = U.groupBy(PM.store.projects().filter(p => p.status !== 'archived' || p.id === pid), p => p.status || 'active');
-    ['active', 'planned', 'on-hold', 'completed', 'archived'].forEach(st => {
-      const list = groups.get(st);
-      if (!list) return;
-      projSel.appendChild(h('optgroup', { label: st[0].toUpperCase() + st.slice(1) },
-        list.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })).map(p => h('option', { value: p.id, selected: p.id === pid || null, title: p.name }, p.id + ' · ' + (p.client ? p.client + ' · ' : '') + p.name))));
+    const p = pid ? PM.store.project(pid) : null;
+    projSel.btnText.textContent = p ? projLabel(p) : 'All projects';
+    projSel.btn.title = p ? projLabel(p) : 'All projects';
+    if (pick.open) renderPickList();
+  }
+  function renderPickList() {
+    const pid = route.params.project || '';
+    const words = pick.q.toLowerCase().split(/\s+/).filter(Boolean);
+    const match = p => words.every(w => (p.id + ' ' + p.name + ' ' + (p.client || '')).toLowerCase().includes(w));
+    const all = PM.store.projects().filter(p => match(p) && (p.status !== 'archived' || p.id === pid || words.length));
+    const groups = U.groupBy(all, p => STATUS_ORDER.includes(p.status) ? p.status : 'active');
+    pick.items = words.length ? [] : [{ id: '' }];
+    const list = projSel.list;
+    list.innerHTML = '';
+    if (!words.length) list.appendChild(h('div', { class: 'pp-opt' + (pid === '' ? ' current' : ''), role: 'option', 'data-i': 0, 'aria-selected': String(pid === '') }, 'All projects'));
+    STATUS_ORDER.forEach(st => {
+      const g = groups.get(st);
+      if (!g) return;
+      list.appendChild(h('div', { class: 'pp-group', role: 'presentation' }, st[0].toUpperCase() + st.slice(1)));
+      g.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true })).forEach(p => {
+        const i = pick.items.length;
+        pick.items.push(p);
+        list.appendChild(h('div', { class: 'pp-opt' + (p.id === pid ? ' current' : ''), role: 'option', 'data-i': i, 'aria-selected': String(p.id === pid), id: 'pp-opt-' + i },
+          h('span', { class: 'pp-id' }, p.id), h('span', { class: 'pp-name' }, p.name), p.client ? h('span', { class: 'pp-client' }, p.client) : null));
+      });
     });
+    if (!pick.items.length) list.appendChild(h('div', { class: 'pp-none muted small' }, 'No project matches “' + pick.q + '”.'));
+    pick.active = Math.max(0, Math.min(pick.active, pick.items.length - 1));
+    markActive();
+  }
+  function markActive() {
+    projSel.list.querySelectorAll('.pp-opt').forEach(o => o.classList.toggle('active', +o.dataset.i === pick.active));
+    const a = projSel.list.querySelector('.pp-opt.active');
+    if (a) { a.scrollIntoView({ block: 'nearest' }); projSel.input.setAttribute('aria-activedescendant', a.id || ''); }
+  }
+  function openPicker() {
+    pick.open = true; pick.q = ''; pick.active = 0;
+    projSel.input.value = '';
+    projSel.panel.hidden = false;
+    projSel.btn.setAttribute('aria-expanded', 'true');
+    renderPickList();
+    const cur = pick.items.findIndex(p => p.id === (route.params.project || ''));
+    if (cur >= 0) { pick.active = cur; markActive(); }
+    setTimeout(() => projSel.input.focus(), 0);
+  }
+  function closePicker(focusBtn) {
+    pick.open = false;
+    projSel.panel.hidden = true;
+    projSel.btn.setAttribute('aria-expanded', 'false');
+    if (focusBtn) projSel.btn.focus();
+  }
+  function choose(i) {
+    const p = pick.items[i];
+    if (!p) return;
+    closePicker(false);
+    if (p.id !== (route.params.project || '')) setProject(p.id);
+  }
+  function buildPicker() {
+    const btnText = h('span', { class: 'pp-btn-text' });
+    const btn = h('button', { type: 'button', class: 'pp-btn', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': 'Project', onclick: () => (pick.open ? closePicker(true) : openPicker()) }, btnText, h('span', { class: 'pp-caret', 'aria-hidden': 'true' }, '▾'));
+    const input = h('input', { type: 'search', class: 'pp-search', placeholder: 'Search number, object or client…', 'aria-label': 'Search projects', autocomplete: 'off', role: 'combobox', 'aria-controls': 'pp-list', 'aria-expanded': 'true' });
+    const list = h('div', { class: 'pp-list', id: 'pp-list', role: 'listbox' });
+    const panel = h('div', { class: 'pp-panel', hidden: true }, input, list);
+    const box = h('div', { class: 'pp' }, btn, panel);
+    input.addEventListener('input', () => { pick.q = input.value; pick.active = 0; renderPickList(); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); pick.active = Math.min(pick.items.length - 1, pick.active + 1); markActive(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); pick.active = Math.max(0, pick.active - 1); markActive(); }
+      else if (e.key === 'Enter') { e.preventDefault(); choose(pick.active); }
+      else if (e.key === 'Escape') { e.preventDefault(); closePicker(true); }
+      else if (e.key === 'Tab') closePicker(false);
+    });
+    list.addEventListener('click', e => { const o = e.target.closest('.pp-opt'); if (o) choose(+o.dataset.i); });
+    document.addEventListener('pointerdown', e => { if (pick.open && !box.contains(e.target)) closePicker(false); });
+    return { el: box, btn, btnText, input, list, panel };
   }
 
   function render() {
@@ -4317,7 +4437,7 @@ PM.app = (function () {
   async function boot() {
     const root = document.getElementById('app');
     navEl = h('nav', { class: 'nav', 'aria-label': 'Main' });
-    projSel = h('select', { class: 'proj-select', 'aria-label': 'Project', onchange: () => setProject(projSel.value) });
+    projSel = buildPicker();
     statusEl = h('span', { class: 'status-pill' }, 'Loading…');
     viewEl = h('div', { id: 'view' });
     banner = h('div', { class: 'banner', hidden: true });
@@ -4328,7 +4448,7 @@ PM.app = (function () {
       navEl,
       h('div', { class: 'side-foot' }, h('div', { class: 'muted small' }, 'Data source'), h('div', { id: 'source-name', class: 'small' }, '—'))));
     root.appendChild(h('div', { class: 'main', id: 'main' },
-      h('header', { class: 'topbar' }, projSel, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
+      h('header', { class: 'topbar' }, projSel.el, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
       banner, viewEl));
     // table toolbars (search + Add) stick just below the top bar; keep that offset right when the bar changes height
     const topbar = root.querySelector('.topbar');
@@ -4747,8 +4867,45 @@ function commentsSection(p, ctx) {
   }
 
   /* ---------------- line dialog: edit + link tasks ---------------- */
-  function openLineDialog(line) {
+  /* ---------------- order of lines and phases ---------------- */
+  // the order on screen: phases in order of their first line, the lines of a phase together
+  function displayOrder(pid) {
+    const out = [];
+    U.groupBy(PM.store.list('lines', { project: pid }), l => l.group || '').forEach(ls => out.push(...ls));
+    return out;
+  }
+  function canMoveLine(l, dir) {
+    const same = displayOrder(l.project).filter(x => (x.group || '') === (l.group || ''));
+    const i = same.indexOf(l);
+    return i + dir >= 0 && i + dir < same.length;
+  }
+  function moveLine(l, dir) {
+    const order = displayOrder(l.project);
+    const same = order.filter(x => (x.group || '') === (l.group || ''));
+    const other = same[same.indexOf(l) + dir];
+    if (!other) return;
+    const a = order.indexOf(l), b = order.indexOf(other);
+    order[a] = other; order[b] = l;
+    PM.store.reorder('lines', order);
+  }
+  function phasesOf(pid) { return Array.from(U.groupBy(displayOrder(pid), l => l.group || '').keys()); }
+  function movePhase(pid, g, dir) {
+    const groups = U.groupBy(displayOrder(pid), l => l.group || '');
+    const keys = Array.from(groups.keys());
+    const i = keys.indexOf(g), j = i + dir;
+    if (i < 0 || j < 0 || j >= keys.length) return;
+    keys[i] = keys[j]; keys[j] = g;
+    const order = [];
+    keys.forEach(k => order.push(...groups.get(k)));
+    PM.store.reorder('lines', order);
+  }
+  const moveBtns = (upTitle, downTitle, canUp, canDown, onUp, onDown) => h('span', { class: 'g-move' },
+    h('button', { type: 'button', class: 'icon-btn', title: upTitle, 'aria-label': upTitle, disabled: !canUp || null, onclick: e => { e.stopPropagation(); onUp(); } }, '▲'),
+    h('button', { type: 'button', class: 'icon-btn', title: downTitle, 'aria-label': downTitle, disabled: !canDown || null, onclick: e => { e.stopPropagation(); onDown(); } }, '▼'));
+
+  function openLineDialog(line, isNew) {
     const pid = line.project;
+    let saved = false;
     const f = PM.ui.form('lines', line, { projectId: pid });
     // keep the end date at least the start date while editing
     const startInp = f.el.querySelector('input[aria-label="Start"]'), endInp = f.el.querySelector('input[aria-label="End"]');
@@ -4790,29 +4947,40 @@ function commentsSection(p, ctx) {
     refresh();
 
     const dlg = PM.ui.dialog({
-      title: line.id + ' · ' + (line.title || 'Planning line'), wide: true,
+      title: isNew ? 'New planning line' : line.id + ' · ' + (line.title || 'Planning line'), wide: true,
       content: h('div', null, f.el, taskBox),
       footLeft: h('div', { class: 'btn-row' },
-        h('button', { class: 'btn danger', onclick: () => {
+        isNew ? null : h('button', { class: 'btn danger', onclick: () => {
           if (confirm('Delete planning line ' + line.id + '? Linked tasks stay, but are unlinked.')) { PM.store.remove('lines', line._key); dlg.close(); }
         } }, 'Delete line'),
-        line.start ? h('button', { class: 'btn', onclick: () => { dlg.close(); shiftDialog(line); } }, 'Shift from here…') : null),
+        line.start && !isNew ? h('button', { class: 'btn', onclick: () => { dlg.close(); shiftDialog(line); } }, 'Shift from here…') : null,
+        isNew ? null : moveBtns('Move up', 'Move down', canMoveLine(line, -1), canMoveLine(line, 1),
+          () => { moveLine(line, -1); refreshMove(); }, () => { moveLine(line, 1); refreshMove(); })),
       actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, onClick: () => {
         const v = f.values();
+        if (!String(v.title || '').trim()) { PM.ui.toast('Give the planning line a title.', 'warn'); const t = f.el.querySelector('input[aria-label="Title"]'); if (t) t.focus(); return false; }
+        saved = true;
         if (v.start && v.end && v.end < v.start) v.end = v.start;
         const patch = {};
         PM.collection('lines').fields.forEach(fd => { const k = fd.key; if (k !== 'id' && k in v && v[k] !== line[k]) patch[k] = v[k]; });
         if (Object.keys(patch).length) PM.store.update('lines', line._key, patch);
       } }]
     });
+    function refreshMove() {
+      const bs = dlg.el.querySelectorAll('.dlg-foot .g-move button');
+      if (bs.length === 2) { bs[0].disabled = !canMoveLine(line, -1); bs[1].disabled = !canMoveLine(line, 1); }
+    }
+    // a new line that is not saved is removed again
+    if (isNew) dlg.el.addEventListener('close', () => { if (!saved && PM.store.get('lines', line._key)) PM.store.remove('lines', line._key); });
+    setTimeout(() => { const t = f.el.querySelector('input[aria-label="Title"]'); if (t) t.focus(); }, 30);
   }
 
   function addLine(pid) {
     const lines = PM.store.list('lines', { project: pid });
     const last = lines[lines.length - 1];
     const start = U.todayISO();
-    const rec = PM.store.insert('lines', { title: 'New planning line', group: last ? last.group : '', start, end: U.addDays(start, 6), progress: 0 }, pid);
-    openLineDialog(rec);
+    const rec = PM.store.insert('lines', { title: '', group: last ? last.group : '', start, end: U.addDays(start, 6), progress: 0 }, pid);
+    openLineDialog(rec, true);
   }
 
   /* ---------------- timeline ---------------- */
@@ -4906,6 +5074,7 @@ function commentsSection(p, ctx) {
           h('button', { class: 'caret', 'aria-expanded': String(open), 'aria-label': (open ? 'Collapse ' : 'Expand ') + r.title, onclick: toggle }, open ? '▾' : '▸'),
           h('span', { class: 'g-title', onclick: toggle }, r.title),
           h('span', { class: 'muted small nowrap', title: linked + ' of ' + r.lines.length + ' planning lines have linked tasks' }, linked + '/' + r.lines.length),
+          r.type === 'group' && ctx.project ? (() => { const ph = phasesOf(ctx.projectId), i = ph.indexOf(r.title); return moveBtns('Move phase up', 'Move phase down', i > 0, i < ph.length - 1, () => movePhase(ctx.projectId, r.title, -1), () => movePhase(ctx.projectId, r.title, 1)); })() : null,
           r.type === 'project' ? h('a', { class: 'open-link small', href: '#/planning?project=' + r.key, title: 'Open project planning' }, 'open ›') : null);
         const track = h('div', { class: 'g-track', style: trackStyle });
         if (s && e) track.appendChild(h('div', { class: 'g-summary', style: { left: x(s) + 'px', width: Math.max(px, (U.daysBetween(s, e) + 1) * px) + 'px', '--pc': r.color || '#2f6fed' }, title: r.title + ': ' + U.fmtDate(s) + ' – ' + U.fmtDate(e) }));
@@ -4919,7 +5088,8 @@ function commentsSection(p, ctx) {
       const label = h('div', { class: 'g-label' + (r.indent ? ' indent' : '') },
         h('span', { class: 'dot ' + (ls.linked ? 'linked' : '') + (ls.complete ? ' done' : ''), style: ls.linked ? { '--pc': proj.color || '#2f6fed' } : null }),
         h('button', { class: 'g-title link', onclick: () => openLineDialog(l), title: 'Edit ' + l.id }, l.title || l.id),
-        h('span', { class: 'muted small nowrap' }, ls.linked ? ls.done + '/' + ls.tasks.length + ' ✓' : ''));
+        h('span', { class: 'muted small nowrap' }, ls.linked ? ls.done + '/' + ls.tasks.length + ' ✓' : ''),
+        ctx.project ? moveBtns('Move up', 'Move down', canMoveLine(l, -1), canMoveLine(l, 1), () => moveLine(l, -1), () => moveLine(l, 1)) : null);
       const track = h('div', { class: 'g-track', style: trackStyle });
       if (l.start) {
         const lEnd = l.end && l.end >= l.start ? l.end : l.start;
