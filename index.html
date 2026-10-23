@@ -874,6 +874,37 @@ textarea { font: inherit; }
   .pp-client { max-width: none; flex-basis: 100%; padding-left: 62px; }
 }
 
+/* language switch */
+.lang-switch button { padding: 4px 10px; font-size: 12.5px; }
+.side-lang { margin-top: 10px; }
+.lang-row { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---------- Advanced: Summary ---------- */
+.sm-grid { display: grid; grid-template-columns: 1fr minmax(260px, 340px); gap: 16px; align-items: start; }
+.sm-chapters { display: flex; flex-direction: column; gap: 10px; }
+.sm-chapter { padding: 12px 14px; }
+.sm-chapter:not(.on) { opacity: .75; }
+.sm-ch-head { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; }
+.sm-num { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; }
+.sm-num:empty { display: none; }
+.sm-parts { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 0 30px; }
+.sm-part { display: flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer; }
+.sm-part.sub { margin-left: 22px; }
+.sm-side { position: sticky; top: calc(var(--topbar-h, 56px) + 12px); }
+.sm-side h2 { margin-top: 0; font-size: 16px; }
+.sm-side .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.sm-warn { color: #9a6514; }
+@media (max-width: 860px) { .sm-grid { grid-template-columns: 1fr; } .sm-side { position: static; } }
+.wr-rcpt { margin-top: -4px; }
+.wr-r-table td { vertical-align: middle; }
+.wr-r-opt { display: inline-flex; align-items: center; gap: 3px; margin-right: 10px; font-size: 13px; cursor: pointer; }
+.wr-r-table { width: 100%; }
+@media (max-width: 600px) {
+  .wr-r-table th:nth-child(2), .wr-r-table td:nth-child(2) { display: none; }
+  .wr-r-opt { margin-right: 6px; }
+  dialog.wr-dlg { width: 100vw; max-width: 100vw; }
+}
+
 </style>
 </head>
 <body>
@@ -971,7 +1002,8 @@ PM.util = (function () {
   }
   function monthKey(s) { return s ? String(s).slice(0, 7) : ''; }
 
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS_BY = { en: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], nl: ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'] };
+  const MONTHS = MONTHS_BY.en.slice();          // changed in place by setLocale(), so U.MONTHS stays the same array
   function fmtDate(s) {
     const d = parseDate(s);
     if (!d) return '';
@@ -983,9 +1015,17 @@ PM.util = (function () {
     return MONTHS[+m - 1] + ' ' + y;
   }
 
-  const moneyFmt = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-  const money2Fmt = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const numFmt = new Intl.NumberFormat('en-IE', { maximumFractionDigits: 1 });
+  let locale = 'en', moneyFmt, money2Fmt, numFmt;
+  /* 'en' (1,234.5 · €1,234 · 12 Nov 2026) or 'nl' (1.234,5 · € 1.234 · 12 nov 2026) */
+  function setLocale(lng) {
+    locale = lng === 'nl' ? 'nl' : 'en';
+    const loc = locale === 'nl' ? 'nl-NL' : 'en-IE';
+    moneyFmt = new Intl.NumberFormat(loc, { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    money2Fmt = new Intl.NumberFormat(loc, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    numFmt = new Intl.NumberFormat(loc, { maximumFractionDigits: 1 });
+    MONTHS.splice(0, 12, ...MONTHS_BY[locale]);
+  }
+  setLocale('en');
   function fmtMoney(n, decimals) { return (decimals ? money2Fmt : moneyFmt).format(+n || 0); }
   function fmtNum(n) { return numFmt.format(+n || 0); }
   function fmtPct(n) { return isFinite(n) ? Math.round(n * 100) + '%' : '–'; }
@@ -1067,7 +1107,7 @@ PM.util = (function () {
   }
 
   return { esc, parseDate, iso, todayISO, addDays, daysBetween, isWeekend, addWorkdays, workdaysBetween, monthKey, fmtDate, fmtMonth,
-    fmtMoney, fmtNum, fmtPct, num, slugify, nextId, debounce, groupBy, sum, download, toCSV, h, DAY, MONTHS };
+    fmtMoney, fmtNum, fmtPct, num, slugify, nextId, debounce, groupBy, sum, download, toCSV, h, DAY, MONTHS, setLocale, get locale() { return locale; } };
 })();
 
 /* Minimal event bus. Events used by the core:
@@ -1085,6 +1125,1547 @@ PM.events = (function () {
     emit(name, payload) { (map[name] || []).slice().forEach(fn => { try { fn(payload); } catch (e) { console.error('[PM event ' + name + ']', e); } }); }
   };
 })();
+
+  </script>
+  <script>/* js/core/i18n.js */
+/* PM Tool — core/i18n.js
+ * Interface language: English (as written in the code) or Dutch.
+ * The code is written in English; the Dutch texts live in js/i18n/nl-*.js as
+ * { 'English text': 'Nederlandse tekst' }. The screen is translated as it is drawn:
+ * text nodes and the placeholder / title / aria-label attributes are looked up
+ * (whole text first, then known pieces inside a longer text). Your own data is
+ * left alone where it is marked translate="no", and inputs are never touched.
+ * PDFs pass their texts through PM.i18n.t(text, lang), so an export can be made
+ * in either language.
+ *
+ *   PM.i18n.lang              'en' | 'nl'
+ *   PM.i18n.set('nl')         switch (remembered on this device)
+ *   PM.i18n.t('Save', 'nl')   -> 'Opslaan'
+ *   PM.i18n.add('nl', {…})    add texts (plugins can add their own)
+ *   PM.i18n.pattern('nl', /^(\d+) items?$/, (m, n) => n + ' onderdelen')
+ *   PM.i18n.withLang('nl', async () => {…})   formats and PDF texts in that language for a while
+ */
+PM.i18n = (function () {
+  const dict = { nl: new Map() };
+  const patterns = { nl: [] };
+  const fragCache = {};
+  let lang = 'en';
+  try { lang = localStorage.getItem('pm.lang') === 'nl' ? 'nl' : 'en'; } catch (e) { /* ignore */ }
+
+  function add(lng, obj) {
+    const m = dict[lng] = dict[lng] || new Map();
+    Object.keys(obj).forEach(k => { if (obj[k] != null && obj[k] !== k) m.set(k, obj[k]); });
+    fragCache[lng] = null;
+  }
+  function pattern(lng, re, fn) { (patterns[lng] = patterns[lng] || []).push([re, fn]); }
+
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /* pieces of sentences (keys that start or end with a space or punctuation) can be replaced inside a longer text */
+  function fragments(lng) {
+    if (fragCache[lng] !== undefined && fragCache[lng] !== null) return fragCache[lng];
+    // only pieces long enough not to hit ordinary words in your own texts (" of ", " and " are left alone)
+    const ok = k => {
+      const tr = k.trim();
+      if (!/[A-Za-z]{2}/.test(tr) || tr.length < 6) return false;
+      if ((tr.match(/\s+/g) || []).length >= 2) return true;                  // three words or more
+      if (/^ \(/.test(k)) return true;                                       // " (labour)"
+      return (/\s/.test(tr) || tr.length >= 9) && (/^[\s.,:;)(—–·“"]/.test(k) || /[\s(“"]$/.test(k));
+    };
+    const keys = Array.from((dict[lng] || new Map()).keys()).filter(ok);
+    if (!keys.length) { fragCache[lng] = false; return false; }
+    keys.sort((a, b) => b.length - a.length);
+    const src = keys.map(k => (/^[A-Za-z]/.test(k) ? '(?<![A-Za-z])' : '') + esc(k) + (/[A-Za-z]$/.test(k) ? '(?![A-Za-z])' : '')).join('|');
+    fragCache[lng] = new RegExp(src, 'g');
+    return fragCache[lng];
+  }
+
+  function t(s, lng) {
+    lng = lng || lang;
+    if (lng === 'en' || s == null) return s;
+    s = String(s);
+    const d = dict[lng];
+    if (!d || !/[A-Za-z]/.test(s)) return s;
+    if (d.has(s)) return d.get(s);
+    const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
+    if (m[2] && d.has(m[2])) return m[1] + d.get(m[2]) + m[3];
+    for (const [re, fn] of patterns[lng] || []) {
+      const r = re.exec(m[2]);
+      if (r) return withUnits(m[1] + t(typeof fn === 'function' ? fn.apply(null, r) : m[2].replace(re, fn), lng) + m[3], lng);
+    }
+    if (s.indexOf('\n') > 0) return s.split('\n').map(x => t(x, lng)).join('\n');   // tooltips with several lines
+    let out = s;
+    const fr = fragments(lng);
+    if (fr && s.length > 3) { fr.lastIndex = 0; if (fr.test(s)) { fr.lastIndex = 0; out = s.replace(fr, k => d.get(k)); } }
+    return withUnits(out, lng);
+  }
+  function withUnits(out, lng) { (units[lng] || []).forEach(([re, rep]) => { out = out.replace(re, rep); }); return out; }
+  /* "3 lines", "2 of 5", "4 overdue": a number followed by a word; replaced anywhere in a text */
+  const units = {};
+  function unit(lng, re, rep) { (units[lng] = units[lng] || []).push([re, rep]); }
+
+  /* ---------- the screen ---------- */
+  const ATTRS = ['placeholder', 'title', 'aria-label'];
+  const origText = new WeakMap();      // text node -> English original
+  const origAttr = new WeakMap();      // element -> { attr: English original }
+  const SKIP = 'textarea, script, style, svg, code, pre, [translate="no"], [contenteditable="true"]';
+  function skipped(el) { return !el || (el.closest && el.closest(SKIP)); }
+  function doText(node) {
+    const p = node.parentElement;
+    if (skipped(p)) return;
+    const cur = node.data;
+    const prev = origText.get(node);
+    if (prev && prev.out === cur) return;                 // already ours
+    const tr = t(cur);
+    origText.set(node, { en: cur, out: tr });
+    if (tr !== cur) node.data = tr;
+  }
+  function doAttrs(el) {
+    if (el.closest && el.closest('[translate="no"], svg')) return;
+    ATTRS.forEach(a => {
+      if (!el.hasAttribute(a)) return;
+      const cur = el.getAttribute(a);
+      const store = origAttr.get(el) || {};
+      if (store[a] && store[a].out === cur) return;
+      const tr = t(cur);
+      store[a] = { en: cur, out: tr };
+      origAttr.set(el, store);
+      if (tr !== cur) el.setAttribute(a, tr);
+    });
+  }
+  function walk(root) {
+    if (lang === 'en' || !root) return;
+    if (root.nodeType === 3) { doText(root); return; }
+    if (root.nodeType !== 1 && root.nodeType !== 11) return;
+    if (root.nodeType === 1) { doAttrs(root); if (skipped(root)) return; }
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode: n => {
+        if (n.nodeType === 1 && n.matches(SKIP)) { doAttrs(n); return NodeFilter.FILTER_REJECT; }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    let n;
+    while ((n = tw.nextNode())) { if (n.nodeType === 3) doText(n); else doAttrs(n); }
+  }
+  function restore(root) {
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = tw.nextNode())) {
+      if (n.nodeType === 3) { const o = origText.get(n); if (o && o.out === n.data) n.data = o.en; origText.delete(n); }
+      else { const o = origAttr.get(n); if (o) { Object.keys(o).forEach(a => { if (n.getAttribute(a) === o[a].out) n.setAttribute(a, o[a].en); }); origAttr.delete(n); } }
+    }
+  }
+  let observer = null;
+  function observe() {
+    if (observer || !window.MutationObserver) return;
+    observer = new MutationObserver(list => {
+      if (lang === 'en') return;
+      list.forEach(m => {
+        if (m.type === 'characterData') doText(m.target);
+        else if (m.type === 'attributes') doAttrs(m.target);
+        else m.addedNodes.forEach(walk);
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+    walk(document.body);
+  }
+
+  /* browser dialogs */
+  const _confirm = window.confirm.bind(window), _alert = window.alert.bind(window), _prompt = window.prompt.bind(window);
+  window.confirm = msg => _confirm(t(msg));
+  window.alert = msg => _alert(t(msg));
+  window.prompt = (msg, def) => _prompt(t(msg), def);
+
+  function set(lng) {
+    lng = lng === 'nl' ? 'nl' : 'en';
+    if (lng === lang) return;
+    try { localStorage.setItem('pm.lang', lng); } catch (e) { /* ignore */ }
+    if (lng === 'en') { lang = 'en'; restore(document.body); }
+    else { lang = lng; walk(document.body); }
+    applyFormats(lang);
+    document.documentElement.lang = lang;
+    PM.events.emit('lang', { lang });
+  }
+
+  /* dates, months and numbers follow the language */
+  function applyFormats(lng) { if (PM.util && PM.util.setLocale) PM.util.setLocale(lng); }
+  async function withLang(lng, fn) {
+    const keep = lang;
+    const fmt = PM.util.locale;
+    PM.util.setLocale(lng);
+    exportLang = lng;
+    try { return await fn(); } finally { exportLang = null; PM.util.setLocale(fmt || keep); }
+  }
+  let exportLang = null;
+  /* PDF texts in that language (numbers and dates unchanged) — forms use this to stay in their own language */
+  async function withPdfLang(lng, fn) {
+    const keep = exportLang;
+    exportLang = lng;
+    try { return await fn(); } finally { exportLang = keep; }
+  }
+  /* the language PDFs are written in right now */
+  const pdfLang = () => exportLang || lang;
+
+  function start() {
+    applyFormats(lang);
+    document.documentElement.lang = lang;
+    observe();
+  }
+
+  return { add, pattern, unit, t, set, start, withLang, withPdfLang, pdfLang, translate: walk, get lang() { return lang; } };
+})();
+
+  </script>
+  <script>/* js/i18n/nl-1.js */
+/* PM Tool — Dutch texts (part 1: app shell, data, collections, tables, costs) */
+PM.i18n.add('nl', {
+  'All projects': 'Alle projecten',
+  'No project matches “': 'Geen project gevonden voor “',
+  'Project': 'Project',
+  'Search number, object or client…': 'Zoek op nummer, object of klant…',
+  'Search projects': 'Projecten zoeken',
+  'This screen failed to render. ': 'Dit scherm kon niet worden getoond. ',
+  'Choose a project.': 'Kies een project.',
+  'There are no projects yet.': 'Er zijn nog geen projecten.',
+  'New project': 'Nieuw project',
+  ' photo': ' foto',
+  ' photos': ' foto’s',
+  ' waiting to upload': ' wacht op uploaden',
+  'Data source: ': 'Gegevensbron: ',
+  'Loading from ': 'Laden van ',
+  'Loading from OneDrive… ': 'Laden van OneDrive… ',
+  ' files': ' bestanden',
+  'Loaded ': 'Geladen: ',
+  ' project(s) from ': ' project(en) van ',
+  'Enter your OneDrive client ID first (Settings → Data).': 'Vul eerst je OneDrive client-ID in (Instellingen → Gegevens).',
+  'OneDrive sign-in only works when the app is online (https). See docs/SETUP-ONEDRIVE.md.': 'Inloggen bij OneDrive werkt alleen als de app online staat (https). Zie docs/SETUP-ONEDRIVE.md.',
+  'Someone else changed ': 'Iemand anders heeft ',
+  'this file after you opened it': 'dit bestand gewijzigd nadat jij het opende',
+  'these files after you opened them': 'deze bestanden gewijzigd nadat jij ze opende',
+  '. Your latest change to ': '. Je laatste wijziging aan ',
+  ' is not saved yet.': ' is nog niet opgeslagen.',
+  'Reloaded the latest version.': 'De nieuwste versie is opnieuw geladen.',
+  'Load their version': 'Hun versie laden',
+  'Overwrite the other version with yours? Their changes in ': 'De andere versie overschrijven met de jouwe? Hun wijzigingen in ',
+  ' will be lost.': ' gaan verloren.',
+  'Keep mine (overwrite)': 'Mijn versie houden (overschrijven)',
+  'GitHub refused your token (it may have expired). Your changes are still in this window — enter a new token and they will be saved.': 'GitHub weigert je token (misschien verlopen). Je wijzigingen staan nog in dit venster — vul een nieuw token in en ze worden opgeslagen.',
+  'Enter new token': 'Nieuw token invullen',
+  'Your Microsoft sign-in has expired. Your changes are kept on this device and saved as soon as you sign in again.': 'Je Microsoft-login is verlopen. Je wijzigingen blijven op dit apparaat en worden opgeslagen zodra je opnieuw inlogt.',
+  'Sign in again': 'Opnieuw inloggen',
+  'automatic (main)': 'automatisch (main)',
+  'repository root': 'hoofdmap van de repository',
+  'Connect GitHub': 'GitHub koppelen',
+  'Your project files are stored in a private GitHub repository. The token is kept only on this device. Step by step: docs/SETUP-GITHUB.md.': 'Je projectbestanden staan in een privé GitHub-repository. Het token blijft alleen op dit apparaat. Stap voor stap: docs/SETUP-GITHUB.md.',
+  'Repository (owner/name) *': 'Repository (eigenaar/naam) *',
+  'Personal access token *': 'Persoonlijk toegangstoken *',
+  'Branch': 'Branch',
+  'Folder in repository': 'Map in de repository',
+  'Cancel': 'Annuleren',
+  'Connect': 'Koppelen',
+  'Enter the repository as owner/name and paste the token.': 'Vul de repository in als eigenaar/naam en plak het token.',
+  'Checking access…': 'Toegang controleren…',
+  'Note: this repository is public — anyone can read your project data. Make it private on GitHub (Settings → General → Danger zone).': 'Let op: deze repository is openbaar — iedereen kan je projectgegevens lezen. Maak hem privé op GitHub (Settings → General → Danger zone).',
+  'GitHub refused this token. Check that you copied all of it, and that it has not expired.': 'GitHub weigert dit token. Controleer of je het helemaal hebt gekopieerd en of het niet verlopen is.',
+  'Token updated — changes saved.': 'Token bijgewerkt — wijzigingen opgeslagen.',
+  'Connected to ': 'Gekoppeld aan ',
+  'Your repository has no project data yet. Start with the demo projects to try things out, or start empty.': 'Je repository heeft nog geen projectgegevens. Begin met de voorbeeldprojecten om het uit te proberen, of begin leeg.',
+  'Copy demo data': 'Voorbeeldgegevens kopiëren',
+  'Started with an empty data set. Create your first project with “+ New project”.': 'Gestart met lege gegevens. Maak je eerste project met “+ Nieuw project”.',
+  'Start empty': 'Leeg beginnen',
+  'Copying demo data…': 'Voorbeeldgegevens kopiëren…',
+  'Demo data': 'Voorbeeldgegevens',
+  'Copying demo data… ': 'Voorbeeldgegevens kopiëren… ',
+  ' files copied.': ' bestanden gekopieerd.',
+  'Copy failed: ': 'Kopiëren mislukt: ',
+  'Could not open folder: ': 'Kon de map niet openen: ',
+  'This folder already contains ': 'Deze map bevat al ',
+  ' project folder(s). Files with the same name will be overwritten. Continue?': ' projectmap(pen). Bestanden met dezelfde naam worden overschreven. Doorgaan?',
+  ' files written. You are now working in "': ' bestanden geschreven. Je werkt nu in "',
+  'Could not save: ': 'Kon niet opslaan: ',
+  'No changed files.': 'Geen gewijzigde bestanden.',
+  'GitHub connection…': 'GitHub-koppeling…',
+  'Connect GitHub…': 'GitHub koppelen…',
+  'Use GitHub data': 'GitHub-gegevens gebruiken',
+  'Copy demo data to GitHub…': 'Voorbeeldgegevens naar GitHub kopiëren…',
+  'Disconnect GitHub on this device': 'GitHub op dit apparaat ontkoppelen',
+  'Token removed from this device.': 'Token verwijderd van dit apparaat.',
+  'Use OneDrive': 'OneDrive gebruiken',
+  'Connect OneDrive…': 'OneDrive koppelen…',
+  'Copy demo data to OneDrive…': 'Voorbeeldgegevens naar OneDrive kopiëren…',
+  'Sign out of OneDrive': 'Uitloggen bij OneDrive',
+  'Open data folder…': 'Gegevensmap openen…',
+  'Open data folder (read-only)…': 'Gegevensmap openen (alleen lezen)…',
+  'Save all data to a folder…': 'Alle gegevens in een map opslaan…',
+  'Download all data (.zip)': 'Alle gegevens downloaden (.zip)',
+  'Download changed files (.zip)': 'Gewijzigde bestanden downloaden (.zip)',
+  'Reload from source': 'Opnieuw laden van de bron',
+  'Load demo data': 'Voorbeeldgegevens laden',
+  'Create project': 'Project aanmaken',
+  'Please fill in the object.': 'Vul het object in.',
+  ' created.': ' aangemaakt.',
+  'Edit project ': 'Project bewerken ',
+  'Delete project…': 'Project verwijderen…',
+  'Save': 'Opslaan',
+  'End date is before start date.': 'De einddatum ligt voor de startdatum.',
+  'Project saved.': 'Project opgeslagen.',
+  'planning lines': 'planningsregels',
+  'hour entries': 'urenregels',
+  'cost lines': 'kostenregels',
+  'estimate lines': 'calculatieregels',
+  'Delete project ': 'Project verwijderen ',
+  'This permanently deletes the project and everything in it': 'Hiermee verwijder je het project en alles erin definitief',
+  ', including photos.': ', inclusief foto’s.',
+  'On GitHub the history of pm-data still keeps a copy, so it can be restored from there if needed.': 'Op GitHub bewaart de geschiedenis van pm-data nog een kopie, zodat je het zo nodig kunt terugzetten.',
+  'This cannot be undone.': 'Dit kan niet ongedaan worden gemaakt.',
+  'Only want it out of sight? Set the status to ': 'Wil je het alleen uit beeld? Zet de status op ',
+  ' instead – it disappears from the lists but keeps all data.': ' – dan verdwijnt het uit de lijsten maar blijven alle gegevens bewaard.',
+  'Type ': 'Typ ',
+  ' to confirm': ' om te bevestigen',
+  'Archive instead': 'Liever archiveren',
+  ' archived.': ' gearchiveerd.',
+  'Delete permanently': 'Definitief verwijderen',
+  ' to confirm.': ' om te bevestigen.',
+  ' deleted': ' verwijderd',
+  ' files)': ' bestanden)',
+  'Main': 'Hoofdmenu',
+  'Loading…': 'Laden…',
+  'Data ▾': 'Gegevens ▾',
+  'Project Manager': 'Projectmanager',
+  'Data source': 'Gegevensbron',
+  '+ Project': '+ Project',
+  'Changes you made earlier on this device were never saved, and meanwhile someone else changed ': 'Wijzigingen die je eerder op dit apparaat maakte zijn nooit opgeslagen, en intussen heeft iemand anders dit gewijzigd: ',
+  '. Which version do you want to keep?': '. Welke versie wil je houden?',
+  'Your earlier changes are saved.': 'Je eerdere wijzigingen zijn opgeslagen.',
+  'Keep my earlier changes': 'Mijn eerdere wijzigingen houden',
+  'Your earlier changes were discarded.': 'Je eerdere wijzigingen zijn weggegooid.',
+  'Discard them': 'Weggooien',
+  'Your OneDrive folder is empty. Copy the data you were working with to OneDrive?': 'Je OneDrive-map is leeg. De gegevens waarmee je werkte naar OneDrive kopiëren?',
+  'Microsoft sign-in failed: ': 'Inloggen bij Microsoft mislukt: ',
+  'Open my OneDrive data': 'Mijn OneDrive-gegevens openen',
+  'Sign in with Microsoft': 'Inloggen met Microsoft',
+  'Open my GitHub data': 'Mijn GitHub-gegevens openen',
+  'Showing demo data. Your folder "': 'Voorbeeldgegevens getoond. Je map "',
+  '" needs permission again.': '" heeft opnieuw toestemming nodig.',
+  'Reconnect folder': 'Map opnieuw koppelen',
+  'Choose another folder': 'Andere map kiezen',
+  'You are looking at demo data. Changes are not saved until you connect your data (GitHub) or choose a folder.': 'Je bekijkt voorbeeldgegevens. Wijzigingen worden pas opgeslagen als je je gegevens koppelt (GitHub) of een map kiest.',
+  'Save demo to a new folder': 'Voorbeeld in een nieuwe map opslaan',
+  'Open existing folder': 'Bestaande map openen',
+  'Dismiss': 'Sluiten',
+
+  /* collections */
+  'Projects': 'Projecten',
+  'ID': 'ID',
+  'Object': 'Object',
+  'Client': 'Klant',
+  'Project address': 'Projectadres',
+  'Description': 'Omschrijving',
+  'Status': 'Status',
+  'Project manager': 'Projectleider',
+  'Start': 'Start',
+  'End': 'Einde',
+  'Budget hours': 'Budget uren',
+  'Offer price / budget (EUR)': 'Aanneemsom / budget (EUR)',
+  'Color': 'Kleur',
+  'Roles & rates': 'Rollen & tarieven',
+  'Roles': 'Rollen',
+  'Hourly rates per role. Labour cost = logged hours × the rate of the role.': 'Uurtarieven per rol. Arbeidskosten = geschreven uren × het tarief van de rol.',
+  'Role': 'Rol',
+  'Rate / hour': 'Tarief / uur',
+  'People': 'Medewerkers',
+  'Team members. Their default role decides the rate used for their hours.': 'Teamleden. Hun standaardrol bepaalt het tarief voor hun uren.',
+  'Name': 'Naam',
+  'Default role': 'Standaardrol',
+  'Email': 'E-mail',
+  'Phone': 'Telefoon',
+  'Active': 'Actief',
+  'Planning lines': 'Planningsregels',
+  'Planning': 'Planning',
+  'Each line is one bar on the timeline. Link tasks to a line via the "line" column in tasks.md.': 'Elke regel is één balk op de tijdlijn. Koppel taken aan een regel via de kolom "line" in tasks.md.',
+  'Title': 'Titel',
+  'Title *': 'Titel *',
+  'Phase': 'Fase',
+  'Progress %': 'Voortgang %',
+  'Milestone': 'Mijlpaal',
+  'Person': 'Persoon',
+  'Who (dept. / supplier)': 'Wie (afdeling / leverancier)',
+  'Tasks': 'Taken',
+  'Tasks. The "line" column links a task to a planning bar.': 'Taken. De kolom "line" koppelt een taak aan een planningsbalk.',
+  'Task': 'Taak',
+  'Planning line': 'Planningsregel',
+  'Assignee': 'Uitvoerder',
+  'Priority': 'Prioriteit',
+  'Due': 'Gereed op',
+  'Est. hours': 'Geschatte uren',
+  'Hours': 'Uren',
+  'Time registration. Leave "role" empty to use the person\'s default role.': 'Urenregistratie. Laat "role" leeg om de standaardrol van de persoon te gebruiken.',
+  'Date': 'Datum',
+  'Additional work': 'Meerwerk',
+  'Note': 'Notitie',
+  'Costs': 'Kosten',
+  'Fixed costs and purchases. Amount = qty × unit_price (EUR, excl. VAT).': 'Vaste kosten en inkopen. Bedrag = aantal × stukprijs (EUR, excl. btw).',
+  'Type': 'Soort',
+  'Category': 'Categorie',
+  'Estimate line / extra': 'Calculatieregel / meerwerk',
+  'Supplier': 'Leverancier',
+  'Qty': 'Aantal',
+  'Unit price': 'Stukprijs',
+  'Estimate': 'Calculatie',
+  'Cost estimate': 'Kostencalculatie',
+  'Preliminary cost estimate (cost price, EUR excl. VAT). Amount = qty × unit_price; for labour lines (with a role) an empty unit_price uses the role rate.': 'Voorcalculatie (kostprijs, EUR excl. btw). Bedrag = aantal × stukprijs; bij arbeidsregels (met een rol) gebruikt een lege stukprijs het tarief van de rol.',
+  'Subject': 'Onderwerp',
+  'Role (labour)': 'Rol (arbeid)',
+  'Unit': 'Eenheid',
+  'Comments': 'Opmerkingen',
+  'Comments and notes on this project, newest at the bottom. date = when it was written (YYYY-MM-DD HH:MM).': 'Opmerkingen en notities bij dit project, nieuwste onderaan. date = wanneer het geschreven is (JJJJ-MM-DD UU:MM).',
+  'Date / time': 'Datum / tijd',
+  'By': 'Door',
+  'Comment': 'Opmerking',
+  'Edited': 'Bewerkt',
+  'Additional work on top of the offer price (EUR excl. VAT). price = what the client pays; cost_estimate = expected cost. Only approved and invoiced items count as revenue.': 'Meerwerk bovenop de aanneemsom (EUR excl. btw). price = wat de klant betaalt; cost_estimate = verwachte kosten. Alleen goedgekeurd en gefactureerd meerwerk telt als omzet.',
+  'Client ref. / PO': 'Referentie klant / PO',
+  'Price (sell)': 'Prijs (verkoop)',
+  'Est. cost': 'Geschatte kosten',
+  'Project rates': 'Projecttarieven',
+  'Hourly rates for this project. They override the role rates in settings/roles.md. Order: person + role, person, role, then the default role rate.': 'Uurtarieven voor dit project. Ze gaan voor op de roltarieven in settings/roles.md. Volgorde: persoon + rol, persoon, rol, daarna het standaardtarief van de rol.',
+  'Person (optional)': 'Persoon (optioneel)',
+  'Time off': 'Afwezigheid',
+  'Time off for the team planning. Leave person empty for days off for everyone (public holidays, company closure).': 'Afwezigheid voor de teamplanning. Laat persoon leeg voor vrije dagen voor iedereen (feestdagen, collectieve sluiting).',
+  'From': 'Van',
+  'Until': 'Tot en met',
+  'Personal tasks': 'Persoonlijke taken',
+  'Tasks for one person that are not part of a project. They appear on the Team planning.': 'Taken voor één persoon die niet bij een project horen. Ze staan op de teamplanning.',
+  'Estimate formats': 'Calculatieformats',
+  'Estimate formats. Rows with the same "format" form one format; insert one in Costs → Estimate → Insert format.': 'Calculatieformats. Regels met hetzelfde "format" vormen één format; voeg er een in via Kosten → Calculatie → Format invoegen.',
+  'Format': 'Format',
+  'Planning templates': 'Planningssjablonen',
+  'Planning templates. Each row is one planning line; rows with the same "template" form one template. offset = working days after the chosen start date, days = duration in working days.': 'Planningssjablonen. Elke regel is één planningsregel; regels met hetzelfde "template" vormen één sjabloon. offset = werkdagen na de gekozen startdatum, days = duur in werkdagen.',
+  'Template': 'Sjabloon',
+  'Start (workday)': 'Start (werkdag)',
+  'Duration (workdays)': 'Duur (werkdagen)',
+  'Who': 'Wie',
+  'Company': 'Bedrijf',
+  'Company details shown on exported PDFs and survey reports.': 'Bedrijfsgegevens op geëxporteerde PDF’s en rapporten.',
+  'Company name': 'Bedrijfsnaam',
+  'Address': 'Adres',
+  'Website': 'Website',
+  'PDF footer text': 'Voettekst PDF',
+  'Logo file': 'Logobestand',
+  'PDF presets': 'PDF-voorinstellingen',
+  'PDF export presets': 'Voorinstellingen PDF-export',
+  'Your own PDF export presets. The options column is JSON; edit it in the app.': 'Je eigen voorinstellingen voor PDF-export. De kolom options is JSON; bewerk die in de app.',
+  'Kind': 'Soort',
+  'Options': 'Opties',
+  ' (missing)': ' (ontbreekt)',
+  'Filter…': 'Filteren…',
+  'Select a project first (top bar) to add rows.': 'Kies eerst een project (bovenaan) om regels toe te voegen.',
+  '+ Add': '+ Toevoegen',
+  'Delete': 'Verwijderen',
+  'Delete ': 'Verwijderen: ',
+  'Sort by': 'Sorteren op',
+  'Sort: file order': 'Sorteren: volgorde in bestand',
+  'Sort: ': 'Sorteren: ',
+  'Nothing here yet.': 'Hier staat nog niets.',
+  'Total (': 'Totaal (',
+  'Show more (': 'Meer tonen (',
+  ' hidden)': ' verborgen)',
+  'Close': 'Sluiten',
+  'no budget': 'geen budget',
+  'No data for this selection.': 'Geen gegevens voor deze selectie.',
+  'Total': 'Totaal',
+  'CSV': 'CSV',
+  'INTERNAL': 'INTERN',
+  'No data.': 'Geen gegevens.',
+  'Generated ': 'Gemaakt ',
+  ' · amounts in EUR, excl. VAT': ' · bedragen in EUR, excl. btw',
+  'PDF…': 'PDF…',
+  'Could not create the PDF: ': 'Kon de PDF niet maken: ',
+  'yes': 'ja',
+
+  /* enum values */
+  'planned': 'gepland', 'active': 'actief', 'on-hold': 'on hold', 'completed': 'afgerond', 'archived': 'gearchiveerd',
+  'todo': 'te doen', 'in-progress': 'bezig', 'done': 'klaar', 'blocked': 'geblokkeerd',
+  'low': 'laag', 'normal': 'normaal', 'high': 'hoog',
+  'fixed': 'vast', 'purchase': 'inkoop',
+  'quoted': 'geoffreerd', 'approved': 'goedgekeurd', 'invoiced': 'gefactureerd', 'rejected': 'afgewezen',
+  'holiday': 'vakantie', 'public holiday': 'feestdag', 'sick': 'ziek', 'training': 'cursus', 'other': 'overig',
+  'all': 'alle', 'prefab': 'prefab', 'no prefab': 'geen prefab',
+  'Planned': 'Gepland', 'Active ': 'Actief ', 'On-hold': 'On hold', 'Completed': 'Afgerond', 'Archived': 'Gearchiveerd',
+
+  /* costs */
+  'Labour': 'Arbeid',
+  'Engineering': 'Engineering',
+  'Pump set': 'Pompset',
+  'Controls': 'Besturing',
+  'Piping & valves': 'Leidingwerk & appendages',
+  'Fuel system': 'Brandstofsysteem',
+  'Prefab / building': 'Prefab / gebouw',
+  'Subcontracting': 'Onderaanneming',
+  'Transport': 'Transport',
+  'Commissioning': 'Inbedrijfstelling',
+  'Travel': 'Reiskosten',
+  'Contingency': 'Onvoorzien',
+  'Quoted': 'Geoffreerd',
+  'Approved': 'Goedgekeurd',
+  'Invoiced': 'Gefactureerd',
+  'Rejected': 'Afgewezen',
+  'Revenue': 'Omzet',
+  'offer ': 'aanneemsom ',
+  ' + extras ': ' + meerwerk ',
+  ' quoted': ' geoffreerd',
+  'offer price not set — ✎ Edit project': 'aanneemsom niet ingevuld — ✎ Project bewerken',
+  'Planned margin': 'Geplande marge',
+  ' · estimated cost ': ' · geschatte kosten ',
+  ' (extras at their est. cost)': ' (meerwerk tegen geschatte kosten)',
+  ' estimate line(s)': ' calculatieregel(s)',
+  'Actual costs so far': 'Werkelijke kosten tot nu toe',
+  ' of estimate · planning ': ' van de calculatie · planning ',
+  ' done': ' klaar',
+  'Current margin': 'Huidige marge',
+  ' of revenue · revenue − actual costs so far': ' van de omzet · omzet − werkelijke kosten tot nu toe',
+  'set an offer price': 'vul een aanneemsom in',
+  ' (labour)': ' (arbeid)',
+  'Estimate: ': 'Calculatie: ',
+  'Additional work · ': 'Meerwerk · ',
+  ' · price ': ' · prijs ',
+  ' · est. cost ': ' · geschatte kosten ',
+  ' — not counted until approved': ' — telt pas mee na goedkeuring',
+  'Hours: ': 'Uren: ',
+  'No hours logged for this role yet.': 'Nog geen uren geschreven op deze rol.',
+  'Nothing linked yet. Link purchases in Actual costs → column "Estimate line / extra".': 'Nog niets gekoppeld. Koppel inkopen in Werkelijke kosten → kolom "Calculatieregel / meerwerk".',
+  'Not in estimate': 'Niet in calculatie',
+  ' over': ' over',
+  'Show what is linked': 'Toon wat er gekoppeld is',
+  ' line(s)': ' regel(s)',
+  'No estimate and no costs yet.': 'Nog geen calculatie en geen kosten.',
+  'Subject / line': 'Onderwerp / regel',
+  'Actual': 'Werkelijk',
+  'Difference': 'Verschil',
+  'Used': 'Verbruikt',
+  'Item': 'Post',
+  'Actual hours': 'Werkelijke uren',
+  ' Click a line to see what is linked.': ' Klik op een regel om te zien wat er gekoppeld is.',
+  'Estimate vs actual': 'Calculatie vs werkelijk',
+  'Labour: hours count against the estimate lines with the same role (or against additional work when linked). Purchases and fixed costs count when linked to an estimate line or additional work. Approved and invoiced additional work uses its price in the Estimate column, so its difference is the margin left on that work. Current margin = revenue (offer price + approved additional work) − actual costs so far.': 'Arbeid: uren tellen tegen de calculatieregels met dezelfde rol (of tegen meerwerk als dat gekoppeld is). Inkopen en vaste kosten tellen als ze aan een calculatieregel of meerwerk gekoppeld zijn. Goedgekeurd en gefactureerd meerwerk gebruikt zijn prijs in de kolom Calculatie, dus het verschil is de marge die op dat werk overblijft. Huidige marge = omzet (aanneemsom + goedgekeurd meerwerk) − werkelijke kosten tot nu toe.',
+  'No other project has an estimate yet.': 'Geen ander project heeft al een calculatie.',
+  ' lines)': ' regels)',
+  'Copy estimate from another project': 'Calculatie van een ander project kopiëren',
+  'Copy from': 'Kopiëren van',
+  ' Copy quantities and prices too': ' Ook aantallen en prijzen kopiëren',
+  'The lines are added below the existing lines of this project. Links to purchases are not copied. Labour prices follow the rates of this project.': 'De regels komen onder de bestaande regels van dit project. Koppelingen naar inkopen worden niet gekopieerd. Arbeidsprijzen volgen de tarieven van dit project.',
+  'Copy lines': 'Regels kopiëren',
+  ' estimate line(s) copied.': ' calculatieregel(s) gekopieerd.',
+  'Offer price': 'Aanneemsom',
+  'Set offer price': 'Aanneemsom invullen',
+  'Estimated cost price': 'Geschatte kostprijs',
+  ' h labour': ' u arbeid',
+  ' of the offer price (without additional work)': ' van de aanneemsom (zonder meerwerk)',
+  'Per subject': 'Per onderwerp',
+  'No estimate yet. Add lines per subject (Labour, Pump set, Transport…), or copy the estimate of a similar project.': 'Nog geen calculatie. Voeg regels per onderwerp toe (Arbeid, Pompset, Transport…), of kopieer de calculatie van een vergelijkbaar project.',
+  'Insert format…': 'Format invoegen…',
+  'Save as format…': 'Opslaan als format…',
+  'Copy from project…': 'Kopiëren van project…',
+  'Price used': 'Gebruikte prijs',
+  ' (project)': ' (project)',
+  ' (rate)': ' (tarief)',
+  'Amount': 'Bedrag',
+  'Lines with a role are labour: qty = hours, and the hourly rate of this project is used when Unit price is empty. Amounts are cost prices (EUR, excl. VAT); the difference with the offer price is your margin.': 'Regels met een rol zijn arbeid: aantal = uren, en het uurtarief van dit project wordt gebruikt als Stukprijs leeg is. Bedragen zijn kostprijzen (EUR, excl. btw); het verschil met de aanneemsom is je marge.',
+  'Hourly rates for this project': 'Uurtarieven voor dit project',
+  'Leave empty to use the default rates (Settings → Roles & rates: ': 'Laat leeg om de standaardtarieven te gebruiken (Instellingen → Rollen & tarieven: ',
+  '). A rate here overrides the default for this project only. Add a person to give one person a different rate; without a role it applies to all their hours here. Labour costs in Hours, Estimate and Analysis use these rates.': '). Een tarief hier gaat alleen voor dit project voor op het standaardtarief. Voeg een persoon toe om één persoon een ander tarief te geven; zonder rol geldt het voor al zijn uren hier. Arbeidskosten in Uren, Calculatie en Analyse gebruiken deze tarieven.',
+  'No project rates: the default rates are used.': 'Geen projecttarieven: de standaardtarieven worden gebruikt.',
+  'Default rate': 'Standaardtarief',
+  'Approved additional work': 'Goedgekeurd meerwerk',
+  ' item(s) approved or invoiced': ' post(en) goedgekeurd of gefactureerd',
+  'Quoted, not approved yet': 'Geoffreerd, nog niet goedgekeurd',
+  ' item(s)': ' post(en)',
+  'Cost of approved work': 'Kosten van goedgekeurd werk',
+  'estimated ': 'geschat ',
+  ' · actual ': ' · werkelijk ',
+  'Total revenue': 'Totale omzet',
+  ' + additional work ': ' + meerwerk ',
+  ' · margin on extras': ' · marge op meerwerk',
+  'No additional work yet. Add work the client ordered on top of the offer: description, price for the client and your expected cost.': 'Nog geen meerwerk. Voeg werk toe dat de klant bovenop de offerte bestelde: omschrijving, prijs voor de klant en je verwachte kosten.',
+  'Actual cost': 'Werkelijke kosten',
+  'Margin': 'Marge',
+  'Price = what the client pays for this work (on top of the offer price). Only approved and invoiced items count as revenue. Link purchases to an item in Actual costs (column "Estimate line / extra") and hours in Hours (column "Additional work"); they then count as the cost of that item instead of the base estimate. Margin = price − the higher of estimated and actual cost.': 'Prijs = wat de klant voor dit werk betaalt (bovenop de aanneemsom). Alleen goedgekeurd en gefactureerd meerwerk telt als omzet. Koppel inkopen aan een post in Werkelijke kosten (kolom "Calculatieregel / meerwerk") en uren in Uren (kolom "Meerwerk"); die tellen dan als kosten van die post in plaats van de basiscalculatie. Marge = prijs − de hoogste van geschatte en werkelijke kosten.',
+  'Labour (from hours)': 'Arbeid (uit uren)',
+  'Fixed costs': 'Vaste kosten',
+  'Purchases': 'Inkopen',
+  ' of offer price ': ' van de aanneemsom ',
+  'no offer price set': 'geen aanneemsom ingevuld',
+  'All': 'Alle',
+  'Fixed': 'Vast',
+  'Not linked (': 'Niet gekoppeld (',
+  'All cost lines are linked to the estimate or additional work.': 'Alle kostenregels zijn gekoppeld aan de calculatie of meerwerk.',
+  'No cost lines yet.': 'Nog geen kostenregels.',
+  'No cost lines. Select a project to add some.': 'Geen kostenregels. Kies een project om ze toe te voegen.',
+  'This project has no estimate yet, so everything shows as "Not in estimate". ': 'Dit project heeft nog geen calculatie, dus alles staat als "Niet in calculatie". ',
+  'Make an estimate': 'Calculatie maken',
+  ' project(s) · extras ': ' project(en) · meerwerk ',
+  'Estimated cost': 'Geschatte kosten',
+  'planned margin ': 'geplande marge ',
+  ' of revenue': ' van de omzet',
+  'Estimate vs actual per project': 'Calculatie vs werkelijk per project',
+  'Extras': 'Meerwerk',
+  'Planning done': 'Planning gereed',
+  'Not linked': 'Niet gekoppeld',
+  'Other': 'Overig',
+  'Total estimated cost': 'Totale geschatte kosten',
+  ' h labour)': ' u arbeid)',
+  'Line': 'Regel',
+  'Cost prices, EUR excl. VAT. Labour lines use the hourly rate of this project unless a unit price is filled in.': 'Kostprijzen, EUR excl. btw. Arbeidsregels gebruiken het uurtarief van dit project, tenzij een stukprijs is ingevuld.',
+  'Default': 'Standaard',
+  'Project rate': 'Projecttarief',
+  'all roles': 'alle rollen',
+  ' lines': ' regels',
+  ' of the offer price': ' van de aanneemsom',
+  'Total approved': 'Totaal goedgekeurd',
+  'Quoted, awaiting your approval': 'Geoffreerd, wacht op uw goedkeuring',
+  'Awaiting approval': 'Wacht op goedkeuring',
+  'Original order': 'Oorspronkelijke opdracht',
+  'New order total': 'Nieuw opdrachttotaal',
+  'incl. approved additional work': 'incl. goedgekeurd meerwerk',
+  'No.': 'Nr.',
+  'Your ref.': 'Uw ref.',
+  'Price': 'Prijs',
+  'All prices in EUR, excluding VAT.': 'Alle prijzen in EUR, exclusief btw.',
+  'Total (excl. rejected)': 'Totaal (excl. afgewezen)',
+  'offer + approved additional work': 'aanneemsom + goedgekeurd meerwerk',
+  'Client ref.': 'Ref. klant',
+  'Only approved and invoiced items count as revenue. Margin = price − the higher of estimated and actual cost.': 'Alleen goedgekeurd en gefactureerd meerwerk telt als omzet. Marge = prijs − de hoogste van geschatte en werkelijke kosten.',
+  'Linked to': 'Gekoppeld aan',
+  'Total fixed costs and purchases': 'Totaal vaste kosten en inkopen',
+  'Total labour': 'Totaal arbeid',
+  'Actual costs': 'Werkelijke kosten',
+  'Fixed costs and purchases': 'Vaste kosten en inkopen',
+  'Labour per role': 'Arbeid per rol',
+  'Avg. rate': 'Gem. tarief',
+  'Cost': 'Kosten',
+  'Per project': 'Per project',
+  'Offer': 'Aanneemsom',
+  'Pl. margin': 'Gepl. marge',
+  'Cost analysis': 'Kostenanalyse',
+  'incl. ': 'incl. ',
+  ' additional work': ' meerwerk',
+  'offer price': 'aanneemsom',
+  'Additional work – PDF': 'Meerwerk – PDF',
+  'For the client: ': 'Voor de klant: ',
+  'description, reference, status and price. No costs or margins.': 'omschrijving, referentie, status en prijs. Geen kosten of marges.',
+  'Internal: ': 'Intern: ',
+  'also estimated cost, actual cost and margin.': 'ook geschatte kosten, werkelijke kosten en marge.',
+  'Internal': 'Intern',
+  'For the client': 'Voor de klant',
+  'Analysis': 'Analyse',
+  'View': 'Weergave',
+  'amounts in EUR, excl. VAT': 'bedragen in EUR, excl. btw'
+});
+
+  </script>
+  <script>/* js/i18n/nl-2.js */
+/* PM Tool — Dutch texts (part 2: dashboard, formats, forms editor, hours, planning PDF, team planning) */
+PM.i18n.add('nl', {
+  'Dashboard': 'Dashboard',
+  'Home': 'Home',
+  'Portfolio': 'Portfolio',
+  ' active project(s)': ' actieve project(en)',
+  ' Show completed': ' Afgeronde tonen',
+  '+ New project': '+ Nieuw project',
+  'Open': 'Open',
+  'Hours this month': 'Uren deze maand',
+  ' labour': ' arbeid',
+  'Total cost to date': 'Totale kosten tot nu toe',
+  'budget ': 'budget ',
+  'Hours to date': 'Uren tot nu toe',
+  'Open tasks': 'Open taken',
+  ' overdue': ' te laat',
+  'none overdue': 'geen te laat',
+  'No projects to show.': 'Geen projecten om te tonen.',
+  'Create the first project': 'Maak het eerste project',
+  'Edit project': 'Project bewerken',
+  'Edit ': 'Bewerken ',
+  'Progress': 'Voortgang',
+  'Planning progress': 'Voortgang planning',
+  'Hours ': 'Uren ',
+  'Cost ': 'Kosten ',
+  ' open task(s)': ' open taken',
+  '✎ Edit project': '✎ Project bewerken',
+  ' planning lines': ' planningsregels',
+  'of ': 'van ',
+  ' h budget · est. ': ' u budget · geschat ',
+  'Planning · now and next 3 weeks': 'Planning · nu en komende 3 weken',
+  ' tasks done': ' taken klaar',
+  'Nothing planned in this period.': 'Niets gepland in deze periode.',
+  'Open planning': 'Planning openen',
+  'Tasks due within a week': 'Taken die binnen een week klaar moeten',
+  'No tasks due.': 'Geen taken die klaar moeten.',
+  'Project notes': 'Projectnotities',
+  'Project details': 'Projectgegevens',
+  'Notes': 'Notities',
+  'Stored in ': 'Opgeslagen in ',
+  '✎ Edit': '✎ Bewerken',
+  'Written by': 'Geschreven door',
+  'Write a comment or note… (Ctrl+Enter to add)': 'Schrijf een opmerking of notitie… (Ctrl+Enter om toe te voegen)',
+  'New comment': 'Nieuwe opmerking',
+  'Edited ': 'Bewerkt ',
+  '(edited)': '(bewerkt)',
+  'Edit': 'Bewerken',
+  'Delete comment': 'Opmerking verwijderen',
+  'Delete this comment?': 'Deze opmerking verwijderen?',
+  'No comments yet.': 'Nog geen opmerkingen.',
+  'Comments (': 'Opmerkingen (',
+  'Add comment': 'Opmerking toevoegen',
+
+  /* estimate formats */
+  'Prefab pump room': 'Prefab pompkamer',
+  'Purchase': 'Inkoop',
+  'Manufacturing': 'Productie',
+  'Transportation': 'Transport',
+  'Calculations': 'Berekeningen',
+  'Price spike': 'Prijsstijging',
+  'No estimate formats yet. Save an estimate as a format first.': 'Nog geen calculatieformats. Sla eerst een calculatie op als format.',
+  '(no subject)': '(geen onderwerp)',
+  ' line(s) will be added below the current estimate': ' regel(s) worden toegevoegd onder de huidige calculatie',
+  '. Fill in or adjust the prices afterwards.': '. Vul de prijzen daarna in of pas ze aan.',
+  'Insert estimate format': 'Calculatieformat invoegen',
+  ' Copy the prices of the format (when it has them)': ' De prijzen van het format kopiëren (als het die heeft)',
+  'Insert lines': 'Regels invoegen',
+  'Select at least one line.': 'Kies minstens één regel.',
+  ' estimate lines added from "': ' calculatieregels toegevoegd uit "',
+  'This estimate has no lines yet.': 'Deze calculatie heeft nog geen regels.',
+  'Save estimate as format': 'Calculatie opslaan als format',
+  'Format name': 'Naam van het format',
+  ' Also save the unit prices': ' Ook de stukprijzen opslaan',
+  ' lines are saved with subject, description, role, quantity and unit. Without prices the format is a clean structure to fill in per project.': ' regels worden opgeslagen met onderwerp, omschrijving, rol, aantal en eenheid. Zonder prijzen is het format een schone opzet om per project in te vullen.',
+  'Save format': 'Format opslaan',
+  'A format "': 'Er bestaat al een format "',
+  '" already exists (': '" (',
+  ' lines). Replace it?': ' regels). Vervangen?',
+  'Format "': 'Format "',
+  '" saved with ': '" opgeslagen met ',
+  ' lines.': ' regels.',
+  'Ready-made estimate structures. Insert one in Costs → Estimate → Insert format, or save a project estimate as a format there.': 'Kant-en-klare calculatieopzetten. Voeg er een in via Kosten → Calculatie → Format invoegen, of sla daar een projectcalculatie op als format.',
+  ' lines · ': ' regels · ',
+  ' subjects': ' onderwerpen',
+  ' · no prices': ' · geen prijzen',
+  'Edit lines': 'Regels bewerken',
+  'New name for "': 'Nieuwe naam voor "',
+  'Rename': 'Hernoemen',
+  'Delete format "': 'Format verwijderen: "',
+  '"? Estimates that used it keep their lines.': '"? Calculaties die het gebruikten houden hun regels.',
+  'No estimate formats. Open a project → Costs → Estimate → Save as format.': 'Geen calculatieformats. Open een project → Kosten → Calculatie → Opslaan als format.',
+  'Lines of "': 'Regels van "',
+
+  /* forms editor */
+  'Text': 'Tekst',
+  'Long text': 'Lange tekst',
+  'Number': 'Getal',
+  'Dimensions': 'Afmetingen',
+  'Yes / No': 'Ja / Nee',
+  'Choice': 'Keuze',
+  'Check (OK / Not OK / N/A)': 'Controle (OK / Niet OK / NVT)',
+  'Person (our team)': 'Persoon (ons team)',
+  'Pipe size (DN / ANSI)': 'Leidingmaat (DN / ANSI)',
+  'Pump test table': 'Pomptesttabel',
+  'Table': 'Tabel',
+  'Days × men': 'Dagen × man',
+  'Position on drawing': 'Positie op tekening',
+  'Photos': 'Foto’s',
+  'Multiple choice (tick several)': 'Meerkeuze (meerdere aanvinken)',
+  'Calculation': 'Berekening',
+  'Layout drawing (top view)': 'Indelingstekening (bovenaanzicht)',
+  'Site plan (rooms, route, objects)': 'Plattegrond (ruimtes, route, objecten)',
+  'All types': 'Alle soorten',
+  'Check': 'Controle',
+  'No options needed. Each item gets OK / Not OK / N/A, a remark and photos.': 'Geen opties nodig. Elk punt krijgt OK / Niet OK / NVT, een opmerking en foto’s.',
+  'Multiple choice': 'Meerkeuze',
+  'Layout drawing': 'Indelingstekening',
+  'Sections': 'Hoofdstukken',
+  'Repeat a section a number of times by choosing a number question under “Repeat per”. Use {n} in the title for the number.': 'Herhaal een hoofdstuk een aantal keer door bij “Herhalen per” een getalvraag te kiezen. Gebruik {n} in de titel voor het nummer.',
+  'old – not in “New form”': 'oud – niet in “Nieuw formulier”',
+  'built-in, changed': 'ingebouwd, gewijzigd',
+  'your own': 'eigen',
+  'built-in (not yet in your data)': 'ingebouwd (nog niet in je gegevens)',
+  'Forms are stored in your data as ': 'Formulieren staan in je gegevens als ',
+  '. Changing a question’s text, options or order is safe. Changing a question’s key disconnects answers already given to it.': '. De tekst, opties of volgorde van een vraag wijzigen kan veilig. De sleutel van een vraag wijzigen koppelt al gegeven antwoorden los.',
+  '+ New form': '+ Nieuw formulier',
+  ' sections': ' hoofdstukken',
+  ' questions': ' vragen',
+  ' filled in': ' ingevuld',
+  'Duplicate': 'Dupliceren',
+  'Reset “': '“',
+  '” to the built-in version?': '” terugzetten naar de ingebouwde versie?',
+  'Your changes to this form are replaced. Answers already given are kept.': 'Je wijzigingen aan dit formulier worden vervangen. Al gegeven antwoorden blijven bewaard.',
+  'Reset': 'Terugzetten',
+  'Form reset.': 'Formulier teruggezet.',
+  'Reset to built-in': 'Terugzetten naar ingebouwd',
+  'Delete the form “': 'Het formulier verwijderen: “',
+  ' filled-in form(s) use it. Their answers are kept, but cannot be opened until the form exists again.': ' ingevulde formulier(en) gebruiken het. Hun antwoorden blijven bewaard, maar zijn pas weer te openen als het formulier weer bestaat.',
+  'The file ': 'Het bestand ',
+  '.md is removed from your data.': '.md wordt uit je gegevens verwijderd.',
+  'Form deleted.': 'Formulier verwijderd.',
+  'New form': 'Nieuw formulier',
+  'General': 'Algemeen',
+  'Project number': 'Projectnummer',
+  'Filled in by': 'Ingevuld door',
+  'Remarks': 'Opmerkingen',
+  ' (copy)': ' (kopie)',
+  'Form as Markdown text': 'Formulier als Markdown-tekst',
+  'The form as it is stored in your data. Each section is a table: key | question | type | options | unit | hint.': 'Het formulier zoals het in je gegevens staat. Elk hoofdstuk is een tabel: key | question | type | options | unit | hint.',
+  'English': 'Engels',
+  'Nederlands': 'Nederlands',
+  'Form name *': 'Naam formulier *',
+  'Short name (badge)': 'Korte naam (label)',
+  'Language of buttons and PDF': 'Taal van knoppen en PDF',
+  'Signature boxes in the PDF (separate with ;)': 'Handtekeningvakken in de PDF (scheiden met ;)',
+  'Repeat per': 'Herhalen per',
+  '— no —': '— nee —',
+  'Section title': 'Titel hoofdstuk',
+  'Move up': 'Omhoog',
+  'Move down': 'Omlaag',
+  'Delete section': 'Hoofdstuk verwijderen',
+  'Delete section “': 'Hoofdstuk verwijderen: “',
+  '” with ': '” met ',
+  ' question(s)?': ' vraag/vragen?',
+  'Note under the title': 'Toelichting onder de titel',
+  ' Show pump-set drawing': ' Pompsettekening tonen',
+  'Question': 'Vraag',
+  'Hint': 'Hint',
+  'Key': 'Sleutel',
+  '+ Question': '+ Vraag',
+  'New section': 'Nieuw hoofdstuk',
+  '+ Section': '+ Hoofdstuk',
+  'Help: options per question type': 'Help: opties per vraagsoort',
+  'Delete question': 'Vraag verwijderen',
+  'Give the form a name.': 'Geef het formulier een naam.',
+  'Every section needs a title.': 'Elk hoofdstuk heeft een titel nodig.',
+  'Every question needs a text (section “': 'Elke vraag heeft een tekst nodig (hoofdstuk “',
+  'Key “': 'Sleutel “',
+  '” may only contain a–z, 0–9 and _.': '” mag alleen a–z, 0–9 en _ bevatten.',
+  'The key “': 'De sleutel “',
+  '” is used twice. Every question needs its own key.': '” wordt twee keer gebruikt. Elke vraag heeft een eigen sleutel nodig.',
+  'The text could not be read: ': 'De tekst kon niet worden gelezen: ',
+  'Edit visually': 'Visueel bewerken',
+  'Edit as text': 'Als tekst bewerken',
+  'Edit form · ': 'Formulier bewerken · ',
+  'Save form': 'Formulier opslaan',
+  'Form “': 'Formulier “',
+  '” saved.': '” opgeslagen.',
+
+  /* hours */
+  ' labour in this selection': ' arbeid in deze selectie',
+  '(default ': '(standaard ',
+  'Enter the number of hours.': 'Vul het aantal uren in.',
+  'Choose a person.': 'Kies een persoon.',
+  'Role ': 'Rol ',
+  'Log hours': 'Uren schrijven',
+  'Month': 'Maand',
+  'All months': 'Alle maanden',
+  'Everyone': 'Iedereen',
+  'Rate': 'Tarief',
+  '⚠ none': '⚠ geen',
+
+  /* planning PDF */
+  'Project planning': 'Projectplanning',
+  'Customer': 'Klant',
+  'Clean overview for the client: phases, bars, milestones and dates. No costs, hours, people or internal notes.': 'Overzicht voor de klant: fasen, balken, mijlpalen en data. Geen kosten, uren, mensen of interne notities.',
+  'Internal team': 'Intern team',
+  'Full planning with linked tasks, assignees and status. Spread over several pages if needed.': 'Volledige planning met gekoppelde taken, uitvoerders en status. Zo nodig over meerdere pagina’s.',
+  'Project planning — internal': 'Projectplanning — intern',
+  'Workshop': 'Werkplaats',
+  'The next 6 weeks only, unfinished work, who does what. Large text, black and white for the printer.': 'Alleen de komende 6 weken, onafgemaakt werk, wie doet wat. Grote letters, zwart-wit voor de printer.',
+  'Work planning': 'Werkplanning',
+  'Management': 'Management',
+  'Planning with hours and costs per line, plus budget versus actual. Confidential.': 'Planning met uren en kosten per regel, plus budget tegen werkelijk. Vertrouwelijk.',
+  'Planning & cost overview': 'Planning- & kostenoverzicht',
+  'Confidential': 'Vertrouwelijk',
+  'Phase / activity': 'Fase / activiteit',
+  'Activity': 'Activiteit',
+  'Days': 'Dagen',
+  'All active projects': 'Alle actieve projecten',
+  'Document': 'Document',
+  'Revision': 'Revisie',
+  'Prepared by': 'Opgesteld door',
+  'Page ': 'Pagina ',
+  ' of ': ' van ',
+  'Fixed + purchases': 'Vast + inkopen',
+  'Total cost': 'Totale kosten',
+  'est. ': 'geschat ',
+  'Today': 'Vandaag',
+  'No planning lines in this selection.': 'Geen planningsregels in deze selectie.',
+  'No tasks linked': 'Geen taken gekoppeld',
+  'Task due': 'Taak gereed',
+  'Preview of the PDF': 'Voorbeeld van de PDF',
+  'Previous page': 'Vorige pagina',
+  'Next page': 'Volgende pagina',
+  'Too many rows for one page at a readable size — continued on the next page. Choose A3, fewer lines, or a shorter period.': 'Te veel regels voor één pagina op leesbaar formaat — vervolg op de volgende pagina. Kies A3, minder regels of een kortere periode.',
+  'Nothing to show with these settings.': 'Niets te tonen met deze instellingen.',
+  'Ready-made': 'Kant-en-klaar',
+  'Your presets': 'Je voorinstellingen',
+  'Custom (changed)': 'Aangepast',
+  'Your own adjustments.': 'Je eigen aanpassingen.',
+  'Your saved preset.': 'Je opgeslagen voorinstelling.',
+  'What': 'Wat',
+  'This project': 'Dit project',
+  'Period': 'Periode',
+  'Whole project': 'Hele project',
+  'Next 4 weeks': 'Komende 4 weken',
+  'Next 6 weeks': 'Komende 6 weken',
+  'Next 3 months': 'Komende 3 maanden',
+  'Choose dates…': 'Data kiezen…',
+  'All lines': 'Alle regels',
+  'Not finished': 'Niet afgerond',
+  'With tasks only': 'Alleen met taken',
+  'To': 'Aan',
+  'Phases': 'Fasen',
+  'Linked tasks': 'Gekoppelde taken',
+  'Don’t show': 'Niet tonen',
+  'Show under each bar': 'Onder elke balk tonen',
+  'Show with status and due date': 'Met status en datum tonen',
+  'Columns': 'Kolommen',
+  'Tasks done': 'Taken klaar',
+  'Hours (internal)': 'Uren (intern)',
+  'Cost (internal)': 'Kosten (intern)',
+  'Contains internal hours/costs — not for customers.': 'Bevat interne uren/kosten — niet voor klanten.',
+  'Page': 'Pagina',
+  'Paper': 'Papier',
+  'Orientation': 'Richting',
+  'Landscape': 'Liggend',
+  'Portrait': 'Staand',
+  'Fit': 'Passend',
+  'Fit on one page': 'Op één pagina passen',
+  'Readable, several pages': 'Leesbaar, meerdere pagina’s',
+  'Colours': 'Kleuren',
+  'Project colour': 'Projectkleur',
+  'Show task status': 'Taakstatus tonen',
+  'Black & white': 'Zwart-wit',
+  'Text size': 'Tekstgrootte',
+  'Normal': 'Normaal',
+  'Large': 'Groot',
+  'Group by phase': 'Groeperen per fase',
+  'Milestones': 'Mijlpalen',
+  'Today line': 'Lijn vandaag',
+  'Legend': 'Legenda',
+  'Shade weekends': 'Weekenden arceren',
+  'Budget summary (internal)': 'Budgetoverzicht (intern)',
+  'Header': 'Koptekst',
+  'Document no.': 'Documentnr.',
+  'e.g. PL-2026-014': 'bijv. PL-2026-014',
+  'Label': 'Label',
+  'e.g. Internal': 'bijv. Intern',
+  'Company logo': 'Bedrijfslogo',
+  'Project description': 'Projectomschrijving',
+  'Tip: add your company name and logo in Settings → Company.': 'Tip: voeg je bedrijfsnaam en logo toe in Instellingen → Bedrijf.',
+  'e.g. Customer A3 with tasks': 'bijv. Klant A3 met taken',
+  'Save as preset': 'Opslaan als voorinstelling',
+  'Save preset': 'Voorinstelling opslaan',
+  'Preset “': 'Voorinstelling “',
+  'Creating PDF…': 'PDF maken…',
+  'PDF ready: ': 'PDF klaar: ',
+  'Create PDF': 'PDF maken',
+  'Download PDF': 'PDF downloaden',
+  'Export planning to PDF': 'Planning exporteren naar PDF',
+
+  /* team planning */
+  'Holiday': 'Vakantie',
+  'Public holiday': 'Feestdag',
+  'Sick': 'Ziek',
+  'Training': 'Cursus',
+  ' (everyone)': ' (iedereen)',
+  'Fill in the required fields.': 'Vul de verplichte velden in.',
+  'The end date is before the start date.': 'De einddatum ligt voor de startdatum.',
+  'Time off ': 'Afwezigheid ',
+  'Add time off': 'Afwezigheid toevoegen',
+  'Personal task ': 'Persoonlijke taak ',
+  'What needs to be done?': 'Wat moet er gebeuren?',
+  '— Personal task (no project) —': '— Persoonlijke taak (geen project) —',
+  '— no planning line —': '— geen planningsregel —',
+  'Add task': 'Taak toevoegen',
+  'Task *': 'Taak *',
+  'Planning line (optional)': 'Planningsregel (optioneel)',
+  'Estimate (hours)': 'Schatting (uren)',
+  'Enter a task title.': 'Vul een taaktitel in.',
+  'The due date is before the start date.': 'De gereeddatum ligt voor de startdatum.',
+  'Task added': 'Taak toegevoegd',
+  ' to ': ' aan ',
+  ' (personal)': ' (persoonlijk)',
+  'Personal': 'Persoonlijk',
+  'Status of ': 'Status van ',
+  ' Show finished too': ' Ook afgeronde tonen',
+  ' h estimated': ' u geschat',
+  'Planning line / phase': 'Planningsregel / fase',
+  'Est. h': 'Gesch. u',
+  'Open ': 'Open ',
+  ' (planning line)': ' (planningsregel)',
+  'Nothing assigned': 'Niets toegewezen',
+  ' that is still open.': ' dat nog open staat.',
+  '+ Task for ': '+ Taak voor ',
+  'No role': 'Geen rol',
+  'Tick the people you want to see on the team planning. This is remembered on this device.': 'Vink de mensen aan die je op de teamplanning wilt zien. Dit wordt op dit apparaat onthouden.',
+  'None': 'Geen',
+  'People on the team planning': 'Mensen op de teamplanning',
+  'Apply': 'Toepassen',
+  'Filter by role': 'Filteren op rol',
+  'All roles': 'Alle rollen',
+  'Earlier': 'Eerder',
+  'This week': 'Deze week',
+  'Later': 'Later',
+  ' week': ' week',
+  ' weeks': ' weken',
+  ' per click': ' per klik',
+  ' Only ': ' Alleen ',
+  ' Done tasks': ' Afgeronde taken',
+  '+ Time off': '+ Afwezigheid',
+  '+ Task': '+ Taak',
+  'Export PDF': 'PDF exporteren',
+  'Show all tasks of ': 'Alle taken tonen van ',
+  'Hide ': 'Verbergen: ',
+  ' from the planning': ' uit de planning',
+  'Click an empty spot to add a task for ': 'Klik op een lege plek om een taak toe te voegen voor ',
+  'Nobody to show with this filter. Use “People…” or the role filter.': 'Niemand te tonen met dit filter. Gebruik “Mensen…” of het rolfilter.',
+  'No people yet. Add your team in Settings → People.': 'Nog geen medewerkers. Voeg je team toe in Instellingen → Medewerkers.',
+  'Planning line (person set)': 'Planningsregel (persoon ingesteld)',
+  'Task assigned': 'Taak toegewezen',
+  'Personal task': 'Persoonlijke taak',
+  'Overlaps time off': 'Overlapt met afwezigheid',
+  'Colours = project. Task dates: task start/due, otherwise the dates of its planning line.': 'Kleuren = project. Taakdata: start/gereed van de taak, anders de data van de planningsregel.',
+  'No time off planned. Add holidays, training or public holidays (leave person empty for everyone).': 'Geen afwezigheid gepland. Voeg vakanties, cursussen of feestdagen toe (laat persoon leeg voor iedereen).',
+  'Team planning': 'Teamplanning',
+  'A4 landscape': 'A4 liggend',
+  'A3 landscape': 'A3 liggend',
+  'Team planning – PDF': 'Teamplanning – PDF',
+  'Next week': 'Volgende week',
+  'Next 2 weeks': 'Komende 2 weken',
+  ' Include finished tasks': ' Afgeronde taken meenemen',
+  ' Leave out people with nothing planned': ' Mensen zonder planning weglaten',
+  ' Only project ': ' Alleen project ',
+  'Choose a valid date range.': 'Kies een geldige periode.',
+  'Choose a range of at most about a year.': 'Kies een periode van hooguit ongeveer een jaar.',
+  'People…': 'Mensen…'
+});
+
+  </script>
+  <script>/* js/i18n/nl-3.js */
+/* PM Tool — Dutch texts (part 3: planning, advanced, reports, settings, forms, tasks, write, saving) */
+PM.i18n.add('nl', {
+  /* planning templates */
+  'Prefab pompkamer': 'Prefab pompkamer',
+  'No planning templates yet. Save a project planning as a template first.': 'Nog geen planningssjablonen. Sla eerst een projectplanning op als sjabloon.',
+  'e.g. Prefab pompkamer': 'bijv. Prefab pompkamer',
+  'Use the phases of the template': 'De fasen van het sjabloon gebruiken',
+  'Phases of the template, with a prefix': 'Fasen van het sjabloon, met een voorvoegsel',
+  'Put all lines under one phase': 'Alle regels onder één fase zetten',
+  '(no phase)': '(geen fase)',
+  ' line(s) will be added · ': ' regel(s) worden toegevoegd · ',
+  '. Weekends are skipped; you can move everything afterwards.': '. Weekenden worden overgeslagen; je kunt alles daarna verschuiven.',
+  'Insert planning template': 'Planningssjabloon invoegen',
+  'Start date (day 0, e.g. order confirmation)': 'Startdatum (dag 0, bijv. orderbevestiging)',
+  'Phase name / prefix': 'Fasenaam / voorvoegsel',
+  ' planning lines added from "': ' planningsregels toegevoegd uit "',
+  'This project has no planning lines with dates yet.': 'Dit project heeft nog geen planningsregels met data.',
+  'Save planning as template': 'Planning opslaan als sjabloon',
+  'Template name': 'Naam sjabloon',
+  'Day 0 (usually the order date)': 'Dag 0 (meestal de orderdatum)',
+  ' planning lines are saved with their phase, title, who and milestone. Dates are stored as working days after day 0, so you can insert the template on any start date. People and progress are not saved.': ' planningsregels worden opgeslagen met fase, titel, wie en mijlpaal. Data worden opgeslagen als werkdagen na dag 0, zodat je het sjabloon op elke startdatum kunt invoegen. Personen en voortgang worden niet opgeslagen.',
+  'Save template': 'Sjabloon opslaan',
+  'A template "': 'Er bestaat al een sjabloon "',
+  'Template "': 'Sjabloon "',
+  'Reusable plannings, e.g. for a prefab pump room. Insert one in Planning → Templates → Insert template. Start and duration are in working days (Mon–Fri) counted from the start date you choose when inserting. You can also save any project planning as a template.': 'Herbruikbare planningen, bijv. voor een prefab pompkamer. Voeg er een in via Planning → Sjablonen → Sjabloon invoegen. Start en duur zijn in werkdagen (ma–vr), geteld vanaf de startdatum die je bij het invoegen kiest. Je kunt ook elke projectplanning als sjabloon opslaan.',
+  ' lines · about ': ' regels · ongeveer ',
+  ' weeks · ': ' weken · ',
+  ' phases': ' fasen',
+  'Delete template "': 'Sjabloon verwijderen: "',
+  ' lines)? Projects that used it keep their planning.': ' regels)? Projecten die het gebruikten houden hun planning.',
+  'No templates. Open a project planning and choose Templates → Save as template.': 'Geen sjablonen. Open een projectplanning en kies Sjablonen → Opslaan als sjabloon.',
+  'Starts in week': 'Start in week',
+  'week ': 'week ',
+  'Weeks': 'Weken',
+  'Months': 'Maanden',
+
+  /* planning */
+  'Shift of ': 'Verschuiving van ',
+  ' planning line(s)': ' planningsregel(s)',
+  ' and ': ' en ',
+  ' task date(s)': ' taakdatum/data',
+  ' moved. Use "Undo shift" to put them back.': ' verschoven. Gebruik "Verschuiving ongedaan maken" om ze terug te zetten.',
+  'Shift undone.': 'Verschuiving ongedaan gemaakt.',
+  'working days': 'werkdagen',
+  'calendar days': 'kalenderdagen',
+  'This line and every line that starts on or after ': 'Deze regel en elke regel die start op of na ',
+  'Only the lines after it (this line stays)': 'Alleen de regels erna (deze regel blijft staan)',
+  'This line and what follows in phase "': 'Deze regel en wat volgt in fase "',
+  ' planning line(s) will move ': ' planningsregel(s) schuiven ',
+  '. Use a negative number to move earlier. Weekends are skipped for working days and weeks.': '. Gebruik een negatief getal om naar voren te schuiven. Weekenden worden overgeslagen bij werkdagen en weken.',
+  'Shift from "': 'Verschuiven vanaf "',
+  'Move by': 'Verschuiven met',
+  'Which lines': 'Welke regels',
+  ' Also move start and due dates of linked open tasks': ' Ook start- en gereeddata van gekoppelde open taken verschuiven',
+  'Shift': 'Verschuiven',
+  'Enter a number of days or weeks.': 'Vul een aantal dagen of weken in.',
+  'Shift from ': 'Verschuiven vanaf ',
+  'Linked tasks (': 'Gekoppelde taken (',
+  ' · due ': ' · gereed ',
+  'Unlink': 'Ontkoppelen',
+  'No tasks linked yet — this bar is shown in grey.': 'Nog geen taken gekoppeld — deze balk is grijs.',
+  'Task to link': 'Taak om te koppelen',
+  '  (now on ': '  (nu op ',
+  'Link task': 'Taak koppelen',
+  'New task title…': 'Titel nieuwe taak…',
+  'New task title': 'Titel nieuwe taak',
+  'New planning line': 'Nieuwe planningsregel',
+  'Delete planning line ': 'Planningsregel verwijderen: ',
+  '? Linked tasks stay, but are unlinked.': '? Gekoppelde taken blijven, maar worden ontkoppeld.',
+  'Delete line': 'Regel verwijderen',
+  'Shift from here…': 'Vanaf hier verschuiven…',
+  'Give the planning line a title.': 'Geef de planningsregel een titel.',
+  'Collapse ': 'Inklappen: ',
+  'Expand ': 'Uitklappen: ',
+  ' planning lines have linked tasks': ' planningsregels hebben gekoppelde taken',
+  'Move phase up': 'Fase omhoog',
+  'Move phase down': 'Fase omlaag',
+  'Open project planning': 'Projectplanning openen',
+  'open ›': 'openen ›',
+  ' linked task(s), ': ' gekoppelde taken, ',
+  'No linked tasks': 'Geen gekoppelde taken',
+  'Planning line ': 'Planningsregel ',
+  'No planning lines yet.': 'Nog geen planningsregels.',
+  'No active projects.': 'Geen actieve projecten.',
+  '+ Add the first line': '+ Eerste regel toevoegen',
+  'Bar selected — drag it to move, or drag an edge to change a date. Tap elsewhere to finish.': 'Balk geselecteerd — versleep hem, of versleep een rand om een datum te wijzigen. Tik ergens anders om te stoppen.',
+  'Move of ': 'Verplaatsing van ',
+  ' and following': ' en volgende',
+  'Zoom': 'Zoom',
+  'Timeline': 'Tijdlijn',
+  'Planning of': 'Planning van',
+  'Team': 'Team',
+  'What everyone is working on, over all projects. Set a person on a planning line, or assign a task, and it appears here.': 'Waar iedereen aan werkt, over alle projecten. Zet een persoon op een planningsregel of wijs een taak toe, dan verschijnt het hier.',
+  'Templates': 'Sjablonen',
+  'Templates…': 'Sjablonen…',
+  'Insert template…': 'Sjabloon invoegen…',
+  'Save this planning as template…': 'Deze planning opslaan als sjabloon…',
+  'When on, dragging a bar also moves every line that starts on or after it (in working days), with the dates of their tasks.': 'Als dit aan staat, verschuift het slepen van een balk ook elke regel die erop of erna start (in werkdagen), met de data van hun taken.',
+  ' Move following lines': ' Volgende regels meeschuiven',
+  '↶ Undo shift': '↶ Verschuiving ongedaan maken',
+  'Show lines': 'Regels tonen',
+  'With tasks': 'Met taken',
+  'Without tasks': 'Zonder taken',
+  'All active projects — expand a project to see its lines': 'Alle actieve projecten — klap een project uit om de regels te zien',
+  'No tasks': 'Geen taken',
+  'Tasks linked': 'Taken gekoppeld',
+  'All tasks done': 'Alle taken klaar',
+  '+ Planning line': '+ Planningsregel',
+  'Day': 'Dag',
+  'Week': 'Week',
+  'Month ': 'Maand ',
+  'Quarter': 'Kwartaal',
+  'Table': 'Tabel',
+  'Projects ': 'Projecten ',
+  'PLANNING LINE': 'PLANNINGSREGEL',
+
+  /* advanced */
+  'Structure': 'Structuur',
+  'Advanced': 'Geavanceerd',
+  'Choose a project in the bar at the top to use ': 'Kies bovenaan een project om dit te gebruiken: ',
+  'Reports': 'Rapportages',
+  'All time': 'Alle tijd',
+  'This month': 'Deze maand',
+  'Last month': 'Vorige maand',
+  'This quarter': 'Dit kwartaal',
+  'This year': 'Dit jaar',
+  'Custom…': 'Aangepast…',
+  'Report · ': 'Rapportage · ',
+  ' project(s)': ' project(en)',
+  ' · generated ': ' · gemaakt ',
+  'Export JSON': 'JSON exporteren',
+  'Print / PDF': 'Afdrukken / PDF',
+  'no hour budget': 'geen urenbudget',
+  'avg ': 'gem. ',
+  ' fixed · ': ' vast · ',
+  ' purch.': ' ink.',
+  'remaining ': 'resterend ',
+  'no cost budget': 'geen kostenbudget',
+  ' (all time, not limited to the period)': ' (alle tijd, niet beperkt tot de periode)',
+  'Budget use': 'Budgetverbruik',
+  ' (selected period vs. full budget)': ' (gekozen periode t.o.v. volledig budget)',
+  ' · task estimates ': ' · taakschattingen ',
+  'Costs: ': 'Kosten: ',
+  'Check your data: ': 'Controleer je gegevens: ',
+  '… and ': '… en ',
+  ' more.': ' meer.',
+  'Budget h': 'Budget u',
+  'Budget €': 'Budget €',
+  '% budget': '% budget',
+  'Hours and labour cost per role': 'Uren en arbeidskosten per rol',
+  'Hours per person': 'Uren per persoon',
+  'Fixed costs and purchases per category': 'Vaste kosten en inkopen per categorie',
+  'Lines': 'Regels',
+  'Per month': 'Per maand',
+  '(no date)': '(geen datum)',
+  'Per planning line (only lines with hours or costs booked)': 'Per planningsregel (alleen regels met geboekte uren of kosten)',
+  'Period ': 'Periode ',
+
+  /* settings */
+  'Demo data in memory — nothing is written to disk.': 'Voorbeeldgegevens in het geheugen — er wordt niets op schijf geschreven.',
+  'A folder on this computer. Every change is written to its Markdown files within a second.': 'Een map op deze computer. Elke wijziging wordt binnen een seconde in de Markdown-bestanden geschreven.',
+  'A folder opened read-only (this browser cannot write to disk). Download the changed files to keep your edits.': 'Een map die alleen gelezen kan worden (deze browser kan niet naar schijf schrijven). Download de gewijzigde bestanden om je wijzigingen te bewaren.',
+  'A server (tools/server.js or compatible). Changes are written through its API.': 'Een server (tools/server.js of vergelijkbaar). Wijzigingen worden via de API geschreven.',
+  'Your OneDrive, through Microsoft sign-in. Works on PC, tablet and phone; every change is saved within a second.': 'Je OneDrive, via Microsoft-login. Werkt op pc, tablet en telefoon; elke wijziging wordt binnen een seconde opgeslagen.',
+  'A GitHub repository. Works on PC, tablet and phone. Changes are saved a few seconds after you stop editing; every save is a version you can look back at on github.com.': 'Een GitHub-repository. Werkt op pc, tablet en telefoon. Wijzigingen worden een paar seconden na het stoppen met bewerken opgeslagen; elke opslag is een versie die je op github.com kunt terugzien.',
+  'Tip: open this app in Chrome or Edge to read and write a data folder on this computer directly.': 'Tip: open deze app in Chrome of Edge om een gegevensmap op deze computer direct te lezen en te schrijven.',
+  'Download all (.zip)': 'Alles downloaden (.zip)',
+  'Collection': 'Verzameling',
+  ' (selected collection)': ' (gekozen verzameling)',
+  'Import failed: ': 'Importeren mislukt: ',
+  'Import / export': 'Importeren / exporteren',
+  'CSV works per collection and uses the project selected in the top bar (': 'CSV werkt per verzameling en gebruikt het project dat bovenaan is gekozen (',
+  'none — exports all projects, imports need a "project" column': 'geen — exporteert alle projecten, importeren heeft een kolom "project" nodig',
+  '). JSON contains everything.': '). JSON bevat alles.',
+  'GitHub (phone, tablet and PC)': 'GitHub (telefoon, tablet en pc)',
+  ' (branch ': ' (branch ',
+  ', folder ': ', map ',
+  ' — in use now.': ' — nu in gebruik.',
+  ' — not in use right now.': ' — nu niet in gebruik.',
+  'Not connected on this device.': 'Niet gekoppeld op dit apparaat.',
+  'See the change history on github.com': 'Bekijk de wijzigingsgeschiedenis op github.com',
+  'Change connection / token': 'Koppeling / token wijzigen',
+  'Copy demo data to GitHub': 'Voorbeeldgegevens naar GitHub kopiëren',
+  'Application (client) ID': 'Applicatie-ID (client)',
+  'Client ID': 'Client-ID',
+  'Account type': 'Soort account',
+  'Personal and work/school accounts (common)': 'Persoonlijke en werk-/schoolaccounts (common)',
+  'Personal Microsoft accounts only (consumers)': 'Alleen persoonlijke Microsoft-accounts (consumers)',
+  'Work/school accounts only (organizations)': 'Alleen werk-/schoolaccounts (organizations)',
+  'OneDrive folder': 'OneDrive-map',
+  'OneDrive settings saved on this device.': 'OneDrive-instellingen op dit apparaat opgeslagen.',
+  'OneDrive (phone, tablet and PC)': 'OneDrive (telefoon, tablet en pc)',
+  'Normally these values come from config.js, so every device works without typing them. Values entered here override config.js on this device only. Step-by-step: docs/SETUP-ONEDRIVE.md.': 'Normaal komen deze waarden uit config.js, zodat elk apparaat werkt zonder ze in te typen. Waarden die je hier invult gaan alleen op dit apparaat voor op config.js. Stap voor stap: docs/SETUP-ONEDRIVE.md.',
+  'Folder in OneDrive': 'Map in OneDrive',
+  'Redirect URI to register: ': 'Te registreren redirect-URI: ',
+  'Sign-in only works when the app is opened over https (online) — not from a file on your computer.': 'Inloggen werkt alleen als de app via https (online) is geopend — niet vanuit een bestand op je computer.',
+  'Signed in as ': 'Ingelogd als ',
+  'Microsoft account': 'Microsoft-account',
+  'Not signed in.': 'Niet ingelogd.',
+  'Save settings': 'Instellingen opslaan',
+  'Open OneDrive data': 'OneDrive-gegevens openen',
+  'Copy demo data to OneDrive': 'Voorbeeldgegevens naar OneDrive kopiëren',
+  'Sign out': 'Uitloggen',
+  'No logo yet': 'Nog geen logo',
+  'Logo saved.': 'Logo opgeslagen.',
+  'Shown in the header of exported planning PDFs and survey reports.': 'Staat in de kop van geëxporteerde planning-PDF’s en rapporten.',
+  'Company details': 'Bedrijfsgegevens',
+  'Logo': 'Logo',
+  'Replace logo…': 'Logo vervangen…',
+  'Upload logo…': 'Logo uploaden…',
+  'Remove': 'Verwijderen',
+  'PNG or JPG. A wide logo on a white or transparent background works best.': 'PNG of JPG. Een breed logo op een witte of transparante achtergrond werkt het best.',
+  'Ready-made formats for exporting the planning. Make your own in Planning → Export PDF → “Save as preset”.': 'Kant-en-klare formaten voor het exporteren van de planning. Maak je eigen via Planning → PDF exporteren → “Opslaan als voorinstelling”.',
+  'Built-in': 'Ingebouwd',
+  'None yet.': 'Nog geen.',
+  'Collections (data types → Markdown files)': 'Verzamelingen (gegevenssoorten → Markdown-bestanden)',
+  'Scope': 'Bereik',
+  'File': 'Bestand',
+  'Fields': 'Velden',
+  'Modules (screens)': 'Modules (schermen)',
+  'Order': 'Volgorde',
+  'Needs project': 'Project nodig',
+  'Services (shared functions)': 'Services (gedeelde functies)',
+  'Service': 'Service',
+  'Functions': 'Functies',
+  'Adapters (import / export)': 'Adapters (import / export)',
+  'Console': 'Console',
+  'Open the browser console (F12) and try ': 'Open de browserconsole (F12) en probeer ',
+  ' or ': ' of ',
+  '. See docs/EXTENDING.md to add your own module.': '. Zie docs/EXTENDING.md om een eigen module toe te voegen.',
+  'Settings': 'Instellingen',
+  'Forms': 'Formulieren',
+  'Data & import': 'Gegevens & import',
+  'Extensions': 'Uitbreidingen',
+  'Shared across all projects': 'Gedeeld over alle projecten',
+  'Labour cost = hours × the hourly rate of the role. Rates in EUR, excl. VAT. Stored in settings/roles.md.': 'Arbeidskosten = uren × het uurtarief van de rol. Tarieven in EUR, excl. btw. Opgeslagen in settings/roles.md.',
+  'The default role is used when an hour entry has no role of its own. Stored in settings/people.md.': 'De standaardrol wordt gebruikt als een urenregel geen eigen rol heeft. Opgeslagen in settings/people.md.',
+  'Data': 'Gegevens',
+  'Language': 'Taal',
+
+  /* structure */
+  'Structure items': 'Structuuronderdelen',
+  'Deliverables of the project as a tree: "parent" empty = main item. Size in mm, mass in kg. Photos: paths separated by commas.': 'Leveringen van het project als boom: "parent" leeg = hoofdonderdeel. Maten in mm, massa in kg. Foto’s: paden gescheiden door komma’s.',
+  'Part of': 'Onderdeel van',
+  'Length (mm)': 'Lengte (mm)',
+  'Width (mm)': 'Breedte (mm)',
+  'Height (mm)': 'Hoogte (mm)',
+  'Mass (kg)': 'Massa (kg)',
+  '— main item —': '— hoofdonderdeel —',
+  'Remove photo': 'Foto verwijderen',
+  'Could not add the photo: ': 'Kon de foto niet toevoegen: ',
+  'Name *': 'Naam *',
+  'e.g. Prefab pump room, Firepack, Switch panel': 'bijv. Prefab pompkamer, Firepack, Schakelkast',
+  'Quantity': 'Aantal',
+  'Length': 'Lengte',
+  'Width': 'Breedte',
+  'Height': 'Hoogte',
+  'Mass': 'Massa',
+  'Leave the mass empty to use the total of the sub items.': 'Laat de massa leeg om het totaal van de subonderdelen te gebruiken.',
+  '+ Add photo': '+ Foto toevoegen',
+  'New sub item': 'Nieuw subonderdeel',
+  'New main item': 'Nieuw hoofdonderdeel',
+  'Add': 'Toevoegen',
+  'Give the item a name.': 'Geef het onderdeel een naam.',
+  'Remove ': 'Verwijderen: ',
+  'This also removes its ': 'Hiermee verwijder je ook de ',
+  ' sub item(s) and their photos.': ' subonderde(e)l(en) en hun foto’s.',
+  'The item and its photos are removed.': 'Het onderdeel en zijn foto’s worden verwijderd.',
+  'The deliverables of the project: main items and the parts inside them, with sizes, mass and photos.': 'De leveringen van het project: hoofdonderdelen en de delen daarin, met maten, massa en foto’s.',
+  'Main items and the parts inside them — sizes (L × W × H, mm), mass (kg) and photos. Used by the mails in Write.': 'Hoofdonderdelen en de delen daarin — maten (L × B × H, mm), massa (kg) en foto’s. Gebruikt door de mails in Schrijven.',
+  '+ Main item': '+ Hoofdonderdeel',
+  'No items yet. Add a main item, e.g. "Prefab pump room" or "Firepack", then add the parts inside it.': 'Nog geen onderdelen. Voeg een hoofdonderdeel toe, bijv. "Prefab pompkamer" of "Firepack", en daarna de delen daarin.',
+  'Main items': 'Hoofdonderdelen',
+  'Items in total': 'Onderdelen totaal',
+  'Total mass': 'Totale massa',
+  'of the main items': 'van de hoofdonderdelen',
+  'Expand': 'Uitklappen',
+  'Collapse': 'Inklappen',
+  'Total of the sub items': 'Totaal van de subonderdelen',
+  ' sub item': ' subonderdeel',
+  ' sub items': ' subonderdelen',
+  '+ Sub item': '+ Subonderdeel',
+
+  /* forms (surveys module) */
+  'Draft': 'Concept',
+  'Complete': 'Gereed',
+  ' form': ' formulier',
+  ' forms': ' formulieren',
+  'Edit forms': 'Formulieren bewerken',
+  'No forms filled in yet.': 'Nog geen formulieren ingevuld.',
+  'Site surveys, prefab pump room specifications, quality checklists and FAT reports. Fill them in on site or in the workshop, add photos, and export a PDF.': 'Opnames, specificaties voor prefab pompkamers, kwaliteitschecklists en FAT-rapporten. Vul ze in op locatie of in de werkplaats, voeg foto’s toe en exporteer een PDF.',
+  ' (form missing)': ' (formulier ontbreekt)',
+  ' not OK': ' niet OK',
+  'Form': 'Formulier',
+  '— choose a project —': '— kies een project —',
+  '+ New project…': '+ Nieuw project…',
+  'Object, e.g. Pump room Hospital North': 'Object, bijv. Pompkamer Ziekenhuis Noord',
+  'Object *': 'Object *',
+  'Forms belong to a project, so they appear next to its planning and costs. For a quotation, create a project with status “planned”.': 'Formulieren horen bij een project, zodat ze naast de planning en kosten staan. Maak voor een offerte een project met status “gepland”.',
+  'Fill in the object for the new project.': 'Vul het object in voor het nieuwe project.',
+  'The form “': 'Het formulier “',
+  '” no longer exists. Restore it in Settings → Forms; the answers are kept.': '” bestaat niet meer. Zet het terug in Instellingen → Formulieren; de antwoorden zijn bewaard.',
+  'Creating…': 'Maken…',
+  'This form and its ': 'Dit formulier en zijn ',
+  ' photo(s) will be deleted. On GitHub the history keeps a copy.': ' foto(’s) worden verwijderd. Op GitHub bewaart de geschiedenis een kopie.',
+  '‹ Forms': '‹ Formulieren',
+  '‹ Back to forms': '‹ Terug naar formulieren',
+  'Delete photo': 'Foto verwijderen',
+  'Form ': 'Formulier ',
+  ' not found.': ' niet gevonden.',
+  'Creating PDF': 'PDF maken',
+
+  /* tasks */
+  'Overdue': 'Te laat',
+  'Not on planning': 'Niet op de planning',
+  ' open, ': ' open, ',
+  'Filter by status': 'Filteren op status',
+  'Filter by assignee': 'Filteren op uitvoerder',
+  'No tasks match this filter.': 'Geen taken bij dit filter.',
+  'No tasks match. Select a project to add tasks.': 'Geen taken gevonden. Kies een project om taken toe te voegen.',
+  'Logged h': 'Geschreven u',
+
+  /* write */
+  'Mail templates': 'Mailsjablonen',
+  'Variant': 'Variant',
+  'Edit mail template': 'Mailsjabloon bewerken',
+  'New mail template': 'Nieuw mailsjabloon',
+  'To (addresses, separated by commas)': 'Aan (adressen, gescheiden door komma’s)',
+  'Give the template a name.': 'Geef het sjabloon een naam.',
+  'Write': 'Schrijven',
+  'Ready-made mails with the project data filled in.': 'Kant-en-klare mails met de projectgegevens ingevuld.',
+  'Ready-made mails with the project data filled in. Check the text, then copy it or open it in your mail app.': 'Kant-en-klare mails met de projectgegevens ingevuld. Controleer de tekst en kopieer hem of open hem in je mailprogramma.',
+  '← Back to writing': '← Terug naar schrijven',
+  'Edit templates': 'Sjablonen bewerken',
+  '+ New template': '+ Nieuw sjabloon',
+  'No templates yet.': 'Nog geen sjablonen.',
+  'No mail templates yet. Use "Edit templates" to add one.': 'Nog geen mailsjablonen. Gebruik "Sjablonen bewerken" om er een toe te voegen.',
+  'Project address (edit the project)': 'Projectadres (bewerk het project)',
+  'Delivery date': 'Leverdatum',
+  'Items (Structure tab)': 'Onderdelen (tab Structuur)',
+  'Mass (Structure)': 'Massa (Structuur)',
+  'Size (Structure)': 'Afmetingen (Structuur)',
+  'Transporter': 'Transporteur',
+  'Project name': 'Projectnaam',
+  'Pickup address': 'Ophaaladres',
+  'Still empty: ': 'Nog leeg: ',
+  'Prefab': 'Prefab',
+  'Yes': 'Ja',
+  'No': 'Nee',
+  'Other…': 'Anders…',
+  'No items yet. Add the deliverables in ': 'Nog geen onderdelen. Voeg de leveringen toe in ',
+  'Tick all': 'Alles aanvinken',
+  'Main items only': 'Alleen hoofdonderdelen',
+  'Text copied.': 'Tekst gekopieerd.',
+  'Select the text and copy it.': 'Selecteer de tekst en kopieer hem.',
+  'Mail': 'Mail',
+  'Mass and size of': 'Massa en afmetingen van',
+  'Delivery address: ': 'Afleveradres: ',
+  'not filled in — add it under Edit project.': 'niet ingevuld — voeg het toe via Project bewerken.',
+  'Items in the mail': 'Onderdelen in de mail',
+  'Copy text': 'Tekst kopiëren',
+  'Open in mail app': 'Openen in mailprogramma',
+  'Reset text': 'Tekst herstellen',
+  'Changes in the text are not saved; changing an option rebuilds the text. To change the standard text, use "Edit templates".': 'Wijzigingen in de tekst worden niet opgeslagen; een optie wijzigen bouwt de tekst opnieuw op. Gebruik "Sjablonen bewerken" om de standaardtekst te wijzigen.',
+  'Options ': 'Opties ',
+
+  /* saving status */
+  'Saving soon…': 'Zo meteen opslaan…',
+  'Not saved — see banner': 'Niet opgeslagen — zie melding',
+  'Saving…': 'Opslaan…',
+  'Token refused — not saved': 'Token geweigerd — niet opgeslagen',
+  'Signed out — sign in to save': 'Uitgelogd — log in om op te slaan',
+  'Offline — will save when connected': 'Offline — wordt opgeslagen zodra er verbinding is',
+  'Save failed: ': 'Opslaan mislukt: ',
+  'Conflict — see banner': 'Conflict — zie melding',
+  'Changes you made earlier (not saved at the time) are now saved.': 'Wijzigingen die je eerder maakte (toen niet opgeslagen) zijn nu opgeslagen.',
+  'No data': 'Geen gegevens',
+  'Demo data — changes are not saved': 'Voorbeeldgegevens — wijzigingen worden niet opgeslagen',
+  'Saved to OneDrive': 'Opgeslagen in OneDrive',
+  'Saved to GitHub': 'Opgeslagen in GitHub',
+  ' changed file(s) — download to keep': ' gewijzigd(e) bestand(en) — download om te bewaren',
+  'Read-only folder': 'Map alleen-lezen',
+  'All changes saved': 'Alle wijzigingen opgeslagen',
+  'No connection to GitHub.': 'Geen verbinding met GitHub.',
+  'GitHub rate limit reached — try again in a few minutes.': 'GitHub-limiet bereikt — probeer het over een paar minuten opnieuw.',
+  'GitHub refused the token (expired or wrong). Open Settings → Data to enter a new one.': 'GitHub weigert het token (verlopen of onjuist). Open Instellingen → Gegevens om een nieuw token in te vullen.',
+  'Repository or branch not found — check Settings → Data.': 'Repository of branch niet gevonden — controleer Instellingen → Gegevens.',
+  'The token may not write to this repository (needs "Contents: Read and write").': 'Het token mag niet naar deze repository schrijven (heeft "Contents: Read and write" nodig).',
+  'The token can read but not write. Give it "Contents: Read and write" permission.': 'Het token kan lezen maar niet schrijven. Geef het de rechten "Contents: Read and write".',
+  ' has no role (and the person has no default role).': ' heeft geen rol (en de persoon heeft geen standaardrol).',
+  '(none)': '(geen)',
+  'Unknown': 'Onbekend',
+  'Uncategorised': 'Zonder categorie',
+  'Costs not linked to an estimate line': 'Kosten niet gekoppeld aan een calculatieregel',
+  'no role': 'geen rol',
+  'Projects are not deleted from the app; set status to "archived" or remove the folder.': 'Projecten worden niet in de app verwijderd; zet de status op "gearchiveerd" of verwijder de map.'
+});
+
+  </script>
+  <script>/* js/i18n/nl-4.js */
+/* PM Tool — Dutch texts (part 4: texts built from pieces, numbers with units) */
+PM.i18n.add('nl', {
+  'Export everything as JSON': 'Alles exporteren als JSON',
+  'Import / merge JSON': 'JSON importeren / samenvoegen',
+  'Export CSV': 'CSV exporteren',
+  'Import CSV': 'CSV importeren',
+  'Write a comment or note… (Ctrl+Enter to add)': 'Schrijf een opmerking of notitie… (Ctrl+Enter om toe te voegen)',
+  'Project notes': 'Projectnotities',
+  'No linked tasks': 'Geen gekoppelde taken',
+  'Recipients': 'Ontvangers',
+  'Export CSV (': 'CSV exporteren (',
+  'Import CSV (': 'CSV importeren (',
+  'change': 'wijzigen',
+  'Cc': 'Cc',
+  'Bcc': 'Bcc'
+});
+(function () {
+  const P = (re, fn) => PM.i18n.pattern('nl', re, fn);
+  const U = (re, rep) => PM.i18n.unit('nl', re, rep);
+  const VERB = { Edit: 'bewerken', Collapse: 'inklappen', Expand: 'uitklappen', Delete: 'verwijderen', Remove: 'verwijderen', Hide: 'verbergen' };
+  P(/^(Edit|Collapse|Expand|Delete|Remove|Hide) (.+)$/, (m, v, x) => x + ' ' + VERB[v]);
+  P(/^Hours:? (.+)$/, (m, x) => 'Uren' + (m[5] === ':' ? ': ' : ' ') + x);
+  P(/^Costs: (.+)$/, (m, x) => 'Kosten: ' + x);
+  P(/^Cost (.+)$/, (m, x) => 'Kosten ' + x);
+  P(/^Progress (\d+%)$/, (m, x) => 'Voortgang ' + x);
+  P(/^(.+) labour$/, (m, x) => x + ' arbeid');
+  P(/^(.+) \(labour\)$/, (m, x) => x + ' (arbeid)');
+  P(/^(.+) \(rate\)$/, (m, x) => x + ' (tarief)');
+  P(/^Page (\d+) of (\d+)(.*)$/, (m, a, b, rest) => 'Pagina ' + a + ' van ' + b + rest.replace('landscape', 'liggend').replace('portrait', 'staand'));
+  P(/^Choose a project in the bar at the top to use (.+)\.$/, (m, x) => 'Kies bovenaan een project om ' + x + ' te gebruiken.');
+  P(/^Planning line (.+), (.+) to (.+)$/, (m, a, b, c) => 'Planningsregel ' + a + ', ' + b + ' tot ' + c);
+
+  const n = '(\\d[\\d.,]*)';
+  const W = (en, nl) => U(new RegExp('(^|[^A-Za-z0-9])' + n + ' ' + en + '(?![A-Za-z])', 'g'), '$1$2 ' + nl);
+  W('of ' + n, 'van $3');
+  W('line\\(s\\)', 'regel(s)'); W('lines', 'regels'); W('line', 'regel');
+  W('item\\(s\\)', 'post(en)'); W('items', 'onderdelen'); W('item', 'onderdeel');
+  W('forms', 'formulieren'); W('form', 'formulier');
+  W('weeks', 'weken'); W('week', 'week'); W('days', 'dagen'); W('day', 'dag');
+  W('tasks', 'taken'); W('task', 'taak');
+  W('hours', 'uur'); W('h', 'u');
+  W('done', 'klaar'); W('overdue', 'te laat');
+  W('open, ' + n + ' done', 'open, $3 klaar');
+  W('photos', 'foto’s'); W('photo', 'foto');
+  W('files', 'bestanden'); W('file', 'bestand');
+  W('rows', 'regels'); W('row', 'regel');
+  W('people', 'personen'); W('questions', 'vragen'); W('sections', 'hoofdstukken');
+  W('projects', 'projecten'); W('project\\(s\\)', 'project(en)');
+  W('chapters', 'hoofdstukken'); W('pages', 'pagina’s');
+  U(/(^|[^A-Za-z])(\d+) \/ (\d+) done(?![A-Za-z])/g, '$1$2 / $3 klaar');
+  U(/(\d+%) done(?![A-Za-z])/g, '$1 klaar');
+  U(/(€ ?[\d.,]+) of (€)/g, '$1 van $2');
+  P(/^of (\d.*)$/, (m, x) => 'van ' + x);
+})();
+
+/* recipients (Write) and the project summary */
+PM.i18n.add('nl', {
+  'Recipients…': 'Ontvangers…',
+  'Recipients · ': 'Ontvangers · ',
+  'Save recipients for this mail': 'Ontvangers voor deze mail opslaan',
+  'Recipients saved for “': 'Ontvangers opgeslagen voor “',
+  'In the mail': 'In de mail',
+  'No people with an e-mail address yet. Add them in Settings → People.': 'Nog geen medewerkers met een e-mailadres. Voeg ze toe in Instellingen → Medewerkers.',
+  'Other addresses in To (separated by commas)': 'Andere adressen in Aan (gescheiden door komma’s)',
+  'Other addresses in Cc': 'Andere adressen in Cc',
+  '“Save for this mail” stores the recipients with the template “': '“Opslaan voor deze mail” bewaart de ontvangers bij het sjabloon “',
+  '”, so they are filled in every time — for all projects.': '”, zodat ze elke keer worden ingevuld — voor alle projecten.',
+  'Use once': 'Eenmalig gebruiken',
+  'Save for this mail': 'Opslaan voor deze mail',
+  'Cc (addresses, separated by commas)': 'Cc (adressen, gescheiden door komma’s)',
+  'e.g. planning@transporter.nl': 'bijv. planning@transporteur.nl',
+
+  'Summary': 'Overzicht',
+  'Project summary': 'Projectoverzicht',
+  'One PDF with the whole project, in chapters you choose.': 'Eén PDF met het hele project, in hoofdstukken die je zelf kiest.',
+  'One PDF with the whole project. Tick the chapters and parts you want; chapters are numbered in the order they appear.': 'Eén PDF met het hele project. Vink de hoofdstukken en onderdelen aan die je wilt; de hoofdstukken worden genummerd in de volgorde waarin ze staan.',
+  'Project details': 'Projectgegevens',
+  'Timeline chart': 'Tijdlijn (balkenplanning)',
+  'Open tasks': 'Open taken',
+  'Finished tasks too': 'Ook afgeronde taken',
+  'Financial': 'Financieel',
+  'Overview: offer price, revenue and margin': 'Overzicht: aanneemsom, omzet en marge',
+  'Estimate lines': 'Calculatieregels',
+  'Actual costs (purchases and fixed costs)': 'Werkelijke kosten (inkopen en vaste kosten)',
+  'Hours per role and person': 'Uren per rol en persoon',
+  'Deliverables': 'Leveringen',
+  'Items with size and mass': 'Onderdelen met afmetingen en massa',
+  'Photos of the items': 'Foto’s van de onderdelen',
+  ' — no items in Structure yet': ' — nog geen onderdelen in Structuur',
+  ' — every form you tick becomes its own chapter, in the language of the form': ' — elk aangevinkt formulier wordt een eigen hoofdstuk, in de taal van het formulier',
+  'No forms in this project.': 'Geen formulieren in dit project.',
+  'Export': 'Exporteren',
+  'Language of the PDF': 'Taal van de PDF',
+  'Headings, labels, dates and numbers are in this language. Your own texts (titles, notes, comments) stay as you wrote them, and forms keep their own language.': 'Koppen, labels, datums en getallen zijn in deze taal. Je eigen teksten (titels, notities, opmerkingen) blijven zoals je ze schreef, en formulieren houden hun eigen taal.',
+  ' Cover page with table of contents': ' Voorblad met inhoudsopgave',
+  ' + cover page with contents': ' + voorblad met inhoudsopgave',
+  'chapter': 'hoofdstuk',
+  'chapters': 'hoofdstukken',
+  'Contains financial information (costs and margins) — meant for internal use.': 'Bevat financiële informatie (kosten en marges) — bedoeld voor intern gebruik.',
+  'Tick at least one chapter.': 'Vink minstens één hoofdstuk aan.',
+  'contains financial information': 'bevat financiële informatie',
+  'Contents': 'Inhoud',
+  'Timeline': 'Tijdlijn',
+  'Planning progress': 'Voortgang planning',
+  'overdue': 'te laat',
+  'Amounts in EUR, excluding VAT. Estimate and costs are cost prices.': 'Bedragen in EUR, exclusief btw. Calculatie en kosten zijn kostprijzen.',
+  'of estimate': 'van de calculatie',
+  'labour': 'arbeid',
+  'approved and invoiced': 'goedgekeurd en gefactureerd',
+  'Hours per role': 'Uren per rol',
+  'Size L × W × H': 'Afmetingen L × B × H',
+  '* = total of the sub items.': '* = totaal van de subonderdelen.',
+  'Nothing to show.': 'Niets te tonen.',
+  'of': 'van',
+  'h': 'u',
+  'Additional work ': 'Meerwerk ',
+  'Labour': 'Arbeid',
+  'Not in estimate': 'Niet in calculatie',
+  'Costs not linked to an estimate line': 'Kosten niet gekoppeld aan een calculatieregel'
+});
 
   </script>
   <script>/* js/core/registry.js */
@@ -3405,7 +4986,13 @@ PM.pdf = (function () {
     }
     return out;
   }
-  function textWidth(str, size, bold) {
+  /* PDF texts follow the export language (see core/i18n.js) */
+  /* PM.pdf.raw(text) marks your own text (titles, notes…): it is never translated */
+  const isRaw = s => s instanceof String;
+  const raw = s => (isRaw(s) ? s : new String(s == null ? '' : s));   // eslint-disable-line no-new-wrappers
+  const tr = s => (isRaw(s) ? String(s) : PM.i18n && typeof s === 'string' ? PM.i18n.t(s, PM.i18n.pdfLang()) : s);
+  function textWidth(str, size, bold) { return measure(String(tr(str == null ? '' : str)), size, bold); }
+  function measure(str, size, bold) {
     const w = bold ? WIDTHS.bold : WIDTHS.normal;
     const b = toBytes(str);
     let sum = 0;
@@ -3414,30 +5001,35 @@ PM.pdf = (function () {
   }
   /* Shorten with an ellipsis to fit maxW (mm) */
   function fit(str, maxW, size, bold) {
-    str = String(str == null ? '' : str);
-    if (textWidth(str, size, bold) <= maxW) return str;
+    const r = isRaw(str);
+    const out = fitPlain(String(tr(str == null ? '' : str)), maxW, size, bold);
+    return r ? raw(out) : out;
+  }
+  function fitPlain(str, maxW, size, bold) {
+    if (measure(str, size, bold) <= maxW) return str;
     let lo = 0, hi = str.length;
-    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (textWidth(str.slice(0, mid) + '\u2026', size, bold) <= maxW) lo = mid; else hi = mid - 1; }
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (measure(str.slice(0, mid) + '\u2026', size, bold) <= maxW) lo = mid; else hi = mid - 1; }
     return lo ? str.slice(0, lo).replace(/\s+$/, '') + '\u2026' : '';
   }
   /* Word-wrap into lines that fit maxW (mm); respects line breaks */
   function wrap(str, maxW, size, bold) {
     const lines = [];
-    String(str == null ? '' : str).split(/\r?\n/).forEach(par => {
+    const r = isRaw(str);
+    String(tr(str == null ? '' : str)).split(/\r?\n/).forEach(par => {
       const words = par.split(/\s+/).filter(Boolean);
       if (!words.length) { lines.push(''); return; }
       let cur = '';
       words.forEach(wd => {
         const t = cur ? cur + ' ' + wd : wd;
-        if (textWidth(t, size, bold) <= maxW) cur = t;
+        if (measure(t, size, bold) <= maxW) cur = t;
         else {
           if (cur) lines.push(cur);
-          cur = textWidth(wd, size, bold) <= maxW ? wd : fit(wd, maxW, size, bold);
+          cur = measure(wd, size, bold) <= maxW ? wd : fitPlain(wd, maxW, size, bold);
         }
       });
       lines.push(cur);
     });
-    return lines;
+    return r ? lines.map(raw) : lines;
   }
 
   function rgb(hex) {
@@ -3497,6 +5089,7 @@ PM.pdf = (function () {
         circle(cx, cy, r, o) { this.rect(cx - r, cy - r, 2 * r, 2 * r, Object.assign({}, o, { r })); },
         text(str, x, y, o) {
           o = o || {};
+          str = tr(str);
           const size = o.size || 9;
           const s = toBytes(str);
           if (!s) return;
@@ -3584,6 +5177,7 @@ PM.pdf = (function () {
       circle(cx, cy, r, o) { o = o || {}; apply(o); ctx.beginPath(); ctx.arc(cx * s, cy * s, r * s, 0, Math.PI * 2); paint(o); },
       text(str, x, y, o) {
         o = o || {};
+        str = tr(str);
         const size = (o.size || 9) / PT;           // pt -> mm
         ctx.font = (o.bold ? 'bold ' : '') + (size * s) + 'px Helvetica, Arial, sans-serif';
         ctx.fillStyle = o.color || '#000';
@@ -3627,7 +5221,7 @@ PM.pdf = (function () {
     return 'downloaded';
   }
 
-  return { create, canvasPage, loadImage, deliver, textWidth, fit, wrap, toBytes, SIZES, PT };
+  return { create, canvasPage, loadImage, deliver, textWidth, fit, wrap, raw, toBytes, SIZES, PT };
 })();
 
   </script>
@@ -4044,7 +5638,7 @@ PM.app = (function () {
   function renderProjectSelect() {
     const pid = route.params.project || '';
     const p = pid ? PM.store.project(pid) : null;
-    projSel.btnText.textContent = p ? projLabel(p) : 'All projects';
+    projSel.btnText.textContent = p ? projLabel(p) : PM.i18n.t('All projects');
     projSel.btn.title = p ? projLabel(p) : 'All projects';
     if (pick.open) renderPickList();
   }
@@ -4066,7 +5660,7 @@ PM.app = (function () {
         const i = pick.items.length;
         pick.items.push(p);
         list.appendChild(h('div', { class: 'pp-opt' + (p.id === pid ? ' current' : ''), role: 'option', 'data-i': i, 'aria-selected': String(p.id === pid), id: 'pp-opt-' + i },
-          h('span', { class: 'pp-id' }, p.id), h('span', { class: 'pp-name' }, p.name), p.client ? h('span', { class: 'pp-client' }, p.client) : null));
+          h('span', { class: 'pp-id' }, p.id), h('span', { class: 'pp-name', translate: 'no' }, p.name), p.client ? h('span', { class: 'pp-client', translate: 'no' }, p.client) : null));
       });
     });
     if (!pick.items.length) list.appendChild(h('div', { class: 'pp-none muted small' }, 'No project matches “' + pick.q + '”.'));
@@ -4086,7 +5680,7 @@ PM.app = (function () {
     renderPickList();
     const cur = pick.items.findIndex(p => p.id === (route.params.project || ''));
     if (cur >= 0) { pick.active = cur; markActive(); }
-    setTimeout(() => projSel.input.focus(), 0);
+    projSel.input.focus();
   }
   function closePicker(focusBtn) {
     pick.open = false;
@@ -4101,7 +5695,7 @@ PM.app = (function () {
     if (p.id !== (route.params.project || '')) setProject(p.id);
   }
   function buildPicker() {
-    const btnText = h('span', { class: 'pp-btn-text' });
+    const btnText = h('span', { class: 'pp-btn-text', translate: 'no' });
     const btn = h('button', { type: 'button', class: 'pp-btn', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': 'Project', onclick: () => (pick.open ? closePicker(true) : openPicker()) }, btnText, h('span', { class: 'pp-caret', 'aria-hidden': 'true' }, '▾'));
     const input = h('input', { type: 'search', class: 'pp-search', placeholder: 'Search number, object or client…', 'aria-label': 'Search projects', autocomplete: 'off', role: 'combobox', 'aria-controls': 'pp-list', 'aria-expanded': 'true' });
     const list = h('div', { class: 'pp-list', id: 'pp-list', role: 'listbox' });
@@ -4433,8 +6027,16 @@ PM.app = (function () {
     setTimeout(() => confirmInp.focus(), 50);
   }
 
+  /* English / Nederlands switch (remembered on this device) */
+  function langSwitch() {
+    return h('div', { class: 'seg lang-switch', role: 'radiogroup', 'aria-label': 'Language', translate: 'no' },
+      [['en', 'English'], ['nl', 'Nederlands']].map(([k, t]) => h('button', { type: 'button', role: 'radio', 'aria-checked': String(PM.i18n.lang === k), class: PM.i18n.lang === k ? 'on' : '',
+        onclick: () => { PM.i18n.set(k); render(); } }, t)));
+  }
+
   /* ---------- boot ---------- */
   async function boot() {
+    PM.i18n.start();
     const root = document.getElementById('app');
     navEl = h('nav', { class: 'nav', 'aria-label': 'Main' });
     projSel = buildPicker();
@@ -4446,11 +6048,12 @@ PM.app = (function () {
     root.appendChild(h('aside', { class: 'sidebar' },
       h('div', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': 'true' }), h('span', null, 'Project Manager')),
       navEl,
-      h('div', { class: 'side-foot' }, h('div', { class: 'muted small' }, 'Data source'), h('div', { id: 'source-name', class: 'small' }, '—'))));
+      h('div', { class: 'side-foot' }, h('div', { class: 'muted small' }, 'Data source'), h('div', { id: 'source-name', class: 'small' }, '—'), h('div', { class: 'side-lang' }, langSwitch()))));
     root.appendChild(h('div', { class: 'main', id: 'main' },
       h('header', { class: 'topbar' }, projSel.el, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
       banner, viewEl));
     // table toolbars (search + Add) stick just below the top bar; keep that offset right when the bar changes height
+    PM.events.on('lang', () => { const box = root.querySelector('.side-lang'); if (box) { box.innerHTML = ''; box.appendChild(langSwitch()); } renderProjectSelect(); });
     const topbar = root.querySelector('.topbar');
     const setTop = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
     setTop();
@@ -4562,7 +6165,7 @@ PM.app = (function () {
 
   function isTouch() { return window.matchMedia && window.matchMedia('(pointer: coarse)').matches; }
 
-  return { boot, render, navigate, setProject, openFolder, saveToFolder, downloadZip, newProjectDialog, editProjectDialog, deleteProjectDialog, useBackend, connectOneDrive, copyToOneDrive, connectGitHub, copyDemoTo, isTouch, get route() { return route; } };
+  return { boot, render, langSwitch, navigate, setProject, openFolder, saveToFolder, downloadZip, newProjectDialog, editProjectDialog, deleteProjectDialog, useBackend, connectOneDrive, copyToOneDrive, connectGitHub, copyDemoTo, isTouch, get route() { return route; } };
 })();
 
   </script>
@@ -4717,7 +6320,7 @@ function commentsSection(p, ctx) {
   const items = PM.store.list('comments', { project: p.id }).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
   items.forEach(c => {
     const author = PM.store.find('people', c.author);
-    const body = h('div', { class: 'cm-text' }, c.text);
+    const body = h('div', { class: 'cm-text', translate: 'no' }, c.text);
     const item = h('div', { class: 'cm-item' },
       h('div', { class: 'cm-head' },
         h('span', { class: 'cm-date' }, fmt(c.date)),
@@ -5087,7 +6690,7 @@ function commentsSection(p, ctx) {
       const proj = PM.store.project(l.project);
       const label = h('div', { class: 'g-label' + (r.indent ? ' indent' : '') },
         h('span', { class: 'dot ' + (ls.linked ? 'linked' : '') + (ls.complete ? ' done' : ''), style: ls.linked ? { '--pc': proj.color || '#2f6fed' } : null }),
-        h('button', { class: 'g-title link', onclick: () => openLineDialog(l), title: 'Edit ' + l.id }, l.title || l.id),
+        h('button', { class: 'g-title link', translate: 'no', onclick: () => openLineDialog(l), title: 'Edit ' + l.id }, l.title || l.id),
         h('span', { class: 'muted small nowrap' }, ls.linked ? ls.done + '/' + ls.tasks.length + ' ✓' : ''),
         ctx.project ? moveBtns('Move up', 'Move down', canMoveLine(l, -1), canMoveLine(l, 1), () => moveLine(l, -1), () => moveLine(l, 1)) : null);
       const track = h('div', { class: 'g-track', style: trackStyle });
@@ -5106,13 +6709,13 @@ function commentsSection(p, ctx) {
           l.milestone ? null : h('div', { class: 'bar-prog', style: { width: Math.min(100, U.num(l.progress)) + '%' } }),
           l.milestone ? null : h('div', { class: 'handle l' }),
           l.milestone ? null : h('div', { class: 'handle r' }),
-          h('span', { class: 'bar-text' + (width < 120 || l.milestone ? ' outside' : '') }, text));
+          h('span', { class: 'bar-text' + (width < 120 || l.milestone ? ' outside' : ''), translate: 'no' }, text));
         bar.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLineDialog(l); } });
         attachDrag(bar, l, px, lEnd);
         track.appendChild(bar);
         const pers = l.person ? PM.store.find('people', l.person) : null;
         const whoTxt = [pers ? pers.name : '', l.who || ''].filter(Boolean).join(' · ');
-        if (whoTxt && !(width < 120 || l.milestone)) track.appendChild(h('span', { class: 'bar-who', style: { left: (left + width + 6) + 'px' } }, whoTxt));
+        if (whoTxt && !(width < 120 || l.milestone)) track.appendChild(h('span', { class: 'bar-who', translate: 'no', style: { left: (left + width + 6) + 'px' } }, whoTxt));
         else if (whoTxt) bar.title += '\n' + whoTxt;
       }
       body.appendChild(h('div', { class: 'g-row' }, label, track));
@@ -8687,13 +10290,16 @@ PM.surveyPdf = (function () {
     return { Lmm, Wmm, colorOf, labelOf };
   }
 
-  async function render(rec) {
+  /* A form PDF stays in the language of the form, whatever the app language is.
+   * opts.doc: draw into that document (project summary); its pages are returned and no footers are drawn. */
+  function render(rec, opts) { return PM.i18n.withPdfLang('en', () => renderForm(rec, opts || {})); }
+  async function renderForm(rec, opts) {
     const t = S.get(rec.template);
     const L = TX[t.lang] || TX.en, F = S.lang(t);
     const v = rec.values || {};
     const co = PM.company();
     const project = PM.store.project(rec.project);
-    const doc = PM.pdf.create({ size: 'A4', orientation: 'portrait', title: t.name });
+    const doc = opts.doc || PM.pdf.create({ size: 'A4', orientation: 'portrait', title: t.name });
     const W = doc.width, H = doc.height, CW = W - 2 * M, BOTTOM = H - M - 8;
     let logo = null;
     if (co.logo) { try { const u = await PM.files.url(co.logo); if (u) logo = await PM.pdf.loadImage(u, 900); } catch (e) { /* no logo */ } }
@@ -9070,6 +10676,7 @@ PM.surveyPdf = (function () {
       y += bh + 4;
     }
 
+    if (opts.doc) return { pages };
     // ---- footers (page count known now) ----
     pages.forEach((p, i) => {
       const fy = H - M + 4;
@@ -9150,7 +10757,7 @@ PM.surveyPdf = (function () {
     const drawTpl = () => {
       tplBox.innerHTML = '';
       S.list().filter(t => !t.retired || t.id === tpl).forEach(t => tplBox.appendChild(h('button', { type: 'button', role: 'radio', 'aria-checked': String(t.id === tpl), class: 'tpl-option' + (t.id === tpl ? ' on' : ''), onclick: () => { tpl = t.id; drawTpl(); } },
-        h('strong', null, t.name), h('span', { class: 'small muted' }, t.description))));
+        h('strong', { translate: 'no' }, t.name), h('span', { class: 'small muted', translate: 'no' }, t.description))));
     };
     drawTpl();
     const projects = PM.store.projects().filter(p => p.status !== 'archived');
@@ -9257,10 +10864,10 @@ PM.surveyPdf = (function () {
     el.appendChild(h('div', { class: 'sv-head' },
       h('a', { class: 'back-link', href: '#/surveys?project=' + rec.project }, '‹ Forms'),
       h('div', { class: 'sv-title-row' },
-        h('div', { class: 'grow' }, h('h1', null, t.name), h('p', { class: 'muted' }, rec.id + ' · ' + (p ? p.name : rec.project))),
+        h('div', { class: 'grow' }, h('h1', { translate: 'no' }, t.name), h('p', { class: 'muted' }, rec.id + ' · ' + (p ? p.name : rec.project))),
         h('div', { class: 'sv-actions' }, statusSel, pdfBtn, delBtn)),
       h('div', { class: 'sv-progress' }, progMeter, progEl),
-      h('nav', { class: 'sv-nav', 'aria-label': 'Sections' }, secs.map(sec => h('a', { href: '#', onclick: e => { e.preventDefault(); const tgt = document.getElementById('sv-sec-' + sec.id); if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, sec.title)))));
+      h('nav', { class: 'sv-nav', 'aria-label': 'Sections', translate: t.lang === 'nl' ? null : 'no' }, secs.map(sec => h('a', { href: '#', onclick: e => { e.preventDefault(); const tgt = document.getElementById('sv-sec-' + sec.id); if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, sec.title)))));
 
     // sections
     secs.forEach(sec => {
@@ -9286,7 +10893,7 @@ PM.surveyPdf = (function () {
         content = h('div', { class: 'sv-with-diagram' }, body, h('figure', { class: 'sv-figure' }, canvas, legend));
         requestAnimationFrame(draw);
       }
-      el.appendChild(h('section', { class: 'card sv-section' + (sec.n ? ' repeat' : ''), id: 'sv-sec-' + sec.id },
+      el.appendChild(h('section', { class: 'card sv-section' + (sec.n ? ' repeat' : ''), id: 'sv-sec-' + sec.id, translate: t.lang === 'nl' ? null : 'no', lang: t.lang || null },
         h('div', { class: 'card-head' }, h('h2', null, sec.title)),
         sec.sec.note ? h('p', { class: 'small muted sv-note' }, sec.sec.note) : null,
         content));
@@ -9784,7 +11391,7 @@ PM.formsEditor = (function () {
       const n = S.fieldsOf(t).length;
       const used = PM.store.list('surveys', r => r.template === t.id).length;
       return h('div', { class: 'card form-card' },
-        h('div', { class: 'form-card-head' }, h('strong', null, t.name), badge(t)),
+        h('div', { class: 'form-card-head' }, h('strong', { translate: 'no' }, t.name), badge(t)),
         h('div', { class: 'muted small' }, [t.id + '.md', (t.lang || 'en').toUpperCase(), t.sections.length + ' sections', n + ' questions', used + ' filled in'].join(' · ')),
         t.description ? h('p', { class: 'small form-card-desc' }, t.description) : null,
         h('div', { class: 'btn-row' },
@@ -11060,13 +12667,13 @@ PM.costsPdf = (function () {
           h('div', { class: 'st-row' },
             n.children.length ? h('button', { type: 'button', class: 'icon-btn st-tog', 'aria-label': collapsed ? 'Expand' : 'Collapse', onclick: () => { if (collapsed) open.delete(it.id); else open.add(it.id); ctx.rerender(); } }, collapsed ? '▸' : '▾') : h('span', { class: 'st-tog' }),
             h('div', { class: 'st-main' },
-              h('button', { type: 'button', class: 'st-name', onclick: () => editDialog(ctx, it) }, (q !== 1 ? q + '× ' : '') + it.name),
+              h('button', { type: 'button', class: 'st-name', translate: 'no', onclick: () => editDialog(ctx, it) }, (q !== 1 ? q + '× ' : '') + it.name),
               h('span', { class: 'st-id muted small' }, it.id),
               h('div', { class: 'st-props small' },
                 sizeText(it) ? h('span', { class: 'st-chip' }, '⬚ ' + sizeText(it)) : null,
                 m ? h('span', { class: 'st-chip' + (massIsSum(it) ? ' sum' : ''), title: massIsSum(it) ? 'Total of the sub items' : '' }, (massIsSum(it) ? 'Σ ' : '') + kg(m)) : null,
                 n.children.length ? h('span', { class: 'muted' }, n.children.length + ' sub item' + (n.children.length > 1 ? 's' : '')) : null,
-                it.note ? h('span', { class: 'muted st-note' }, it.note) : null),
+                it.note ? h('span', { class: 'muted st-note', translate: 'no' }, it.note) : null),
               ph.length ? h('div', { class: 'st-thumbs' }, ph.slice(0, 6).map(rel => h('a', { href: '#', onclick: async e => { e.preventDefault(); const u = await PM.files.url(projectPath(pid, rel)); if (u) window.open(u, '_blank'); } }, PM.files.img(projectPath(pid, rel), { alt: it.name })))) : null),
             h('div', { class: 'st-acts' },
               h('button', { type: 'button', class: 'btn small', onclick: () => editDialog(ctx, null, it.id) }, '+ Sub item'),
@@ -11104,6 +12711,7 @@ PM.costsPdf = (function () {
       { key: 'name', label: 'Name', type: 'string', width: 150, required: true, suggest: true },
       { key: 'variant', label: 'Variant', type: 'enum', options: ['all', 'prefab', 'no prefab'], default: 'all', width: 110 },
       { key: 'to', label: 'To', type: 'string', width: 200 },
+      { key: 'cc', label: 'Cc', type: 'string', width: 160 },
       { key: 'subject', label: 'Subject', type: 'string' },
       { key: 'body', label: 'Text', type: 'text', multiline: true, rows: 14 }
     ],
@@ -11259,7 +12867,7 @@ Onderdelen:
 
   /* ---------- template editor ---------- */
   function editTemplate(rec) {
-    const v = rec ? Object.assign({}, rec) : { name: '', variant: 'all', to: '', subject: '', body: '' };
+    const v = rec ? Object.assign({}, rec) : { name: '', variant: 'all', to: '', cc: '', subject: '', body: '' };
     const inp = (k, attrs) => { const i = h('input', Object.assign({ type: 'text', value: v[k] || '' }, attrs)); i.addEventListener('input', () => { v[k] = i.value; }); return i; };
     const variant = h('select', { id: 'wr-t-variant' }, ['all', 'prefab', 'no prefab'].map(x => h('option', { value: x, selected: (v.variant || 'all') === x || null }, x)));
     variant.addEventListener('change', () => { v.variant = variant.value; });
@@ -11272,6 +12880,7 @@ Onderdelen:
           h('label', { class: 'form-row' }, h('span', null, 'Name *'), inp('name', { id: 'wr-t-name' })),
           h('label', { class: 'form-row' }, h('span', null, 'Variant'), variant),
           h('label', { class: 'form-row wide' }, h('span', null, 'To (addresses, separated by commas)'), inp('to', { id: 'wr-t-to' })),
+          h('label', { class: 'form-row wide' }, h('span', null, 'Cc (addresses, separated by commas)'), inp('cc', { id: 'wr-t-cc' })),
           h('label', { class: 'form-row wide' }, h('span', null, 'Subject'), inp('subject', { id: 'wr-t-subject' })),
           h('label', { class: 'form-row wide' }, h('span', null, 'Text'), body)),
         h('p', { class: 'small muted' }, 'Placeholders: {deliverydate} {transporter} {project_address} {object} (project name / number) {project_id} {client} {pickup} {pickup_name} {items} (the ticked items of Structure) {mass} {size} (of the chosen main item) {manager} {today}. Same name with variants "prefab" and "no prefab" = one mail that follows the Prefab option.')),
@@ -11280,9 +12889,50 @@ Onderdelen:
         { label: 'Cancel' },
         { label: 'Save', primary: true, onClick: () => {
           if (!String(v.name || '').trim()) { PM.ui.toast('Give the template a name.', 'warn'); return false; }
-          const data = { name: v.name.trim(), variant: v.variant || 'all', to: v.to || '', subject: v.subject || '', body: v.body || '' };
+          const data = { name: v.name.trim(), variant: v.variant || 'all', to: v.to || '', cc: v.cc || '', subject: v.subject || '', body: v.body || '' };
           if (rec) PM.store.update('mails', rec._key, data); else PM.store.insert('mails', data);
         } }].filter(Boolean)
+    });
+  }
+
+  /* ---------- recipients ---------- */
+  const splitAddr = s => String(s || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
+  const joinAddr = list => Array.from(new Set(list)).join(', ');
+  /* save To / Cc on every template with this name (all its variants) */
+  function saveRecipients(name, to, cc) {
+    PM.store.list('mails', m => m.name === name).forEach(m => PM.store.update('mails', m._key, { to, cc }));
+  }
+  /* tick people from Settings → People for To and Cc; addresses that are not a person stay as "other addresses" */
+  function recipientsDialog(name, to, cc, onUse) {
+    const people = PM.store.list('people').filter(p => p.email);
+    const toL = splitAddr(to).map(x => x.toLowerCase()), ccL = splitAddr(cc).map(x => x.toLowerCase());
+    const known = new Set(people.map(p => String(p.email).toLowerCase()));
+    const state = new Map(people.map(p => { const e = String(p.email).toLowerCase(); return [p, toL.includes(e) ? 'to' : ccL.includes(e) ? 'cc' : '']; }));
+    const otherTo = h('input', { type: 'text', id: 'wr-r-otherto', value: splitAddr(to).filter(x => !known.has(x.toLowerCase())).join(', '), placeholder: 'e.g. planning@transporter.nl' });
+    const otherCc = h('input', { type: 'text', id: 'wr-r-othercc', value: splitAddr(cc).filter(x => !known.has(x.toLowerCase())).join(', ') });
+    const roleOf = p => { const r = p.role ? PM.store.find('roles', p.role) : null; return r ? r.name : ''; };
+    const body = h('tbody', null, people.map(p => {
+      const radio = (val, label) => h('label', { class: 'wr-r-opt' }, h('input', { type: 'radio', name: 'wr-r-' + p.id, value: val, checked: state.get(p) === val || null, onchange: () => state.set(p, val) }), ' ', label);
+      return h('tr', null, h('td', { translate: 'no' }, h('b', null, p.name), h('div', { class: 'small muted' }, p.email)), h('td', { class: 'small muted', translate: 'no' }, roleOf(p)),
+        h('td', { class: 'nowrap' }, radio('to', 'To'), radio('cc', 'Cc'), radio('', '—')));
+    }));
+    const collect = () => {
+      const t = [], c = [];
+      state.forEach((v, p) => { if (v === 'to') t.push(p.email); if (v === 'cc') c.push(p.email); });
+      return { to: joinAddr(t.concat(splitAddr(otherTo.value))), cc: joinAddr(c.concat(splitAddr(otherCc.value))) };
+    };
+    PM.ui.dialog({
+      title: 'Recipients · ' + name, className: 'wr-dlg',
+      content: h('div', null,
+        people.length ? h('table', { class: 'data wr-r-table' }, h('thead', null, h('tr', null, h('th', null, 'Person'), h('th', null, 'Role'), h('th', null, 'In the mail'))), body)
+          : h('p', { class: 'muted' }, 'No people with an e-mail address yet. Add them in Settings → People.'),
+        h('div', { class: 'form-grid' },
+          h('label', { class: 'form-row wide' }, h('span', null, 'Other addresses in To (separated by commas)'), otherTo),
+          h('label', { class: 'form-row wide' }, h('span', null, 'Other addresses in Cc'), otherCc)),
+        h('p', { class: 'small muted' }, '“Save for this mail” stores the recipients with the template “' + name + '”, so they are filled in every time — for all projects.')),
+      actions: [{ label: 'Cancel' },
+        { label: 'Use once', onClick: () => onUse(collect(), false) },
+        { label: 'Save for this mail', primary: true, onClick: () => onUse(collect(), true) }]
     });
   }
 
@@ -11313,12 +12963,14 @@ Onderdelen:
       if (!list.includes(o.template)) o.template = list[0];
       const S = PM.structure;
       const tree = S ? S.tree(pid) : [];
-      const out = { to: h('input', { type: 'text', id: 'wr-to', class: 'wr-to' }), subject: h('input', { type: 'text', id: 'wr-subject' }), body: h('textarea', { id: 'wr-body', class: 'wr-text', rows: 22 }) };
+      const out = { to: h('input', { type: 'text', id: 'wr-to', class: 'wr-to' }), cc: h('input', { type: 'text', id: 'wr-cc', class: 'wr-to' }), subject: h('input', { type: 'text', id: 'wr-subject' }), body: h('textarea', { id: 'wr-body', class: 'wr-text', rows: 22 }) };
       const missing = h('p', { class: 'small wr-missing' });
       const regen = () => {
         const tpl = templateFor(o.template, o.prefab);
         const vals = values(pid, o);
         out.to.value = tpl ? tpl.to || '' : '';
+        out.cc.value = tpl ? tpl.cc || '' : '';
+        drawSaveState();
         out.subject.value = tpl ? fill(tpl.subject, vals) : '';
         out.body.value = tpl ? fill(tpl.body, vals) : '';
         const used = String((tpl && tpl.subject) + ' ' + (tpl && tpl.body)).match(/\{([a-z_]+)\}/gi) || [];
@@ -11372,9 +13024,27 @@ Onderdelen:
         catch (e) { out.body.select(); try { document.execCommand('copy'); PM.ui.toast('Text copied.'); } catch (e2) { PM.ui.toast('Select the text and copy it.', 'warn'); } }
       };
       const mailto = () => {
-        const href = 'mailto:' + encodeURIComponent(out.to.value.trim()).replace(/%40/g, '@').replace(/%2C/gi, ',') + '?subject=' + encodeURIComponent(out.subject.value) + '&body=' + encodeURIComponent(out.body.value);
+        const addr = v => encodeURIComponent(splitAddr(v).join(',')).replace(/%40/g, '@').replace(/%2C/gi, ',');
+        const href = 'mailto:' + addr(out.to.value) + '?' + (out.cc.value.trim() ? 'cc=' + addr(out.cc.value) + '&' : '') + 'subject=' + encodeURIComponent(out.subject.value) + '&body=' + encodeURIComponent(out.body.value);
         const a = h('a', { href }); document.body.appendChild(a); a.click(); a.remove();
       };
+
+      // recipients: pick people, and keep them with the template
+      const saveBtn = h('button', { type: 'button', class: 'btn ghost small', id: 'wr-save-rcpt', onclick: () => {
+        saveRecipients(o.template, joinAddr(splitAddr(out.to.value)), joinAddr(splitAddr(out.cc.value)));
+        PM.ui.toast('Recipients saved for “' + o.template + '”.');
+      } }, 'Save recipients for this mail');
+      function drawSaveState() {
+        const tp = templateFor(o.template, o.prefab);
+        const same = tp && joinAddr(splitAddr(out.to.value)) === joinAddr(splitAddr(tp.to)) && joinAddr(splitAddr(out.cc.value)) === joinAddr(splitAddr(tp.cc));
+        saveBtn.hidden = !!same;
+      }
+      [out.to, out.cc].forEach(i => i.addEventListener('input', drawSaveState));
+      const pickBtn = h('button', { type: 'button', class: 'btn small', id: 'wr-pick', onclick: () => recipientsDialog(o.template, out.to.value, out.cc.value, (r, keep) => {
+        out.to.value = r.to; out.cc.value = r.cc;
+        if (keep) { saveRecipients(o.template, r.to, r.cc); PM.ui.toast('Recipients saved for “' + o.template + '”.'); }
+        drawSaveState();
+      }) }, 'Recipients…');
 
       el.appendChild(h('div', { class: 'wr-grid' },
         h('div', { class: 'card wr-opts' },
@@ -11390,7 +13060,9 @@ Onderdelen:
           usesItems || !tpl ? h('div', null, h('h3', null, 'Items in the mail'), allBtns, itemBox) : null),
         h('div', { class: 'card wr-out' },
           h('h2', null, 'Mail'),
-          h('div', { class: 'form-grid one' }, opt('To', out.to), opt('Subject', out.subject), opt('Text', out.body)),
+          h('div', { class: 'form-grid one' }, opt('To', out.to), opt('Cc', out.cc),
+            h('div', { class: 'btn-row wr-rcpt' }, pickBtn, saveBtn),
+            opt('Subject', out.subject), opt('Text', out.body)),
           missing,
           h('div', { class: 'btn-row' },
             h('button', { type: 'button', class: 'btn primary', id: 'wr-copy', onclick: copy }, 'Copy text'),
@@ -11400,6 +13072,554 @@ Onderdelen:
       regen();
     }
   });
+})();
+
+  </script>
+  <script>/* js/modules/summary.js */
+/* PM Tool — modules/summary.js
+ * Advanced → Summary: one PDF with the whole project, in chapters you choose:
+ *   Project (details, notes, comments) · Planning (timeline, lines, tasks) ·
+ *   Financial (overview, estimate vs actual, estimate, additional work, costs, hours) ·
+ *   Deliverables (structure, photos) · one chapter per chosen form.
+ * Chapters are numbered in the order they appear; empty ones are left out.
+ * The export language (English / Nederlands) is chosen separately from the app language:
+ * headings, labels, dates and numbers follow it, your own texts stay as you wrote them.
+ */
+(function () {
+  const U = PM.util, h = U.h;
+  const M = 14;
+  const C = { text: '#1c2230', muted: '#687187', faint: '#a3a9b6', line: '#e1e4ea', head: '#eef1f6', group: '#f4f6f9', bad: '#c43a3a', ok: '#1f9d55', accent: '#2f6fed' };
+
+  /* chapters and their parts */
+  const CHAPTERS = [
+    { id: 'project', title: 'Project', parts: [['details', 'Project details', true], ['notes', 'Notes', true], ['comments', 'Comments', true]] },
+    { id: 'planning', title: 'Planning', parts: [['gantt', 'Timeline chart', true], ['lines', 'Planning lines', true], ['tasks', 'Open tasks', true], ['donetasks', 'Finished tasks too', false]] },
+    { id: 'finance', title: 'Financial', parts: [['overview', 'Overview: offer price, revenue and margin', true], ['analysis', 'Estimate vs actual', true], ['estimate', 'Estimate lines', false], ['extras', 'Additional work', true], ['costs', 'Actual costs (purchases and fixed costs)', false], ['hours', 'Hours per role and person', false]] },
+    { id: 'structure', title: 'Deliverables', parts: [['items', 'Items with size and mass', true], ['photos', 'Photos of the items', false]] }
+  ];
+
+  /* ---------- options per project (this device) ---------- */
+  const opts = {};
+  function optionsFor(pid) {
+    if (opts[pid]) return opts[pid];
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('pm.summary.' + pid) || 'null'); } catch (e) { saved = null; }
+    const parts = {};
+    CHAPTERS.forEach(c => c.parts.forEach(([k, , on]) => { parts[c.id + '.' + k] = on; }));
+    const o = Object.assign({ lang: PM.i18n.lang, parts, forms: [], cover: true }, saved || {});
+    o.parts = Object.assign(parts, (saved && saved.parts) || {});
+    opts[pid] = o;
+    return o;
+  }
+  function remember(pid) { try { localStorage.setItem('pm.summary.' + pid, JSON.stringify(opts[pid])); } catch (e) { /* ignore */ } }
+
+  /* ---------- the PDF ---------- */
+  async function render(pid, o) {
+    const p = PM.store.project(pid);
+    const calc = PM.services.calc;
+    const co = PM.company();
+    const T = s => PM.i18n.t(s, o.lang);
+    const doc = PM.pdf.create({ size: 'A4', orientation: 'portrait', title: T('Project summary') + ' ' + p.id });
+    const W = doc.width, H = doc.height, CW = W - 2 * M, BOTTOM = H - M - 10;
+    let logo = null;
+    if (co.logo) { try { const u = await PM.files.url(co.logo); if (u) logo = await PM.pdf.loadImage(u, 900); } catch (e) { /* no logo */ } }
+    const pages = [];              // every page in order, with the chapter it belongs to
+    const toc = [];                // [{ n, title, page }]
+    let pg, y, chapterNo = 0, chapterTitle = '';
+    const has = k => !!o.parts[k];
+    const raw = PM.pdf.raw;     // your own texts are never translated
+    const P = (v, d) => (v == null || v === '' ? (d == null ? '—' : d) : v instanceof String ? v : raw(String(v)));
+    const money = v => U.fmtMoney(v);
+    const pct = v => (v == null || !isFinite(v) ? '—' : Math.round(v * 100) + '%');
+
+    function header() {
+      if (logo) { const lh = 9, lw = Math.min(40, lh * logo.ratio); pg.image(logo, M, M - 2, lw, lw / logo.ratio); }
+      else if (co.name) pg.text(co.name, M, M + 4, { size: 10, bold: true, color: C.text });
+      pg.text(PM.pdf.fit(raw(p.id + ' · ' + p.name), CW - 50, 8.5, true), W - M, M + 2.5, { size: 8.5, bold: true, color: C.text, align: 'right' });
+      pg.text(PM.pdf.fit(raw((chapterNo ? chapterNo + '  ' : '') + chapterTitle), CW - 50, 7.5), W - M, M + 6.8, { size: 7.5, color: C.muted, align: 'right' });
+      pg.line(M, M + 10, W - M, M + 10, { stroke: '#c9ced8', lw: 0.35 });
+      y = M + 17;
+    }
+    function newPage() { pg = doc.addPage(); pages.push(pg); header(); }
+    function ensure(hh) { if (y + hh > BOTTOM) { newPage(); return true; } return false; }
+
+    /* ----- building blocks ----- */
+    function chapter(title) {
+      chapterNo++; chapterTitle = title;
+      newPage();
+      toc.push({ n: chapterNo, title, page: pages.length });
+      pg.text(String(chapterNo), M, y + 7, { size: 22, bold: true, color: C.accent });
+      pg.text(PM.pdf.fit(title, CW - 16, 18, true), M + 13, y + 7, { size: 18, bold: true, color: C.text });
+      y += 15;
+    }
+    function heading(title) {
+      ensure(18);
+      y += 2;
+      pg.text(PM.pdf.fit(title, CW, 11.5, true), M, y + 4, { size: 11.5, bold: true, color: C.text });
+      pg.line(M, y + 6.2, M + Math.min(CW, PM.pdf.textWidth(title, 11.5, true) + 2), y + 6.2, { stroke: C.accent, lw: 0.6 });
+      y += 10;
+    }
+    function para(text, o2) {
+      o2 = o2 || {};
+      const size = o2.size || 9.5;
+      const lh = size * 0.46;
+      PM.pdf.wrap(raw(text), CW - (o2.indent || 0), size).forEach(ln => { ensure(lh + 1); pg.text(ln, M + (o2.indent || 0), y + lh, { size, color: o2.color || C.text, bold: o2.bold }); y += lh; });
+      y += o2.after == null ? 2.5 : o2.after;
+    }
+    function note(text) { para(T(text), { size: 8, color: C.muted, after: 3 }); }
+    function keyValues(rows) {
+      const lw = 48;
+      rows.filter(r => r).forEach(([k, v]) => {
+        const lines = PM.pdf.wrap(P(v), CW - lw - 2, 9.5);
+        const hh = lines.length * 4.4 + 2.2;
+        ensure(hh);
+        pg.text(PM.pdf.fit(k, lw - 3, 8.5), M, y + 3.6, { size: 8.5, color: C.muted });
+        lines.forEach((ln, i) => pg.text(ln, M + lw, y + 3.6 + i * 4.4, { size: 9.5, color: C.text }));
+        y += hh;
+        pg.line(M, y - 0.8, W - M, y - 0.8, { stroke: C.line, lw: 0.15 });
+      });
+      y += 4;
+    }
+    function stats(list) {
+      const per = Math.min(4, list.length), gap = 3, bw = (CW - gap * (per - 1)) / per, bh = 16;
+      for (let i = 0; i < list.length; i += per) {
+        ensure(bh + 3);
+        list.slice(i, i + per).forEach((s, k) => {
+          const x = M + k * (bw + gap);
+          pg.rect(x, y, bw, bh, { stroke: C.line, lw: 0.3, r: 1.2 });
+          pg.text(PM.pdf.fit(T(s.label).toUpperCase(), bw - 5, 6.3, true), x + 2.5, y + 4.4, { size: 6.3, bold: true, color: C.muted });
+          pg.text(PM.pdf.fit(s.value, bw - 5, 11.5, true), x + 2.5, y + 10.2, { size: 11.5, bold: true, color: s.bad ? C.bad : C.text });
+          if (s.sub) pg.text(PM.pdf.fit(s.sub, bw - 5, 6.6), x + 2.5, y + 14, { size: 6.6, color: C.muted });
+        });
+        y += bh + 3;
+      }
+      y += 3;
+    }
+    /* table: columns [{ label, w (relative), align }], rows [{ cells, kind: 'group'|'total'|'muted', indent, bad: [i] }] */
+    function table(columns, rows, o2) {
+      o2 = o2 || {};
+      const tw = U.sum(columns, c => c.w), xs = [];
+      let acc = M;
+      columns.forEach(c => { c.mm = c.w / tw * CW; xs.push(acc); acc += c.mm; });
+      const fs = o2.size || 8.4;
+      const head = () => {
+        pg.rect(M, y, CW, 6, { fill: C.head });
+        columns.forEach((c, i) => pg.text(PM.pdf.fit(T(c.label), c.mm - 2.5, 7.4, true), c.align === 'right' ? xs[i] + c.mm - 1.2 : xs[i] + 1.2, y + 4.1, { size: 7.4, bold: true, color: C.muted, align: c.align === 'right' ? 'right' : 'left' }));
+        y += 7;
+      };
+      ensure(14); head();
+      if (!rows.length) { pg.text(T('Nothing to show.'), M + 1.2, y + 3.5, { size: 8.5, color: C.faint }); y += 8; return; }
+      rows.forEach(r => {
+        const wrapIdx = columns.findIndex(c => c.wrap);
+        const lines = wrapIdx >= 0 ? PM.pdf.wrap(P(r.cells[wrapIdx], ''), columns[wrapIdx].mm - 2.5 - (r.indent || 0) * 3, fs, r.kind === 'group' || r.kind === 'total') : [''];
+        const rh = Math.max(1, lines.length) * (fs * 0.42) + 2.4;
+        if (ensure(rh + 1)) head();
+        if (r.kind === 'group') pg.rect(M, y - 0.3, CW, rh, { fill: C.group });
+        if (r.kind === 'total') pg.line(M, y - 0.3, W - M, y - 0.3, { stroke: C.text, lw: 0.35 });
+        columns.forEach((c, i) => {
+          const bold = r.kind === 'group' || r.kind === 'total';
+          const color = (r.bad || []).includes(i) ? C.bad : r.kind === 'muted' ? C.muted : C.text;
+          const ind = i === 0 || i === wrapIdx ? (r.indent || 0) * 3 : 0;
+          if (i === wrapIdx) lines.forEach((ln, k) => pg.text(ln, xs[i] + 1.2 + ind, y + 3.3 + k * fs * 0.42, { size: fs, bold, color }));
+          else pg.text(PM.pdf.fit(P(r.cells[i], ''), c.mm - 2.5 - ind, fs, bold), c.align === 'right' ? xs[i] + c.mm - 1.2 : xs[i] + 1.2 + ind, y + 3.3, { size: fs, bold, color, align: c.align === 'right' ? 'right' : 'left' });
+        });
+        y += rh;
+        if (r.kind !== 'group') pg.line(M, y - 0.4, W - M, y - 0.4, { stroke: C.line, lw: 0.12 });
+      });
+      y += 5;
+    }
+
+    /* ----- cover ----- */
+    const finance = CHAPTERS[2].parts.some(([k]) => has('finance.' + k));
+    let cover = null;
+    if (o.cover !== false) {
+      pg = doc.addPage(); pages.push(pg);
+      cover = pg;
+      if (logo) { const lh = 18, lw = Math.min(70, lh * logo.ratio); pg.image(logo, M, M, lw, lw / logo.ratio); }
+      else if (co.name) pg.text(co.name, M, M + 9, { size: 16, bold: true, color: C.text });
+      y = 70;
+      pg.text(T('Project summary'), M, y, { size: 12, bold: true, color: C.accent }); y += 11;
+      PM.pdf.wrap(raw(p.name), CW, 22, true).forEach(ln => { pg.text(ln, M, y, { size: 22, bold: true, color: C.text }); y += 9.5; });
+      y += 2;
+      pg.text(raw(p.id + (p.client ? '  ·  ' + p.client : '')), M, y, { size: 12, color: C.muted }); y += 6;
+      if (p.address) { String(p.address).split(/\n+/).forEach(ln => { pg.text(raw(ln), M, y, { size: 10, color: C.muted }); y += 4.8; }); }
+      y += 4;
+      pg.text(T('Date') + ': ' + U.fmtDate(U.todayISO()), M, y, { size: 9.5, color: C.text }); y += 5;
+      const mgr = p.manager ? PM.store.find('people', p.manager) : null;
+      if (mgr) { pg.text(T('Project manager') + ': ' + raw(mgr.name), M, y, { size: 9.5, color: C.text }); y += 5; }
+      if (finance) {
+        const t = T('INTERNAL') + ' — ' + T('contains financial information'), lw = PM.pdf.textWidth(t, 7.5, true) + 8;
+        pg.rect(M, y + 2, lw, 6, { fill: '#fdf3e1', r: 1 });
+        pg.text(t, M + 4, y + 6.2, { size: 7.5, bold: true, color: '#9a6514' });
+      }
+      y = 150;
+    }
+    const tocY = o.cover !== false ? 150 : null;
+
+    /* ----- 1. project ----- */
+    if (has('project.details') || has('project.notes') || has('project.comments')) {
+      const notes = String(p._notes || '').replace(/^#.*$/m, '').trim();
+      const comments = PM.store.list('comments', { project: pid });
+      chapter(T('Project'));
+      if (has('project.details')) {
+        heading(T('Project details'));
+        const mgr = p.manager ? PM.store.find('people', p.manager) : null;
+        keyValues([[T('Project number'), p.id], [T('Object'), p.name], [T('Client'), p.client], [T('Project address'), p.address ? String(p.address).split(/\n+/).join(', ') : ''],
+          [T('Status'), T(p.status || 'active')], [T('Project manager'), mgr ? mgr.name : p.manager], [T('Start'), U.fmtDate(p.start)], [T('End'), U.fmtDate(p.end)],
+          finance ? [T('Offer price'), U.num(p.budget_costs) ? money(p.budget_costs) : ''] : null,
+          p.description ? [T('Description'), p.description] : null]);
+      }
+      if (has('project.notes') && notes) {
+        heading(T('Notes'));
+        notes.split(/\n{2,}/).forEach(par => para(par.replace(/^#+\s*/gm, '').replace(/\*\*/g, '')));
+      }
+      if (has('project.comments') && comments.length) {
+        heading(T('Comments'));
+        comments.slice().sort((a, b) => String(a.date).localeCompare(String(b.date))).forEach(c => {
+          const who = c.author ? PM.store.find('people', c.author) : null;
+          ensure(10);
+          pg.text(PM.pdf.fit(raw(fmtStamp(c.date) + (who ? '  ·  ' + who.name : '')), CW, 8, true), M, y + 3.4, { size: 8, bold: true, color: C.muted });
+          y += 5;
+          para(c.text, { indent: 0, size: 9.2, after: 3 });
+        });
+      }
+    }
+
+    /* ----- 2. planning ----- */
+    const lines = PM.store.list('lines', { project: pid });
+    if (has('planning.gantt') || has('planning.lines') || has('planning.tasks')) {
+      chapter(T('Planning'));
+      const pr = calc.progress(pid);
+      const ts = calc.taskStats(pid);
+      const dated = lines.filter(l => l.start);
+      const s0 = dated.length ? dated.map(l => l.start).reduce((a, b) => (a < b ? a : b)) : p.start;
+      const e0 = dated.length ? dated.map(l => l.end || l.start).reduce((a, b) => (a > b ? a : b)) : p.end;
+      stats([{ label: 'Start', value: U.fmtDate(s0) || '—' }, { label: 'End', value: U.fmtDate(e0) || '—' },
+        { label: 'Planning progress', value: pct(pr) }, { label: 'Tasks done', value: ts.done + ' / ' + ts.total, sub: ts.overdue ? ts.overdue + ' ' + T('overdue') : '' }]);
+      if (has('planning.gantt') && dated.length) { heading(T('Timeline')); gantt(dated, s0, e0); }
+      if (has('planning.lines')) {
+        heading(T('Planning lines'));
+        const rows = [];
+        U.groupBy(lines, l => l.group || '').forEach((ls, g) => {
+          if (g) rows.push({ kind: 'group', cells: [g] });
+          ls.forEach(l => {
+            const who = [l.person ? (PM.store.find('people', l.person) || {}).name : '', l.who].filter(Boolean).join(' · ');
+            rows.push({ indent: g ? 1 : 0, cells: [(l.milestone ? '• ' : '') + (l.title || l.id), U.fmtDate(l.start), U.fmtDate(l.end || l.start), l.start ? String(U.workdaysBetween ? U.workdaysBetween(l.start, l.end || l.start) : U.daysBetween(l.start, l.end || l.start) + 1) : '', U.num(l.progress) + '%', who] });
+          });
+        });
+        table([{ label: 'Phase / activity', w: 40, wrap: true }, { label: 'Start', w: 14 }, { label: 'End', w: 14 }, { label: 'Days', w: 7, align: 'right' }, { label: 'Progress', w: 9, align: 'right' }, { label: 'Who', w: 22 }], rows);
+      }
+      if (has('planning.tasks')) {
+        const tasks = PM.store.list('tasks', { project: pid }).filter(t => has('planning.donetasks') || t.status !== 'done');
+        heading(T(has('planning.donetasks') ? 'Tasks' : 'Open tasks'));
+        const today = U.todayISO();
+        table([{ label: 'Task', w: 38, wrap: true }, { label: 'Planning line', w: 24 }, { label: 'Assignee', w: 17 }, { label: 'Status', w: 11 }, { label: 'Due', w: 13 }],
+          tasks.sort((a, b) => String(a.due || '9').localeCompare(String(b.due || '9'))).map(t => {
+            const l = t.line ? lines.find(x => x.id === t.line) : null, who = t.assignee ? PM.store.find('people', t.assignee) : null;
+            const late = t.status !== 'done' && t.due && t.due < today;
+            return { cells: [t.title, l ? l.title : '', who ? who.name : '', T(t.status || 'todo'), U.fmtDate(t.due)], bad: late ? [4] : [] };
+          }));
+      }
+    }
+
+    /* ----- 3. financial ----- */
+    if (finance) {
+      const an = calc.estimateAnalysis(pid);
+      chapter(T('Financial'));
+      note(T('Amounts in EUR, excluding VAT. Estimate and costs are cost prices.'));
+      if (has('finance.overview')) {
+        stats([{ label: 'Offer price', value: an.offer ? money(an.offer) : '—' }, { label: 'Approved additional work', value: money(an.extrasRevenue) },
+          { label: 'Total revenue', value: money(an.revenue) }, { label: 'Estimated cost', value: money(an.baseEstimate + an.extrasCost) },
+          { label: 'Planned margin', value: an.margin == null ? '—' : money(an.margin), sub: pct(an.marginPct), bad: an.margin < 0 }, { label: 'Actual costs so far', value: money(an.actual), sub: pct(an.used) + ' ' + T('of estimate') },
+          { label: 'Current margin', value: an.currentMargin == null ? '—' : money(an.currentMargin), sub: pct(an.currentMarginPct), bad: an.currentMargin < 0 }, { label: 'Quoted, not approved yet', value: money(an.extrasQuoted) }]);
+      }
+      if (has('finance.analysis')) {
+        heading(T('Estimate vs actual'));
+        const rows = [];
+        an.groups.forEach(g => {
+          rows.push({ kind: 'group', cells: [T(g.subject), money(g.estimate), money(g.actual), money(g.diff), g.estimate ? pct(g.actual / g.estimate) : ''], bad: g.over ? [3] : [] });
+          g.rows.forEach(r => rows.push({ indent: 1, cells: [r.kind === 'labour' ? r.title + ' (' + T('labour') + (r.actHours != null ? ', ' + U.fmtNum(r.actHours) + ' / ' + U.fmtNum(r.estHours || 0) + ' ' + T('h') : '') + ')' : T(r.title), money(r.estimate), money(r.actual), money(r.diff), r.estimate ? pct(r.actual / r.estimate) : ''], bad: r.over ? [3] : [] }));
+        });
+        rows.push({ kind: 'total', cells: [T('Total'), money(an.estimate), money(an.actual), money(an.estimate - an.actual), an.estimate ? pct(an.actual / an.estimate) : ''] });
+        table([{ label: 'Subject / line', w: 46, wrap: true }, { label: 'Estimate', w: 15, align: 'right' }, { label: 'Actual', w: 15, align: 'right' }, { label: 'Difference', w: 15, align: 'right' }, { label: 'Used', w: 9, align: 'right' }], rows);
+      }
+      if (has('finance.estimate')) {
+        heading(T('Cost estimate'));
+        const est = PM.store.list('estimate', { project: pid });
+        const rows = [];
+        U.groupBy(est, e => e.subject || '').forEach((ls, g) => {
+          rows.push({ kind: 'group', cells: [g || T('(no subject)'), '', '', '', money(U.sum(ls, calc.estimateAmount))] });
+          ls.forEach(e => rows.push({ indent: 1, cells: [e.description + (e.role ? ' (' + ((calc.role(e.role) || {}).name || e.role) + ')' : ''), U.fmtNum(e.qty === '' || e.qty == null ? 1 : e.qty), e.unit || (e.role ? T('h') : ''), money(calc.estimatePrice(e)), money(calc.estimateAmount(e))] }));
+        });
+        rows.push({ kind: 'total', cells: [T('Total'), '', '', '', money(U.sum(est, calc.estimateAmount))] });
+        table([{ label: 'Description', w: 50, wrap: true }, { label: 'Qty', w: 8, align: 'right' }, { label: 'Unit', w: 8 }, { label: 'Unit price', w: 16, align: 'right' }, { label: 'Amount', w: 16, align: 'right' }], rows);
+      }
+      if (has('finance.extras')) {
+        const ex = PM.store.list('extras', { project: pid });
+        heading(T('Additional work'));
+        const ar = id => an.rows.find(r => r.kind === 'extra' && r.id === id);
+        table([{ label: 'No.', w: 9 }, { label: 'Description', w: 40, wrap: true }, { label: 'Status', w: 13 }, { label: 'Price', w: 13, align: 'right' }, { label: 'Est. cost', w: 13, align: 'right' }, { label: 'Actual cost', w: 13, align: 'right' }],
+          ex.map(x => ({ kind: x.status === 'rejected' ? 'muted' : '', cells: [x.id, x.description + (x.reference ? ' (' + x.reference + ')' : ''), T(x.status || 'quoted'), money(x.price), money(x.cost_estimate), money(ar(x.id) ? ar(x.id).actual : 0)] }))
+            .concat(ex.length ? [{ kind: 'total', cells: [T('Total'), T('approved and invoiced'), '', money(an.extrasRevenue), money(an.extrasCost), ''] }] : []));
+      }
+      if (has('finance.costs')) {
+        heading(T('Actual costs'));
+        const cs = PM.store.list('costs', { project: pid }).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        table([{ label: 'Date', w: 13 }, { label: 'Description', w: 37, wrap: true }, { label: 'Supplier', w: 17 }, { label: 'Type', w: 10 }, { label: 'Amount', w: 14, align: 'right' }],
+          cs.map(c => ({ cells: [U.fmtDate(c.date), c.description, c.supplier, T(c.type || 'purchase'), money(calc.costAmount(c))] }))
+            .concat(cs.length ? [{ kind: 'total', cells: [T('Total'), '', '', '', money(U.sum(cs, calc.costAmount))] }] : []));
+      }
+      if (has('finance.hours')) {
+        const s = calc.summary({ project: pid });
+        heading(T('Hours per role'));
+        table([{ label: 'Role', w: 50 }, { label: 'Hours', w: 15, align: 'right' }, { label: 'Rate', w: 15, align: 'right' }, { label: 'Cost', w: 20, align: 'right' }],
+          s.byRole.map(r => ({ cells: [T(r.name), U.fmtNum(r.hours), r.hours ? U.fmtMoney(r.cost / r.hours, true) : '', money(r.cost)] }))
+            .concat([{ kind: 'total', cells: [T('Total'), U.fmtNum(s.hours), '', money(s.labour)] }]));
+        heading(T('Hours per person'));
+        table([{ label: 'Person', w: 60 }, { label: 'Hours', w: 20, align: 'right' }, { label: 'Cost', w: 20, align: 'right' }],
+          s.byPerson.map(r => ({ cells: [r.name || r.person, U.fmtNum(r.hours), money(r.cost || 0)] })));
+      }
+    }
+
+    /* ----- 4. deliverables ----- */
+    const S = PM.structure;
+    const items = S ? S.itemsOf(pid) : [];
+    if (S && items.length && (has('structure.items') || has('structure.photos'))) {
+      chapter(T('Deliverables'));
+      if (has('structure.items')) {
+        const rows = [];
+        const walk = (nodes, d) => nodes.forEach(n => {
+          const it = n.item, m = S.massOf(it, pid);
+          rows.push({ kind: d === 0 ? 'group' : '', indent: d, cells: [it.name + (it.note ? ' — ' + it.note : ''), U.fmtNum(S.qtyOf(it)), S.sizeText(it, o.lang), m ? S.kg(m, o.lang) + (!U.num(it.mass) ? ' *' : '') : ''] });
+          walk(n.children, d + 1);
+        });
+        walk(S.tree(pid), 0);
+        rows.push({ kind: 'total', cells: [T('Total mass'), '', '', S.kg(U.sum(S.tree(pid), n => S.massOf(n.item, pid)), o.lang)] });
+        table([{ label: 'Item', w: 50, wrap: true }, { label: 'Qty', w: 8, align: 'right' }, { label: 'Size L × W × H', w: 26 }, { label: 'Mass', w: 16, align: 'right' }], rows);
+        note(T('* = total of the sub items.'));
+      }
+      if (has('structure.photos')) {
+        const withPh = items.filter(it => S.photosOf(it).length);
+        if (withPh.length) {
+          heading(T('Photos'));
+          const per = 3, gap = 4, cw = (CW - gap * (per - 1)) / per, ih = cw * 0.75;
+          let col = 0;
+          for (const it of withPh) {
+            for (const rel of S.photosOf(it)) {
+              if (col === 0) ensure(ih + 8);
+              let img = null;
+              try { const u = await PM.files.url(S.projectPath(pid, rel)); if (u) img = await PM.pdf.loadImage(u, 1200); } catch (e) { img = null; }
+              const x = M + col * (cw + gap);
+              if (img) {
+                let iw = cw, hh = cw / img.ratio; if (hh > ih) { hh = ih; iw = ih * img.ratio; }
+                pg.image(img, x + (cw - iw) / 2, y + (ih - hh) / 2, iw, hh);
+              } else pg.rect(x, y, cw, ih, { fill: C.head });
+              pg.text(PM.pdf.fit(raw(it.name), cw, 7.5), x, y + ih + 3.5, { size: 7.5, color: C.muted });
+              col++;
+              if (col === per) { col = 0; y += ih + 8; }
+            }
+          }
+          if (col) y += ih + 8;
+        }
+      }
+    }
+
+    /* ----- 5+. forms: each its own chapter, in the language of the form ----- */
+    for (const sid of o.forms || []) {
+      const rec = PM.store.list('surveys', { project: pid }).find(r => r.id === sid);
+      const t = rec && PM.surveys.get(rec.template);
+      if (!t) continue;
+      chapterNo++;
+      chapterTitle = t.name + ' (' + rec.id + ')';
+      const first = pages.length + 1;
+      const res = await PM.surveyPdf.render(rec, { doc });
+      (res && res.pages || []).forEach(x => pages.push(x));
+      toc.push({ n: chapterNo, title: chapterTitle, page: first, raw: true });
+    }
+
+    /* ----- table of contents on the cover ----- */
+    if (cover && tocY != null && toc.length) {
+      let ty = tocY;
+      cover.text(T('Contents'), M, ty, { size: 12, bold: true, color: C.text }); ty += 8;
+      toc.forEach(c => {
+        cover.text(String(c.n), M, ty, { size: 10.5, bold: true, color: C.accent });
+        const title = PM.pdf.fit(c.raw ? raw(c.title) : c.title, CW - 30, 10.5);
+        cover.text(title, M + 9, ty, { size: 10.5, color: C.text });
+        const tw = PM.pdf.textWidth(title, 10.5);
+        for (let dx = M + 11 + tw; dx < W - M - 10; dx += 1.6) cover.circle(dx, ty - 1, 0.18, { fill: '#b9bfca' });
+        cover.text(String(c.page), W - M, ty, { size: 10.5, color: C.text, align: 'right' });
+        ty += 7;
+      });
+    }
+
+    /* ----- footers on every page ----- */
+    pages.forEach((pp, i) => {
+      if (pp === cover) return;
+      const fy = H - M + 3;
+      pp.line(M, fy - 4, W - M, fy - 4, { stroke: C.line, lw: 0.2 });
+      const foot = co.footer || [co.name, co.phone, co.email, co.website].filter(Boolean).join('  ·  ');
+      pp.text(PM.pdf.fit(raw(T('Project summary') + ' · ' + p.id + (foot ? '  ·  ' + foot : '')), CW - 30, 6.5), M, fy, { size: 6.5, color: C.muted });
+      pp.text(T('Page') + ' ' + (i + 1) + ' ' + T('of') + ' ' + pages.length, W - M, fy, { size: 6.5, color: C.muted, align: 'right' });
+    });
+    return doc.output();
+
+    /* ----- timeline chart ----- */
+    function gantt(ls, s0, e0) {
+      const LW = 52, x0 = M + LW, gw = CW - LW;
+      const days = Math.max(1, U.daysBetween(s0, e0) + 1);
+      const X = d => x0 + U.daysBetween(s0, d) / days * gw;
+      const rowH = 4.6;
+      const color = p.color || C.accent;
+      const axis = () => {
+        pg.rect(x0, y, gw, 5.5, { fill: C.head });
+        const d0 = U.parseDate(s0);
+        let mm = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1));
+        while (U.iso(mm) <= e0) {
+          const a = U.iso(mm) < s0 ? s0 : U.iso(mm);
+          const next = new Date(Date.UTC(mm.getUTCFullYear(), mm.getUTCMonth() + 1, 1));
+          const b = U.iso(next) > e0 ? U.addDays(e0, 1) : U.iso(next);
+          const xa = X(a), xb = Math.min(x0 + gw, X(b));
+          if (xb - xa > 7) pg.text(PM.pdf.fit(U.MONTHS[mm.getUTCMonth()] + (xb - xa > 16 ? ' ' + mm.getUTCFullYear() : ''), xb - xa - 1, 6.5, true), xa + 0.8, y + 3.9, { size: 6.5, bold: true, color: C.muted });
+          pg.line(xa, y, xa, y + 5.5, { stroke: '#cfd4dc', lw: 0.15 });
+          mm = next;
+        }
+        y += 6.5;
+      };
+      ensure(20); axis();
+      const today = U.todayISO();
+      U.groupBy(ls, l => l.group || '').forEach((group, g) => {
+        if (g) {
+          if (ensure(rowH * 2)) axis();
+          const gs = group.map(l => l.start).reduce((a, b) => (a < b ? a : b)), ge = group.map(l => l.end || l.start).reduce((a, b) => (a > b ? a : b));
+          pg.text(PM.pdf.fit(raw(g), LW - 2, 7.5, true), M, y + 3.3, { size: 7.5, bold: true, color: C.text });
+          pg.rect(X(gs), y + 1.6, Math.max(0.8, X(U.addDays(ge, 1)) - X(gs)), 1.6, { fill: color });
+          y += rowH;
+        }
+        group.forEach(l => {
+          if (ensure(rowH)) axis();
+          const le = l.end && l.end >= l.start ? l.end : l.start;
+          pg.text(PM.pdf.fit(raw(l.title || l.id), LW - (g ? 5 : 2), 7.2), M + (g ? 3 : 0), y + 3.3, { size: 7.2, color: C.text });
+          if (l.milestone) {
+            const cx = X(l.start) + 0.5, cy = y + 2.3;
+            pg.poly([[cx, cy - 1.7], [cx + 1.7, cy], [cx, cy + 1.7], [cx - 1.7, cy]], { fill: color });
+          } else {
+            const xa = X(l.start), w = Math.max(0.8, X(U.addDays(le, 1)) - xa);
+            pg.rect(xa, y + 0.9, w, 2.8, { fill: shade(color, 0.6), r: 0.4 });
+            const prog = Math.min(100, U.num(l.progress)) / 100;
+            if (prog) pg.rect(xa, y + 0.9, w * prog, 2.8, { fill: color, r: 0.4 });
+          }
+          pg.line(M, y + rowH, W - M, y + rowH, { stroke: '#f0f2f5', lw: 0.1 });
+          y += rowH;
+        });
+      });
+      if (today >= s0 && today <= e0) {
+        // a short "today" mark under the chart
+        pg.line(X(today), y, X(today), y + 2.5, { stroke: C.bad, lw: 0.5 });
+        pg.text(T('Today'), X(today), y + 5.2, { size: 6, color: C.bad, align: 'center' });
+        y += 6;
+      }
+      y += 5;
+    }
+  }
+  function shade(hex, f) { const n = parseInt(String(hex).slice(1), 16); return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v + (255 - v) * f).toString(16).padStart(2, '0')).join(''); }
+  function fmtStamp(s) { const m = /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?/.exec(String(s || '')); return m ? U.fmtDate(m[1]) + (m[2] ? ' ' + m[2] : '') : String(s || ''); }
+
+  /* ---------- the tab ---------- */
+  PM.advanced.register({
+    id: 'summary', title: 'Summary', order: 40, needsProject: true,
+    description: 'One PDF with the whole project, in chapters you choose.',
+    render(el, ctx) {
+      const pid = ctx.projectId, p = ctx.project;
+      const o = optionsFor(pid);
+      const surveys = PM.store.list('surveys', { project: pid });
+      o.forms = (o.forms || []).filter(id => surveys.some(s => s.id === id));
+      const S = PM.structure;
+      const hasItems = S && S.itemsOf(pid).length > 0;
+
+      el.appendChild(h('div', { class: 'page-head' },
+        h('div', null, h('h1', null, 'Project summary'), h('p', { class: 'muted' }, 'One PDF with the whole project. Tick the chapters and parts you want; chapters are numbered in the order they appear.'))));
+
+      const count = h('p', { class: 'small muted', id: 'sm-count' });
+      const chaptersBox = h('div', { class: 'sm-chapters' });
+      function drawCount() {
+        let n = 0;
+        CHAPTERS.forEach(c => { if (c.id === 'structure' && !hasItems) return; if (c.parts.some(([k]) => k !== 'donetasks' && o.parts[c.id + '.' + k])) n++; });
+        n += o.forms.length;
+        count.textContent = n + ' ' + (n === 1 ? 'chapter' : 'chapters') + (o.cover !== false ? ' + cover page with contents' : '');
+        remember(pid);
+      }
+      function chapterCard(c, num) {
+        const on = c.parts.some(([k]) => k !== 'donetasks' && o.parts[c.id + '.' + k]);
+        const disabled = c.id === 'structure' && !hasItems;
+        const main = h('input', { type: 'checkbox', checked: on && !disabled, disabled: disabled || null, 'data-chapter': c.id });
+        main.addEventListener('change', () => {
+          // ticking a chapter turns on its usual parts; unticking turns off all of them
+          c.parts.forEach(([k, , def]) => { o.parts[c.id + '.' + k] = main.checked ? !!def : false; });
+          draw();
+        });
+        return h('div', { class: 'card sm-chapter' + (on && !disabled ? ' on' : '') },
+          h('label', { class: 'sm-ch-head' }, main, h('span', { class: 'sm-num' }, on && !disabled ? String(num) : ''), h('b', null, c.title),
+            disabled ? h('span', { class: 'small muted' }, ' — no items in Structure yet') : null),
+          h('div', { class: 'sm-parts' }, c.parts.map(([k, label]) => {
+            const id = c.id + '.' + k;
+            const cb = h('input', { type: 'checkbox', checked: !!o.parts[id] && !disabled, disabled: disabled || (k === 'donetasks' && !o.parts['planning.tasks']) || null, 'data-part': id });
+            cb.addEventListener('change', () => { o.parts[id] = cb.checked; draw(); });
+            return h('label', { class: 'sm-part' + (k === 'donetasks' ? ' sub' : '') }, cb, ' ', label);
+          })));
+      }
+      function draw() {
+        chaptersBox.innerHTML = '';
+        let num = 0;
+        CHAPTERS.forEach(c => {
+          const on = c.parts.some(([k]) => k !== 'donetasks' && o.parts[c.id + '.' + k]) && !(c.id === 'structure' && !hasItems);
+          if (on) num++;
+          chaptersBox.appendChild(chapterCard(c, num));
+        });
+        // forms: each chosen form is a chapter of its own
+        const formCard = h('div', { class: 'card sm-chapter' + (o.forms.length ? ' on' : '') },
+          h('div', { class: 'sm-ch-head' }, h('b', null, 'Forms'), h('span', { class: 'small muted' }, ' — every form you tick becomes its own chapter, in the language of the form')),
+          surveys.length ? h('div', { class: 'sm-parts' }, surveys.map(s => {
+            const t = PM.surveys.get(s.template);
+            const idx = o.forms.indexOf(s.id);
+            const cb = h('input', { type: 'checkbox', checked: idx >= 0, 'data-form': s.id });
+            cb.addEventListener('change', () => { o.forms = cb.checked ? o.forms.concat(s.id) : o.forms.filter(x => x !== s.id); o.forms.sort((a, b) => surveys.findIndex(x => x.id === a) - surveys.findIndex(x => x.id === b)); draw(); });
+            return h('label', { class: 'sm-part' }, cb, ' ', idx >= 0 ? h('span', { class: 'sm-num small' }, String(num + o.forms.indexOf(s.id) + 1)) : null,
+              h('span', { translate: 'no' }, (t ? t.name : s.template) + ' '), h('span', { class: 'muted small' }, s.id + ' · ' + (s.status === 'complete' ? 'Complete' : 'Draft')));
+          })) : h('p', { class: 'small muted' }, 'No forms in this project.'));
+        chaptersBox.appendChild(formCard);
+        drawCount();
+      }
+
+      const langSel = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Language of the PDF', translate: 'no' }, [['en', 'English'], ['nl', 'Nederlands']].map(([k, t]) =>
+        h('button', { type: 'button', role: 'radio', 'aria-checked': String(o.lang === k), class: o.lang === k ? 'on' : '', id: 'sm-lang-' + k, onclick: () => { o.lang = k; remember(pid); ctx.rerender(); } }, t)));
+      const coverCb = h('input', { type: 'checkbox', checked: o.cover !== false, id: 'sm-cover' });
+      coverCb.addEventListener('change', () => { o.cover = coverCb.checked; drawCount(); });
+      const btn = h('button', { class: 'btn primary', id: 'sm-create', onclick: async () => {
+        const any = o.forms.length || CHAPTERS.some(c => !(c.id === 'structure' && !hasItems) && c.parts.some(([k]) => k !== 'donetasks' && o.parts[c.id + '.' + k]));
+        if (!any) { PM.ui.toast('Tick at least one chapter.', 'warn'); return; }
+        btn.disabled = true; const label = btn.textContent; btn.textContent = PM.i18n.t('Creating PDF…');
+        try {
+          const blob = await PM.i18n.withLang(o.lang, () => render(pid, o));
+          await PM.pdf.deliver(blob, (o.lang === 'nl' ? 'projectoverzicht-' : 'project-summary-') + p.id + '.pdf');
+        } catch (e) { console.error(e); PM.ui.toast('Could not create the PDF: ' + e.message, 'error'); }
+        btn.disabled = false; btn.textContent = label;
+      } }, 'Create PDF');
+
+      el.appendChild(h('div', { class: 'sm-grid' },
+        h('div', null, chaptersBox),
+        h('div', { class: 'card sm-side' },
+          h('h2', null, 'Export'),
+          h('div', { class: 'form-row' }, h('span', null, 'Language of the PDF'), langSel),
+          h('p', { class: 'small muted' }, 'Headings, labels, dates and numbers are in this language. Your own texts (titles, notes, comments) stay as you wrote them, and forms keep their own language.'),
+          h('label', { class: 'sm-part' }, coverCb, ' Cover page with table of contents'),
+          count,
+          h('div', { class: 'btn-row' }, btn),
+          CHAPTERS[2].parts.some(([k]) => o.parts['finance.' + k]) ? h('p', { class: 'small sm-warn' }, 'Contains financial information (costs and margins) — meant for internal use.') : null)));
+      draw();
+    }
+  });
+
+  PM.summaryPdf = { render: (pid, o) => PM.i18n.withLang(o.lang || PM.i18n.lang, () => render(pid, Object.assign({}, optionsFor(pid), o))), CHAPTERS };
 })();
 
   </script>
@@ -11556,7 +13776,8 @@ Onderdelen:
     render(el, ctx) {
       if (ctx.params.tab && ctx.params.tab !== state.lastParam) { state.tab = ctx.params.tab; state.lastParam = ctx.params.tab; }
       const tabs = [['company', 'Company'], ['roles', 'Roles & rates'], ['people', 'People'], ['forms', 'Forms'], ['templates', 'Planning templates'], ['estformats', 'Estimate formats'], ['presets', 'PDF presets'], ['data', 'Data & import'], ['dev', 'Extensions']];
-      el.appendChild(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'Shared across all projects'))));
+      el.appendChild(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'Shared across all projects')),
+        h('span', { class: 'spacer' }), h('label', { class: 'lang-row' }, h('span', { class: 'muted small' }, 'Language'), PM.app.langSwitch())));
       el.appendChild(h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, t]) => h('button', { role: 'tab', 'aria-selected': String(state.tab === k), class: state.tab === k ? 'on' : '', onclick: () => { state.tab = k; ctx.rerender(); } }, t))));
 
       if (state.tab === 'roles') {
