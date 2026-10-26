@@ -905,6 +905,21 @@ textarea { font: inherit; }
   dialog.wr-dlg { width: 100vw; max-width: 100vw; }
 }
 
+/* milestones on the project rows of the portfolio planning */
+.g-summary.light { opacity: .45; }
+.g-ms { position: absolute; top: 7px; width: 14px; height: 18px; padding: 0; border: 0; background: none; cursor: pointer; z-index: 2; }
+.g-ms i { position: absolute; left: 2px; top: 3px; width: 10px; height: 10px; transform: rotate(45deg); border-radius: 2px; background: var(--pc); border: 1.5px solid var(--surface); box-shadow: 0 0 0 1px var(--pc); }
+.g-ms.passed i { background: var(--surface); box-shadow: 0 0 0 1px color-mix(in srgb, var(--pc) 60%, transparent); }
+.g-ms.next i { width: 12px; height: 12px; left: 1px; top: 2px; background: var(--bad, #d14343); box-shadow: 0 0 0 1px var(--bad, #d14343), 0 0 0 4px color-mix(in srgb, var(--bad, #d14343) 22%, transparent); }
+.g-ms:hover i { transform: rotate(45deg) scale(1.2); }
+.g-ms-label { position: absolute; top: 9px; white-space: nowrap; font-size: 12px; color: var(--text); background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 0 4px; border-radius: 3px; pointer-events: none; z-index: 1; }
+.next-ms { color: var(--bad, #d14343); font-weight: 600; }
+@media (max-width: 760px) { .g-ms-label { font-size: 11px; } }
+@media (max-width: 760px) {
+  .group-row .g-label .open-link { display: none; }
+  .next-ms, .group-row .g-label .muted.small { font-size: 11px; }
+}
+
 </style>
 </head>
 <body>
@@ -2666,6 +2681,26 @@ PM.i18n.add('nl', {
   'Not in estimate': 'Niet in calculatie',
   'Costs not linked to an estimate line': 'Kosten niet gekoppeld aan een calculatieregel'
 });
+
+/* portfolio milestones */
+PM.i18n.add('nl', {
+  'today': 'vandaag', 'tomorrow': 'morgen',
+  'Next milestone: ': 'Volgende mijlpaal: ',
+  'No upcoming milestones': 'Geen komende mijlpalen',
+  'Order of the projects': 'Volgorde van de projecten',
+  'Order: project number': 'Volgorde: projectnummer',
+  'Order: next milestone first': 'Volgorde: eerstvolgende mijlpaal',
+  'To (addresses, separated by ; or ,)': 'Aan (adressen, gescheiden door ; of ,)',
+  'Cc (addresses, separated by ; or ,)': 'Cc (adressen, gescheiden door ; of ,)',
+  'Other addresses in To (separated by ; or ,)': 'Andere adressen in Aan (gescheiden door ; of ,)',
+  'Mail app': 'Mailprogramma',
+  'How the addresses are separated when the mail app opens': 'Hoe de adressen worden gescheiden als het mailprogramma opent',
+  'Mail app: Outlook (;)': 'Mailprogramma: Outlook (;)',
+  'Mail app: other (,)': 'Mailprogramma: ander (,)'
+});
+PM.i18n.pattern('nl', /^in (\d+) days$/, (m, n) => 'over ' + n + ' dagen');
+PM.i18n.pattern('nl', /^in (\d+) weeks$/, (m, n) => 'over ' + n + ' weken');
+PM.i18n.pattern('nl', /^Milestone (.+), (.+)$/, (m, a, b) => 'Mijlpaal ' + a + ', ' + b);
 
   </script>
   <script>/* js/core/registry.js */
@@ -6360,7 +6395,20 @@ function commentsSection(p, ctx) {
 (function () {
   const U = PM.util, h = U.h;
   const ZOOM = { day: { px: 30, label: 'Days' }, week: { px: 12, label: 'Weeks' }, month: { px: 4, label: 'Months' } };
-  const state = { zoom: 'week', collapsed: {}, expandedProjects: {}, view: 'timeline', filter: 'all', mode: 'projects', push: false, undo: null };
+  const state = { zoom: 'week', collapsed: {}, expandedProjects: {}, view: 'timeline', filter: 'all', mode: 'projects', push: false, undo: null, order: 'id' };
+  try { state.order = localStorage.getItem('pm.planning.order') === 'milestone' ? 'milestone' : 'id'; } catch (e) { /* ignore */ }
+
+  /* milestones of a project, by date; "next" = the first one today or later that is not finished */
+  function milestonesOf(lines) {
+    const today = U.todayISO();
+    const ms = lines.filter(l => l.milestone && l.start).sort((a, b) => a.start.localeCompare(b.start));
+    const next = ms.find(l => l.start >= today && U.num(l.progress) < 100) || null;
+    return { ms, next };
+  }
+  function untilText(d) {
+    const n = U.daysBetween(U.todayISO(), d);
+    return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n < 14 ? 'in ' + n + ' days' : 'in ' + Math.round(n / 7) + ' weeks';
+  }
 
   let taskIndex = null;            // project/line -> tasks, rebuilt on every timeline render
   function buildIndex() {
@@ -6609,7 +6657,12 @@ function commentsSection(p, ctx) {
         allLines.push(...ls);
       });
     } else {
-      PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed').forEach(p => {
+      const plist = PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed');
+      if (state.order === 'milestone') {
+        const key = p => { const n = milestonesOf(PM.store.list('lines', { project: p.id })).next; return n ? n.start : '9999'; };
+        plist.sort((a, b) => key(a).localeCompare(key(b)) || a.id.localeCompare(b.id, undefined, { numeric: true }));
+      }
+      plist.forEach(p => {
         const ls = PM.store.list('lines', { project: p.id });
         rows.push({ type: 'project', key: p.id, title: p.name, project: p, lines: ls, color: p.color });
         allLines.push(...ls);
@@ -6676,11 +6729,27 @@ function commentsSection(p, ctx) {
         const label = h('div', { class: 'g-label group', style: { '--pc': r.color || '#2f6fed' } },
           h('button', { class: 'caret', 'aria-expanded': String(open), 'aria-label': (open ? 'Collapse ' : 'Expand ') + r.title, onclick: toggle }, open ? '▾' : '▸'),
           h('span', { class: 'g-title', onclick: toggle }, r.title),
-          h('span', { class: 'muted small nowrap', title: linked + ' of ' + r.lines.length + ' planning lines have linked tasks' }, linked + '/' + r.lines.length),
+          r.type === 'project' ? (() => {
+            const nx = milestonesOf(r.lines).next;
+            return nx ? h('span', { class: 'next-ms small nowrap', title: 'Next milestone: ' + (nx.title || nx.id) + ' · ' + U.fmtDate(nx.start) }, '◆ ' + U.fmtDate(nx.start).replace(/ \d{4}$/, ''))
+              : h('span', { class: 'muted small nowrap', title: 'No upcoming milestones' }, '◆ —');
+          })() : h('span', { class: 'muted small nowrap', title: linked + ' of ' + r.lines.length + ' planning lines have linked tasks' }, linked + '/' + r.lines.length),
           r.type === 'group' && ctx.project ? (() => { const ph = phasesOf(ctx.projectId), i = ph.indexOf(r.title); return moveBtns('Move phase up', 'Move phase down', i > 0, i < ph.length - 1, () => movePhase(ctx.projectId, r.title, -1), () => movePhase(ctx.projectId, r.title, 1)); })() : null,
           r.type === 'project' ? h('a', { class: 'open-link small', href: '#/planning?project=' + r.key, title: 'Open project planning' }, 'open ›') : null);
         const track = h('div', { class: 'g-track', style: trackStyle });
-        if (s && e) track.appendChild(h('div', { class: 'g-summary', style: { left: x(s) + 'px', width: Math.max(px, (U.daysBetween(s, e) + 1) * px) + 'px', '--pc': r.color || '#2f6fed' }, title: r.title + ': ' + U.fmtDate(s) + ' – ' + U.fmtDate(e) }));
+        if (s && e) track.appendChild(h('div', { class: 'g-summary' + (r.type === 'project' ? ' light' : ''), style: { left: x(s) + 'px', width: Math.max(px, (U.daysBetween(s, e) + 1) * px) + 'px', '--pc': r.color || '#2f6fed' }, title: r.title + ': ' + U.fmtDate(s) + ' – ' + U.fmtDate(e) }));
+        if (r.type === 'project') {
+          // milestones as the key items of the project; the next one is highlighted and named
+          const { ms, next } = milestonesOf(r.lines);
+          ms.forEach(m => {
+            const passed = m !== next && (U.num(m.progress) >= 100 || m.start < today);
+            track.appendChild(h('button', { type: 'button', class: 'g-ms' + (m === next ? ' next' : '') + (passed ? ' passed' : ''), style: { left: (x(m.start) + px / 2 - 7) + 'px', '--pc': r.color || '#2f6fed' },
+              title: (m.title || m.id) + ' · ' + U.fmtDate(m.start) + (m === next ? ' · ' + PM.i18n.t(untilText(m.start)) : ''), 'aria-label': 'Milestone ' + (m.title || m.id) + ', ' + U.fmtDate(m.start),
+              onclick: () => openLineDialog(m) }, h('i')));
+          });
+          if (next) track.appendChild(h('span', { class: 'g-ms-label', translate: 'no', style: { left: (x(next.start) + px / 2 + 11) + 'px' } },
+            h('b', null, next.title || next.id), ' · ' + U.fmtDate(next.start) + ' (' + PM.i18n.t(untilText(next.start)) + ')'));
+        }
         body.appendChild(h('div', { class: 'g-row group-row' }, label, track));
         return;
       }
@@ -6859,6 +6928,8 @@ function commentsSection(p, ctx) {
       const undoBtn = state.undo ? h('button', { class: 'btn small', title: state.undo.label, onclick: undoShift }, '↶ Undo shift') : null;
       const filter = h('select', { 'aria-label': 'Show lines', onchange: e => { state.filter = e.target.value; ctx.rerender(); } },
         [['all', 'All lines'], ['linked', 'With tasks'], ['unlinked', 'Without tasks']].map(([v, t]) => h('option', { value: v, selected: state.filter === v || null }, t)));
+      const orderSel = !ctx.project && state.mode !== 'team' ? h('select', { 'aria-label': 'Order of the projects', id: 'pl-order', onchange: e => { state.order = e.target.value; try { localStorage.setItem('pm.planning.order', state.order); } catch (x) { /* ignore */ } ctx.rerender(); } },
+        [['id', 'Order: project number'], ['milestone', 'Order: next milestone first']].map(([v, t]) => h('option', { value: v, selected: state.order === v || null }, t))) : null;
 
       el.appendChild(h('div', { class: 'page-head' },
         h('div', null, h('h1', null, 'Planning'), h('p', { class: 'muted' }, ctx.project ? ctx.project.name : 'All active projects — expand a project to see its lines')),
@@ -6874,6 +6945,7 @@ function commentsSection(p, ctx) {
         state.view === 'timeline' || !ctx.project ? zoomBtns : null,
         state.view === 'timeline' || !ctx.project ? h('button', { class: 'btn ghost small', onclick: () => state.scrollToday && state.scrollToday() }, 'Today') : null,
         filter,
+        orderSel,
         pushBox,
         undoBtn,
         h('span', { class: 'spacer' }),
@@ -12879,8 +12951,8 @@ Onderdelen:
         h('div', { class: 'form-grid' },
           h('label', { class: 'form-row' }, h('span', null, 'Name *'), inp('name', { id: 'wr-t-name' })),
           h('label', { class: 'form-row' }, h('span', null, 'Variant'), variant),
-          h('label', { class: 'form-row wide' }, h('span', null, 'To (addresses, separated by commas)'), inp('to', { id: 'wr-t-to' })),
-          h('label', { class: 'form-row wide' }, h('span', null, 'Cc (addresses, separated by commas)'), inp('cc', { id: 'wr-t-cc' })),
+          h('label', { class: 'form-row wide' }, h('span', null, 'To (addresses, separated by ; or ,)'), inp('to', { id: 'wr-t-to' })),
+          h('label', { class: 'form-row wide' }, h('span', null, 'Cc (addresses, separated by ; or ,)'), inp('cc', { id: 'wr-t-cc' })),
           h('label', { class: 'form-row wide' }, h('span', null, 'Subject'), inp('subject', { id: 'wr-t-subject' })),
           h('label', { class: 'form-row wide' }, h('span', null, 'Text'), body)),
         h('p', { class: 'small muted' }, 'Placeholders: {deliverydate} {transporter} {project_address} {object} (project name / number) {project_id} {client} {pickup} {pickup_name} {items} (the ticked items of Structure) {mass} {size} (of the chosen main item) {manager} {today}. Same name with variants "prefab" and "no prefab" = one mail that follows the Prefab option.')),
@@ -12889,7 +12961,7 @@ Onderdelen:
         { label: 'Cancel' },
         { label: 'Save', primary: true, onClick: () => {
           if (!String(v.name || '').trim()) { PM.ui.toast('Give the template a name.', 'warn'); return false; }
-          const data = { name: v.name.trim(), variant: v.variant || 'all', to: v.to || '', cc: v.cc || '', subject: v.subject || '', body: v.body || '' };
+          const data = { name: v.name.trim(), variant: v.variant || 'all', to: joinAddr(splitAddr(v.to)), cc: joinAddr(splitAddr(v.cc)), subject: v.subject || '', body: v.body || '' };
           if (rec) PM.store.update('mails', rec._key, data); else PM.store.insert('mails', data);
         } }].filter(Boolean)
     });
@@ -12897,7 +12969,9 @@ Onderdelen:
 
   /* ---------- recipients ---------- */
   const splitAddr = s => String(s || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
-  const joinAddr = list => Array.from(new Set(list)).join(', ');
+  const joinAddr = list => Array.from(new Set(list)).join('; ');
+  /* separator between addresses for the mail app: Outlook wants ";" (a comma only works when that Outlook option is on) */
+  const mailSep = () => { try { return localStorage.getItem('pm.mail.sep') === ',' ? ',' : ';'; } catch (e) { return ';'; } };
   /* save To / Cc on every template with this name (all its variants) */
   function saveRecipients(name, to, cc) {
     PM.store.list('mails', m => m.name === name).forEach(m => PM.store.update('mails', m._key, { to, cc }));
@@ -12908,8 +12982,8 @@ Onderdelen:
     const toL = splitAddr(to).map(x => x.toLowerCase()), ccL = splitAddr(cc).map(x => x.toLowerCase());
     const known = new Set(people.map(p => String(p.email).toLowerCase()));
     const state = new Map(people.map(p => { const e = String(p.email).toLowerCase(); return [p, toL.includes(e) ? 'to' : ccL.includes(e) ? 'cc' : '']; }));
-    const otherTo = h('input', { type: 'text', id: 'wr-r-otherto', value: splitAddr(to).filter(x => !known.has(x.toLowerCase())).join(', '), placeholder: 'e.g. planning@transporter.nl' });
-    const otherCc = h('input', { type: 'text', id: 'wr-r-othercc', value: splitAddr(cc).filter(x => !known.has(x.toLowerCase())).join(', ') });
+    const otherTo = h('input', { type: 'text', id: 'wr-r-otherto', value: joinAddr(splitAddr(to).filter(x => !known.has(x.toLowerCase()))), placeholder: 'e.g. planning@transporter.nl' });
+    const otherCc = h('input', { type: 'text', id: 'wr-r-othercc', value: joinAddr(splitAddr(cc).filter(x => !known.has(x.toLowerCase()))) });
     const roleOf = p => { const r = p.role ? PM.store.find('roles', p.role) : null; return r ? r.name : ''; };
     const body = h('tbody', null, people.map(p => {
       const radio = (val, label) => h('label', { class: 'wr-r-opt' }, h('input', { type: 'radio', name: 'wr-r-' + p.id, value: val, checked: state.get(p) === val || null, onchange: () => state.set(p, val) }), ' ', label);
@@ -12927,7 +13001,7 @@ Onderdelen:
         people.length ? h('table', { class: 'data wr-r-table' }, h('thead', null, h('tr', null, h('th', null, 'Person'), h('th', null, 'Role'), h('th', null, 'In the mail'))), body)
           : h('p', { class: 'muted' }, 'No people with an e-mail address yet. Add them in Settings → People.'),
         h('div', { class: 'form-grid' },
-          h('label', { class: 'form-row wide' }, h('span', null, 'Other addresses in To (separated by commas)'), otherTo),
+          h('label', { class: 'form-row wide' }, h('span', null, 'Other addresses in To (separated by ; or ,)'), otherTo),
           h('label', { class: 'form-row wide' }, h('span', null, 'Other addresses in Cc'), otherCc)),
         h('p', { class: 'small muted' }, '“Save for this mail” stores the recipients with the template “' + name + '”, so they are filled in every time — for all projects.')),
       actions: [{ label: 'Cancel' },
@@ -13024,7 +13098,8 @@ Onderdelen:
         catch (e) { out.body.select(); try { document.execCommand('copy'); PM.ui.toast('Text copied.'); } catch (e2) { PM.ui.toast('Select the text and copy it.', 'warn'); } }
       };
       const mailto = () => {
-        const addr = v => encodeURIComponent(splitAddr(v).join(',')).replace(/%40/g, '@').replace(/%2C/gi, ',');
+        // each address encoded on its own; the separator stays a plain ";" (or ",") so the mail app sees separate recipients
+        const addr = v => splitAddr(v).map(a => encodeURIComponent(a).replace(/%40/g, '@')).join(mailSep());
         const href = 'mailto:' + addr(out.to.value) + '?' + (out.cc.value.trim() ? 'cc=' + addr(out.cc.value) + '&' : '') + 'subject=' + encodeURIComponent(out.subject.value) + '&body=' + encodeURIComponent(out.body.value);
         const a = h('a', { href }); document.body.appendChild(a); a.click(); a.remove();
       };
@@ -13046,6 +13121,10 @@ Onderdelen:
         drawSaveState();
       }) }, 'Recipients…');
 
+      const sepSel = h('select', { id: 'wr-sep', class: 'small', 'aria-label': 'Mail app', title: 'How the addresses are separated when the mail app opens',
+        onchange: e => { try { localStorage.setItem('pm.mail.sep', e.target.value); } catch (x) { /* ignore */ } } },
+        [[';', 'Mail app: Outlook (;)'], [',', 'Mail app: other (,)']].map(([v, t]) => h('option', { value: v, selected: mailSep() === v || null }, t)));
+
       el.appendChild(h('div', { class: 'wr-grid' },
         h('div', { class: 'card wr-opts' },
           h('h2', null, 'Options'),
@@ -13061,7 +13140,7 @@ Onderdelen:
         h('div', { class: 'card wr-out' },
           h('h2', null, 'Mail'),
           h('div', { class: 'form-grid one' }, opt('To', out.to), opt('Cc', out.cc),
-            h('div', { class: 'btn-row wr-rcpt' }, pickBtn, saveBtn),
+            h('div', { class: 'btn-row wr-rcpt' }, pickBtn, saveBtn, h('span', { class: 'spacer' }), sepSel),
             opt('Subject', out.subject), opt('Text', out.body)),
           missing,
           h('div', { class: 'btn-row' },
