@@ -989,6 +989,8 @@ textarea { font: inherit; }
 .cf-summary h3 { font-size: 14px; margin: 0 0 6px; }
 .cf-pre { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--surface-2); padding: 10px 12px; border-radius: 8px; margin: 0 0 8px; }
 @media (max-width: 900px) { .cf-grid { grid-template-columns: 1fr; } .cf-form { position: static; max-height: none; } }
+.side-ver { margin-top: 8px; font-size: 11px; }
+.cf-noproj { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); font-size: 13px; }
 
 </style>
 </head>
@@ -2859,6 +2861,18 @@ PM.i18n.pattern('nl', /^(.+): order received — the project is now active and s
 PM.i18n.pattern('nl', /^(.+) marked as lost\.$/, (m, x) => x + ' gemarkeerd als verloren.');
 PM.i18n.pattern('nl', /^Total for (\d+) pieces$/, (m, n) => 'Totaal voor ' + n + ' stuks');
 PM.i18n.pattern('nl', /^(\d+) line\(s\) added to the estimate(.*)\.$/, (m, n, rest) => n + ' regel(s) toegevoegd aan de calculatie' + rest.replace(/ \(replacing the (\d+) earlier line\(s\) of this design\)/, ' (vervangt de $1 eerdere regel(s) van dit ontwerp)') + '.');
+PM.i18n.add('nl', {
+  'Configurators (Costs → Configurator)': 'Configurators (Kosten → Configurator)',
+  'Configurator files go in your data as ': 'Configuratorbestanden staan in je gegevens als ',
+  '. They are read when the data is loaded (Data → Reload from source).': '. Ze worden gelezen bij het laden van de gegevens (Gegevens → Opnieuw laden van de bron).',
+  'File': 'Bestand', 'Result': 'Resultaat', 'Not used: ': 'Niet gebruikt: ',
+  ' — found outside settings/configurators/; it works, but moving it there is tidier': ' — gevonden buiten settings/configurators/; het werkt, maar daar neerzetten is netter',
+  'No configurator files found in ': 'Geen configuratorbestanden gevonden in ',
+  '. Check that the file is in this portfolio’s repository, in the folder settings/configurators/, and reload.': '. Controleer of het bestand in de repository van dit portfolio staat, in de map settings/configurators/, en laad opnieuw.',
+  'Reloaded.': 'Opnieuw geladen.',
+  'You can try designs here. To save a design or add it to an estimate, choose a project in the bar at the top.': 'Je kunt hier ontwerpen uitproberen. Kies bovenaan een project om een ontwerp op te slaan of aan een calculatie toe te voegen.'
+});
+PM.i18n.pattern('nl', /^Version (.+)$/, (m, v) => 'Versie ' + v);
 
   </script>
   <script>/* js/core/registry.js */
@@ -4265,7 +4279,7 @@ PM.github = (function () {
         if (e.type !== 'blob' || !e.path.startsWith(pre) || !/\.md$/i.test(e.path)) return;
         const rel = e.path.slice(pre.length);
         const parts = rel.split('/');
-        if (parts[0] === 'settings' && (parts.length === 2 || (parts.length === 3 && (parts[1] === 'forms' || parts[1] === 'configurators')))) jobs.push([rel, e.sha]);
+        if ((parts[0] === 'settings' && parts.length <= 3) || (parts[0] === 'configurators' && parts.length === 2) || parts.length === 1) jobs.push([rel, e.sha]);
         if (parts[0] === 'projects' && parts.length === 3) { projects.add(parts[1]); jobs.push([rel, e.sha]); }
       });
       this.dirs.projects = Array.from(projects).sort();
@@ -4291,7 +4305,7 @@ PM.github = (function () {
 
     async readText(path) { return path in this.files ? this.files[path].text : null; }
     versionOf(path) { return this.files[path] ? this.files[path].sha : null; }
-    async listFiles(dir) { const pre = dir.replace(/\/?$/, '/'); return Object.keys(this.files).filter(f => f.startsWith(pre) && !f.slice(pre.length).includes('/')).map(f => f.slice(pre.length)).sort(); }
+    async listFiles(dir) { const pre = dir ? dir.replace(/\/?$/, '/') : ''; return Object.keys(this.files).filter(f => f.startsWith(pre) && !f.slice(pre.length).includes('/')).map(f => f.slice(pre.length)).sort(); }
     async listDirs(path) { return this.dirs[path] || []; }
 
     async currentSha(path) {
@@ -5946,6 +5960,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
+PM.version = '2026-10-27.2';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -6581,7 +6596,7 @@ PM.app = (function () {
     root.appendChild(h('aside', { class: 'sidebar' },
       h('div', { class: 'brand' }, h('span', { class: 'brand-mark', 'aria-hidden': 'true' }), h('span', null, 'Project Manager')),
       navEl,
-      h('div', { class: 'side-foot' }, h('div', { class: 'muted small' }, 'Data source'), h('div', { id: 'source-name', class: 'small' }, '—'), h('div', { class: 'side-lang' }, langSwitch()))));
+      h('div', { class: 'side-foot' }, h('div', { class: 'muted small' }, 'Data source'), h('div', { id: 'source-name', class: 'small' }, '—'), h('div', { class: 'side-lang' }, langSwitch()), h('div', { class: 'small muted side-ver', translate: 'no' }, 'Version ' + PM.version))));
     root.appendChild(h('div', { class: 'main', id: 'main' },
       h('header', { class: 'topbar' }, h('div', { id: 'pf-box', class: 'pf-box' }), projSel.el, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
       banner, viewEl));
@@ -9281,6 +9296,7 @@ PM.surveys = (function () {
       try {
         let text = await be.readText(FORMS_DIR + '/' + name);
         if (text == null) continue;
+        if (/^##\s+parameters\s*$/im.test(text) && /^##\s+cost lines\s*$/im.test(text)) continue;   // a configurator, not a form
         const fid = name.replace(/\.md$/i, '');
         if (builtins[fid] && (PREVIOUS[fid] || []).includes(hashText(text)) && be.writable) {
           try { await be.writeText(FORMS_DIR + '/' + name, builtins[fid]); text = builtins[fid]; console.info('Form ' + fid + ' updated to the new built-in version'); }
@@ -12919,7 +12935,8 @@ PM.costsPdf = (function () {
       const views = ctx.projectId
         ? [['estimate', 'Estimate', 'Estimate'], ['extras', 'Additional work', 'Extras'], ['actual', 'Actual costs', 'Actual'], ['analysis', 'Analysis', 'Analysis']]
           .concat(PM.configurator && PM.configurator.list().length ? [['config', 'Configurator', 'Config.']] : [])
-        : [['actual', 'Actual costs', 'Actual costs'], ['analysis', 'Estimate vs actual', 'Estimate vs actual']];
+        : [['actual', 'Actual costs', 'Actual costs'], ['analysis', 'Estimate vs actual', 'Estimate vs actual']]
+          .concat(PM.configurator && PM.configurator.list().length ? [['config', 'Configurator', 'Config.']] : []);
       if (!views.some(v => v[0] === state.view)) state.view = ctx.projectId ? 'estimate' : 'actual';
       el.appendChild(h('div', { class: 'page-head' },
         h('div', null, h('h1', null, 'Costs'), h('p', { class: 'muted' }, (ctx.project ? ctx.project.name : 'All projects') + ' · amounts in EUR, excl. VAT')),
@@ -13036,14 +13053,32 @@ PM.costsPdf = (function () {
     return p;
   }
 
+  /* a configurator file is recognised by its sections, so it also works when it ended up in another folder */
+  const looksLike = text => /^##\s+parameters\s*$/im.test(text) && /^##\s+cost lines\s*$/im.test(text);
+  let report = [];               // what was found, for Settings → Forms
   async function loadDefs(be) {
-    defs = [];
+    defs = []; report = [];
     if (!be || !be.listFiles) return;
-    let files = [];
-    try { files = (await be.listFiles(DIR)).filter(n => /\.md$/i.test(n)); } catch (e) { files = []; }
-    for (const n of files) {
-      try { const text = await be.readText(DIR + '/' + n); if (text != null) defs.push(parseDef(text, n.replace(/\.md$/i, ''))); }
-      catch (e) { console.warn('Configurator ' + n + ' could not be read', e); }
+    const dirs = [DIR, 'settings/configurator', 'configurators', 'settings', 'settings/forms', ''];
+    const seen = new Set();
+    for (const dir of dirs) {
+      let files = [];
+      try { files = (await be.listFiles(dir)).filter(n => /\.md$/i.test(n)); } catch (e) { files = []; }
+      for (const n of files) {
+        const path = dir ? dir + '/' + n : n;
+        let text = null;
+        try { text = await be.readText(path); } catch (e) { report.push({ path, error: e.message }); continue; }
+        if (text == null) continue;
+        if (dir !== DIR && !looksLike(text)) continue;
+        try {
+          const d = parseDef(text, n.replace(/\.md$/i, ''));
+          if (seen.has(d.id)) continue;
+          seen.add(d.id);
+          if (!d.params.length || !d.lines.length) { report.push({ path, error: 'no "## Parameters" or "## Cost lines" table found' }); continue; }
+          defs.push(d);
+          report.push({ path, name: d.name, params: d.params.length, lines: d.lines.length, moved: dir !== DIR });
+        } catch (e) { report.push({ path, error: e.message }); }
+      }
     }
   }
   PM.store.addLoader(loadDefs);
@@ -13224,7 +13259,7 @@ PM.costsPdf = (function () {
     }
     if (!defs.some(d => d.id === st.def)) { st.def = defs[0].id; st.values = {}; st.cfg = ''; }
     const d = defs.find(x => x.id === st.def);
-    const saved = PM.store.list('configs', { project: pid });
+    const saved = pid ? PM.store.list('configs', { project: pid }) : [];
     const cur = st.cfg ? saved.find(c => c.id === st.cfg) : null;
     if (st.cfg && !cur) { st.cfg = ''; }
     const res = compute(d, st.values);
@@ -13292,7 +13327,8 @@ PM.costsPdf = (function () {
       return rec;
     };
     const summaryText = () => [d.name + (st.name ? ' — ' + st.name : '') + (q !== 1 ? ' (' + q + '×)' : '')].concat(res.summary.map(s => '• ' + s.label + ': ' + s.value)).join('\n');
-    out.appendChild(h('div', { class: 'cf-save' },
+    if (!pid) out.appendChild(h('p', { class: 'cf-noproj' }, 'You can try designs here. To save a design or add it to an estimate, choose a project in the bar at the top.'));
+    else out.appendChild(h('div', { class: 'cf-save' },
       h('label', { class: 'form-row' }, h('span', null, 'Name of this design'), nameInp),
       h('label', { class: 'form-row cf-qty' }, h('span', null, 'Quantity'), qtyInp),
       h('div', { class: 'btn-row' },
@@ -13344,7 +13380,7 @@ PM.costsPdf = (function () {
     };
   }
 
-  PM.configurator = { list: () => defs.slice(), parse: parseDef, compute, evaluate: (src, scope, d) => evaluate(src, scope || {}, d || { tables: {} }), render, pdfSpec, reload: () => loadDefs(PM.store.backend) };
+  PM.configurator = { list: () => defs.slice(), report: () => report.slice(), looksLike, parse: parseDef, compute, evaluate: (src, scope, d) => evaluate(src, scope || {}, d || { tables: {} }), render, pdfSpec, reload: () => loadDefs(PM.store.backend) };
 })();
 
   </script>
@@ -14685,6 +14721,19 @@ Onderdelen:
     return box;
   }
 
+  /* which configurator files the app found in this portfolio (Costs → Configurator) */
+  function configuratorsSection() {
+    const rep = PM.configurator ? PM.configurator.report() : [];
+    const be = PM.store.backend;
+    return PM.ui.section('Configurators (Costs → Configurator)', h('div', null,
+      h('p', { class: 'small muted' }, 'Configurator files go in your data as ', h('code', null, 'settings/configurators/<name>.md'), '. They are read when the data is loaded (Data → Reload from source).'),
+      rep.length ? h('table', { class: 'data' }, h('thead', null, h('tr', null, h('th', null, 'File'), h('th', null, 'Result'))),
+        h('tbody', null, rep.map(r => h('tr', null, h('td', null, h('code', { translate: 'no' }, r.path)),
+          h('td', { class: r.error ? 'bad-text' : null }, r.error ? 'Not used: ' + r.error : [h('b', { translate: 'no' }, r.name), ' · ' + r.params + ' questions, ' + r.lines + ' cost lines', r.moved ? h('span', { class: 'muted' }, ' — found outside settings/configurators/; it works, but moving it there is tidier') : null])))))
+        : h('p', { class: 'small' }, 'No configurator files found in ', h('b', null, be ? be.label : 'this data source'), '. Check that the file is in this portfolio’s repository, in the folder settings/configurators/, and reload.'),
+      h('div', { class: 'btn-row' }, h('button', { class: 'btn small', onclick: async () => { if (be) { await PM.app.useBackend(be, true); PM.ui.toast('Reloaded.', 'ok'); } } }, 'Reload from source'))));
+  }
+
   function gitHubSection() {
     const c = PM.github.cfg();
     const be = PM.store.backend;
@@ -14804,6 +14853,7 @@ Onderdelen:
         el.appendChild(companyTab());
       } else if (state.tab === 'forms') {
         PM.formsEditor.renderTab(el);
+        el.appendChild(configuratorsSection());
       } else if (state.tab === 'estformats') {
         PM.estimateFormats.renderSettings(el, ctx.rerender);
       } else if (state.tab === 'templates') {
