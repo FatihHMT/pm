@@ -920,6 +920,33 @@ textarea { font: inherit; }
   .next-ms, .group-row .g-label .muted.small { font-size: 11px; }
 }
 
+/* ---------- portfolios ---------- */
+.has-pf .topbar { box-shadow: inset 0 3px 0 var(--pf-color); }
+.pf-box:empty { display: none; }
+.pf-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); font: inherit; font-weight: 600; color: var(--text); cursor: pointer; max-width: 200px; }
+.pf-btn:hover { border-color: var(--pf-color); }
+.pf-btn.off { opacity: .6; border-style: dashed; }
+.pf-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex: none; margin-right: 6px; vertical-align: -1px; }
+.pf-btn .pf-dot { margin-right: 0; }
+.menu .pf-item { display: flex; align-items: center; gap: 2px; font-weight: 500; }
+.menu-check { margin-left: auto; color: var(--accent); font-weight: 700; padding-left: 12px; }
+.menu-sep { height: 1px; background: var(--border); margin: 5px 4px; }
+.pf-swatches { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; }
+.pf-sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--border-strong); cursor: pointer; padding: 0; }
+.pf-sw.on { box-shadow: 0 0 0 2px var(--text); }
+.pf-table tr.on td { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.pf-picks { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+.pf-dlg { width: min(720px, 96vw); }
+@media (max-width: 760px) {
+  .pf-btn { max-width: 110px; height: 40px; padding: 0 8px; }
+  .pf-btn .pp-caret { display: none; }
+}
+@media (max-width: 760px) {
+  /* with a portfolio button there is little room: show the save state only when something needs attention */
+  .has-pf .status-pill.ok, .has-pf .status-pill:not(.warn):not(.error):not(.busy) { display: none; }
+}
+
 </style>
 </head>
 <body>
@@ -2702,6 +2729,58 @@ PM.i18n.pattern('nl', /^in (\d+) days$/, (m, n) => 'over ' + n + ' dagen');
 PM.i18n.pattern('nl', /^in (\d+) weeks$/, (m, n) => 'over ' + n + ' weken');
 PM.i18n.pattern('nl', /^Milestone (.+), (.+)$/, (m, a, b) => 'Mijlpaal ' + a + ', ' + b);
 
+/* portfolios */
+PM.i18n.add('nl', {
+  'Portfolios…': 'Portfolio’s…',
+  'Portfolios': 'Portfolio’s',
+  'Portfolio': 'Portfolio',
+  'Portfolio ': 'Portfolio ',
+  'portfolio': 'portfolio',
+  'portfolios': 'portfolio’s',
+  ' portfolios on this device. ': ' portfolio’s op dit apparaat. ',
+  '+ Add portfolio…': '+ Portfolio toevoegen…',
+  '+ Add portfolio': '+ Portfolio toevoegen',
+  'Manage portfolios…': 'Portfolio’s beheren…',
+  'Add portfolio': 'Portfolio toevoegen',
+  'Edit portfolio · ': 'Portfolio bewerken · ',
+  'A portfolio is a separate set of projects with its own people, rates, forms, templates and company details, stored in its own private GitHub repository. Nothing is shared with your other portfolios.': 'Een portfolio is een aparte set projecten met eigen medewerkers, tarieven, formulieren, sjablonen en bedrijfsgegevens, opgeslagen in een eigen privé GitHub-repository. Er wordt niets gedeeld met je andere portfolio’s.',
+  'Colour': 'Kleur',
+  'e.g. Ultech': 'bijv. Ultech',
+  'yourname/Ultech': 'jouwnaam/Ultech',
+  ' Use the same token as “': ' Hetzelfde token gebruiken als “',
+  '” (give that token access to the new repository on GitHub)': '” (geef dat token op GitHub toegang tot de nieuwe repository)',
+  'Give the portfolio a name.': 'Geef het portfolio een naam.',
+  'Another portfolio already uses this repository (and folder).': 'Een ander portfolio gebruikt deze repository (en map) al.',
+  ' — does the token have access to this repository?': ' — heeft het token toegang tot deze repository?',
+  'Portfolio “': 'Portfolio “',
+  '” added': '” toegevoegd',
+  'Switch to it now? Your current changes are saved first.': 'Nu overstappen? Je huidige wijzigingen worden eerst opgeslagen.',
+  'Later': 'Later',
+  'Switch now': 'Nu overstappen',
+  'Portfolio saved.': 'Portfolio opgeslagen.',
+  'Each portfolio has its own GitHub repository with its own projects, people, rates, forms and templates. The list and the tokens are kept on this device only; set them up once on every device you use.': 'Elk portfolio heeft een eigen GitHub-repository met eigen projecten, medewerkers, tarieven, formulieren en sjablonen. De lijst en de tokens staan alleen op dit apparaat; stel ze één keer in op elk apparaat dat je gebruikt.',
+  'in use': 'in gebruik',
+  'no token': 'geen token',
+  'Switch': 'Overstappen',
+  'Remove “': 'Verwijderen: “',
+  '” from this device?': '” van dit apparaat?',
+  'Only the entry and the token on this device are removed. The repository and all its data on GitHub stay as they are; add it again at any time.': 'Alleen de vermelding en het token op dit apparaat worden verwijderd. De repository en alle gegevens op GitHub blijven zoals ze zijn; je kunt hem altijd opnieuw toevoegen.',
+  'No portfolios yet. Connect GitHub to create the first one.': 'Nog geen portfolio’s. Koppel GitHub om het eerste te maken.',
+  'Copy settings from another portfolio…': 'Instellingen kopiëren van een ander portfolio…',
+  'People and roles & rates': 'Medewerkers en rollen & tarieven',
+  'Mail templates and recipients': 'Mailsjablonen en ontvangers',
+  'Company details and logo': 'Bedrijfsgegevens en logo',
+  'Copy settings into “': 'Instellingen kopiëren naar “',
+  'Copy from': 'Kopiëren van',
+  'Projects are never copied. Settings with the same name in this portfolio are replaced; after copying, both portfolios are independent again.': 'Projecten worden nooit gekopieerd. Instellingen met dezelfde naam in dit portfolio worden vervangen; na het kopiëren zijn beide portfolio’s weer onafhankelijk.',
+  'Copy': 'Kopiëren',
+  'Reading “': '“',
+  'Not everything is saved yet (no connection or a conflict). Try again when the changes are saved.': 'Nog niet alles is opgeslagen (geen verbinding of een conflict). Probeer het opnieuw als de wijzigingen zijn opgeslagen.',
+  'Photos still waiting to upload are kept and sent when you come back to this portfolio.': 'Foto’s die nog moeten uploaden blijven bewaard en worden verstuurd als je terugkomt in dit portfolio.',
+  'GitHub connection · ': 'GitHub-koppeling · '
+});
+PM.i18n.pattern('nl', /^Portfolio: (.+)$/, (m, x) => 'Portfolio: ' + x);
+
   </script>
   <script>/* js/core/registry.js */
 /* PM Tool — core/registry.js
@@ -3823,6 +3902,116 @@ PM.onedrive = (function () {
 })();
 
   </script>
+  <script>/* js/core/portfolio.js */
+/* PM Tool — core/portfolio.js
+ * Several separate portfolios in one app, e.g. "Firepacks" and "Ultech". Each portfolio is
+ * its own GitHub repository (or folder in one), with its own projects, people, rates,
+ * forms, templates and company details. Nothing is shared between them.
+ *
+ * The list is kept on this device (the tokens never leave it). Things the app remembers
+ * on the device (last project, filters, export choices…) are kept per portfolio, through
+ * PM.portfolio.local.get / set. The language and the mail separator are device-wide.
+ *
+ *   PM.portfolio.list()                 -> [{ id, name, color, repo, token, branch, folder }]
+ *   PM.portfolio.current()              -> the active one (or null: no portfolios yet)
+ *   PM.portfolio.add({ … })  update(id, patch)  remove(id)
+ *   PM.portfolio.switchTo(id)           -> saves pending changes, then reloads into that portfolio
+ *   PM.portfolio.local.get(key) / set(key, value) / remove(key)
+ */
+PM.portfolio = (function () {
+  const LS_LIST = 'pm.portfolios', LS_CUR = 'pm.portfolio.current';
+  /* device-wide keys: never copied into or read from a portfolio */
+  const GLOBAL = /^pm\.(portfolios|portfolio\.current|lang|mail\.sep|gh\.config|od\.|parked\.)/;
+  const COLORS = ['#2f6fed', '#d9822b', '#1f9d55', '#8e5bd9', '#d14343', '#0f9d8a', '#b4235a', '#5b6b8c'];
+
+  const read = (k, def) => { try { const v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); } catch (e) { return def; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } };
+
+  function list() { const l = read(LS_LIST, []); return Array.isArray(l) ? l : []; }
+  function save(l) { write(LS_LIST, l); }
+  function currentId() { try { return localStorage.getItem(LS_CUR) || ''; } catch (e) { return ''; } }
+  function current() { const l = list(); return l.find(p => p.id === currentId()) || l[0] || null; }
+  function get(id) { return list().find(p => p.id === id) || null; }
+  function newId() { return 'pf' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
+
+  function clean(p) {
+    return {
+      id: p.id, name: String(p.name || '').trim() || 'Portfolio', color: p.color || COLORS[0],
+      repo: String(p.repo || '').trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''),
+      token: String(p.token || '').trim(), branch: String(p.branch || '').trim(),
+      folder: String(p.folder || '').trim().replace(/^\/+|\/+$/g, '')
+    };
+  }
+  function add(p) {
+    const l = list();
+    const rec = clean(Object.assign({ id: newId(), color: COLORS[l.length % COLORS.length] }, p));
+    l.push(rec); save(l);
+    if (l.length === 1) setCurrent(rec.id);
+    return rec;
+  }
+  function update(id, patch) {
+    const l = list(), i = l.findIndex(p => p.id === id);
+    if (i < 0) return null;
+    l[i] = clean(Object.assign({}, l[i], patch, { id }));
+    save(l);
+    return l[i];
+  }
+  function remove(id) {
+    const l = list().filter(p => p.id !== id);
+    save(l);
+    // forget what this device remembered for it
+    try { Object.keys(localStorage).filter(k => k.startsWith('pf.' + id + '.')).forEach(k => localStorage.removeItem(k)); } catch (e) { /* ignore */ }
+    if (currentId() === id) setCurrent(l[0] ? l[0].id : '');
+  }
+  function setCurrent(id) { try { if (id) localStorage.setItem(LS_CUR, id); else localStorage.removeItem(LS_CUR); } catch (e) { /* ignore */ } }
+
+  /* remembered values per portfolio (without portfolios: the plain key, as before) */
+  const nsKey = k => { const c = current(); return c && !GLOBAL.test(k) ? 'pf.' + c.id + '.' + k : k; };
+  const local = {
+    get(k) { try { return localStorage.getItem(nsKey(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(nsKey(k), v); } catch (e) { /* ignore */ } },
+    remove(k) { try { localStorage.removeItem(nsKey(k)); } catch (e) { /* ignore */ } },
+    key: nsKey
+  };
+
+  /* first run with this version: the existing GitHub connection becomes the first portfolio,
+   * and what the device remembered for it moves along */
+  (function migrate() {
+    if (list().length) return;
+    let old = null;
+    try { old = JSON.parse(localStorage.getItem('pm.gh.config') || 'null'); } catch (e) { old = null; }
+    if (!old || !old.repo) return;
+    const rec = add({ name: String(old.repo).split('/').pop() || 'Portfolio', repo: old.repo, token: old.token, branch: old.branch, folder: old.folder, color: COLORS[0] });
+    setCurrent(rec.id);
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('pm.') && !GLOBAL.test(k)).forEach(k => {
+        if (localStorage.getItem('pf.' + rec.id + '.' + k) == null) localStorage.setItem('pf.' + rec.id + '.' + k, localStorage.getItem(k));
+      });
+    } catch (e) { /* ignore */ }
+  })();
+
+  /* save everything that is still waiting, then open the other portfolio fresh */
+  async function switchTo(id) {
+    const target = get(id);
+    if (!target) return false;
+    if (current() && current().id === id && PM.store.backend && PM.store.backend.kind === 'github') return true;
+    try { await PM.store.flush(); } catch (e) { /* reported below */ }
+    if (PM.store.pending || (PM.store.conflicts && PM.store.conflicts.length)) {
+      PM.ui.toast('Not everything is saved yet (no connection or a conflict). Try again when the changes are saved.', 'warn');
+      return false;
+    }
+    if (PM.files && PM.files.pending) PM.ui.toast('Photos still waiting to upload are kept and sent when you come back to this portfolio.', 'warn');
+    setCurrent(id);
+    try { localStorage.setItem('pf.' + id + '.pm.source', 'github'); } catch (e) { /* ignore */ }
+    location.hash = '#/dashboard';
+    location.reload();
+    return true;
+  }
+
+  return { list, current, get, add, update, remove, switchTo, setCurrent, local, COLORS };
+})();
+
+  </script>
   <script>/* js/core/github.js */
 /* PM Tool — core/github.js
  * GitHub storage: the Markdown files live in a (private) GitHub repository.
@@ -3842,19 +4031,35 @@ PM.github = (function () {
   const API = 'https://api.github.com';
   const LS = 'pm.gh.config';
 
+  /* the connection of the active portfolio (core/portfolio.js); without portfolios the old single connection */
   function cfg() {
     let c = {};
-    try { c = JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { /* ignore */ }
+    const pf = PM.portfolio && PM.portfolio.current();
+    if (pf) c = pf;
+    else { try { c = JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { /* ignore */ } }
     const base = (PM.config && PM.config.github) || {};
     return {
-      repo: (c.repo || base.repo || '').trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''),
+      repo: (c.repo || (pf ? '' : base.repo) || '').trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/+$/, ''),
       token: (c.token || '').trim(),
-      branch: (c.branch || base.branch || '').trim(),
+      branch: (c.branch || (pf ? '' : base.branch) || '').trim(),
       folder: (c.folder != null ? c.folder : (base.folder || '')).trim().replace(/^\/+|\/+$/g, '')
     };
   }
-  function saveCfg(c) { try { localStorage.setItem(LS, JSON.stringify(c)); } catch (e) { /* ignore */ } }
-  function forget() { try { localStorage.removeItem(LS); } catch (e) { /* ignore */ } }
+  /* connecting = filling in the active portfolio (the first connection creates the first portfolio) */
+  function saveCfg(c) {
+    if (PM.portfolio) {
+      const pf = PM.portfolio.current();
+      if (pf) PM.portfolio.update(pf.id, c);
+      else PM.portfolio.add(Object.assign({ name: String(c.repo || '').split('/').pop() || 'Portfolio' }, c));
+      return;
+    }
+    try { localStorage.setItem(LS, JSON.stringify(c)); } catch (e) { /* ignore */ }
+  }
+  function forget() {
+    const pf = PM.portfolio && PM.portfolio.current();
+    if (pf) PM.portfolio.update(pf.id, { token: '' });
+    try { localStorage.removeItem(LS); } catch (e) { /* ignore */ }
+  }
   function configured() { const c = cfg(); return !!(c.repo && c.token && /^[^/]+\/[^/]+$/.test(c.repo)); }
 
   async function api(c, path, init, attempt) {
@@ -5646,7 +5851,7 @@ PM.app = (function () {
     location.hash = hashFor(mod, p);
   }
   function setProject(pid) {
-    try { localStorage.setItem('pm.project', pid || ''); } catch (e) { /* ignore */ }
+    try { PM.portfolio.local.set('pm.project', pid || ''); } catch (e) { /* ignore */ }
     const params = Object.assign({}, route.params, { project: pid || '' });
     delete params.survey;                       // a survey belongs to one project
     location.hash = hashFor(route.module, params);
@@ -5817,7 +6022,7 @@ PM.app = (function () {
     try {
       await PM.store.load(be, n => { if (progress) progress.lastChild.textContent = 'Loading from OneDrive… ' + n + ' files'; });
     } finally { if (progress) progress.remove(); }
-    try { localStorage.setItem('pm.source', be.kind); } catch (e) { /* ignore */ }
+    try { PM.portfolio.local.set('pm.source', be.kind); } catch (e) { /* ignore */ }
     hideBanner();
     if (!quiet) PM.ui.toast('Loaded ' + PM.store.projects().length + ' project(s) from ' + be.label, 'ok');
     render();
@@ -5871,7 +6076,7 @@ PM.app = (function () {
     const folder = h('input', { type: 'text', id: 'gh-folder', value: c.folder, placeholder: 'repository root', autocapitalize: 'off' });
     const msg = h('p', { class: 'small', role: 'status' });
     PM.ui.dialog({
-      title: 'Connect GitHub',
+      title: PM.portfolio.current() ? 'GitHub connection · ' + PM.portfolio.current().name : 'Connect GitHub',
       content: h('div', null,
         h('p', { class: 'small muted' }, 'Your project files are stored in a private GitHub repository. The token is kept only on this device. Step by step: docs/SETUP-GITHUB.md.'),
         h('div', { class: 'form-grid' },
@@ -5892,6 +6097,7 @@ PM.app = (function () {
         } catch (e) { msg.className = 'small bad-text'; msg.textContent = e.code === 'auth' ? 'GitHub refused this token. Check that you copied all of it, and that it has not expired.' : e.message; return false; }
         const be = PM.store.backend;
         if (opts.keepData && be && be.kind === 'github') { be.c = PM.github.cfg(); hideBanner(); await PM.store.retry(); PM.ui.toast('Token updated — changes saved.', 'ok'); return; }
+        renderPortfolioBadge();
         await useBackend(PM.github.backend(), true);
         PM.ui.toast('Connected to ' + nc.repo + '.', 'ok');
         if (!PM.store.projects().length) emptyRepoBanner();
@@ -5903,7 +6109,8 @@ PM.app = (function () {
   function emptyRepoBanner() {
     showBanner(h('div', { class: 'banner-inner' },
       h('span', null, 'Your repository has no project data yet. Start with the demo projects to try things out, or start empty.'),
-      h('button', { class: 'btn primary small', onclick: () => copyDemoTo(PM.github.backend()) }, 'Copy demo data'),
+      PM.portfolio.list().length > 1 ? h('button', { class: 'btn primary small', onclick: copySettingsDialog }, 'Copy settings from another portfolio…') : null,
+      h('button', { class: 'btn ' + (PM.portfolio.list().length > 1 ? 'ghost' : 'primary') + ' small', onclick: () => copyDemoTo(PM.github.backend()) }, 'Copy demo data'),
       h('button', { class: 'btn ghost small', onclick: async () => { hideBanner(); await PM.store.writeAllTo(PM.store.backend); PM.ui.toast('Started with an empty data set. Create your first project with “+ New project”.', 'ok'); } }, 'Start empty')));
   }
 
@@ -5971,6 +6178,7 @@ PM.app = (function () {
   function dataMenu(anchor) {
     const be = PM.store.backend;
     const items = [
+      { label: 'Portfolios…', run: managePortfolios, hide: !PM.portfolio.list().length },
       { label: PM.github.configured() ? 'GitHub connection…' : 'Connect GitHub…', run: () => connectGitHub() },
       { label: 'Use GitHub data', run: () => useBackend(PM.github.backend()), hide: !PM.github.configured() || (be && be.kind === 'github') },
       { label: 'Copy demo data to GitHub…', run: () => copyDemoTo(PM.github.backend()), hide: !PM.github.configured() },
@@ -6069,6 +6277,173 @@ PM.app = (function () {
         onclick: () => { PM.i18n.set(k); render(); } }, t)));
   }
 
+
+  /* ---------- portfolios (core/portfolio.js): switch, add, edit, copy settings ---------- */
+  function popMenu(anchor, items, alignLeft) {
+    const menu = h('div', { class: 'menu', role: 'menu' }, items.map(i => i.sep ? h('div', { class: 'menu-sep', role: 'separator' }) :
+      h('button', { role: 'menuitem', class: i.cls || null, onclick: () => { close(); i.run(); } }, i.dot ? h('i', { class: 'pf-dot', style: { background: i.dot } }) : null, i.label, i.check ? h('span', { class: 'menu-check' }, '✓') : null)));
+    const r = anchor.getBoundingClientRect();
+    Object.assign(menu.style, alignLeft ? { top: (r.bottom + 4) + 'px', left: r.left + 'px' } : { top: (r.bottom + 4) + 'px', right: (window.innerWidth - r.right) + 'px' });
+    document.body.appendChild(menu);
+    const close = () => { menu.remove(); document.removeEventListener('mousedown', outside, true); };
+    const outside = e => { if (!menu.contains(e.target) && !anchor.contains(e.target)) close(); };
+    setTimeout(() => document.addEventListener('mousedown', outside, true));
+    const first = menu.querySelector('button'); if (first) first.focus();
+    menu.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    return close;
+  }
+  function portfolioMenu(anchor) {
+    const cur = PM.portfolio.current();
+    popMenu(anchor, PM.portfolio.list().map(p => ({ label: p.name, dot: p.color, check: cur && cur.id === p.id, cls: 'pf-item', run: () => { if (!cur || cur.id !== p.id) PM.portfolio.switchTo(p.id); } }))
+      .concat([{ sep: true }, { label: '+ Add portfolio…', run: () => portfolioDialog(null) }, { label: 'Manage portfolios…', run: managePortfolios }]), true);
+  }
+  function renderPortfolioBadge() {
+    const box = document.getElementById('pf-box');
+    if (!box) return;
+    box.innerHTML = '';
+    const cur = PM.portfolio.current();
+    document.documentElement.style.setProperty('--pf-color', cur ? cur.color : 'transparent');
+    document.documentElement.classList.toggle('has-pf', !!cur);
+    if (!cur) return;
+    const be = PM.store.backend, live = be && be.kind === 'github';
+    box.appendChild(h('button', { type: 'button', class: 'pf-btn' + (live ? '' : ' off'), id: 'pf-btn', 'aria-haspopup': 'menu', title: 'Portfolio: ' + cur.name + (live ? '' : ' (not connected — showing ' + (be ? be.label : 'nothing') + ')'), onclick: e => portfolioMenu(e.currentTarget) },
+      h('i', { class: 'pf-dot', style: { background: cur.color } }), h('span', { class: 'pf-name', translate: 'no' }, cur.name), h('span', { class: 'pp-caret', 'aria-hidden': 'true' }, '▾')));
+    document.title = document.title.replace(/^(\[.*?\] )?/, '');
+  }
+
+  /* add or edit a portfolio: name, colour and its GitHub repository */
+  function portfolioDialog(p, onDone) {
+    const cur = PM.portfolio.current();
+    const isNew = !p;
+    const v = p ? Object.assign({}, p) : { name: '', color: PM.portfolio.COLORS[PM.portfolio.list().length % PM.portfolio.COLORS.length], repo: cur && cur.repo ? cur.repo.split('/')[0] + '/' : '', token: '', branch: '', folder: '' };
+    const inp = (k, attrs) => { const i = h('input', Object.assign({ type: 'text', value: v[k] || '', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false' }, attrs)); i.addEventListener('input', () => { v[k] = i.value; }); return i; };
+    const sameToken = h('input', { type: 'checkbox', id: 'pf-same', checked: isNew && cur && cur.token ? true : null });
+    const tokenInp = inp('token', { type: 'password', id: 'pf-token', placeholder: 'github_pat_…', autocomplete: 'off' });
+    const tokenRow = h('label', { class: 'form-row wide' }, h('span', null, 'Personal access token *'), tokenInp);
+    const syncToken = () => { tokenRow.hidden = !!sameToken.checked; };
+    sameToken.addEventListener('change', syncToken);
+    const swatches = h('div', { class: 'pf-swatches', role: 'radiogroup', 'aria-label': 'Colour' }, PM.portfolio.COLORS.map(c => h('button', { type: 'button', role: 'radio', class: 'pf-sw' + (v.color === c ? ' on' : ''), 'aria-checked': String(v.color === c), 'aria-label': c, style: { background: c },
+      onclick: e => { v.color = c; swatches.querySelectorAll('.pf-sw').forEach(b => { b.classList.toggle('on', b === e.currentTarget); b.setAttribute('aria-checked', String(b === e.currentTarget)); }); } })));
+    const msg = h('p', { class: 'small', role: 'status' });
+    PM.ui.dialog({
+      title: isNew ? 'Add portfolio' : 'Edit portfolio · ' + p.name, className: 'pf-dlg',
+      content: h('div', null,
+        isNew ? h('p', { class: 'small muted' }, 'A portfolio is a separate set of projects with its own people, rates, forms, templates and company details, stored in its own private GitHub repository. Nothing is shared with your other portfolios.') : null,
+        h('div', { class: 'form-grid' },
+          h('label', { class: 'form-row' }, h('span', null, 'Name *'), inp('name', { id: 'pf-name', placeholder: 'e.g. Ultech' })),
+          h('div', { class: 'form-row' }, h('span', null, 'Colour'), swatches),
+          h('label', { class: 'form-row wide' }, h('span', null, 'Repository (owner/name) *'), inp('repo', { id: 'pf-repo', placeholder: 'yourname/Ultech' })),
+          isNew && cur && cur.token ? h('label', { class: 'form-row wide check' }, sameToken, ' Use the same token as “' + cur.name + '” (give that token access to the new repository on GitHub)') : null,
+          tokenRow,
+          h('label', { class: 'form-row' }, h('span', null, 'Branch'), inp('branch', { id: 'pf-branch', placeholder: 'automatic (main)' })),
+          h('label', { class: 'form-row' }, h('span', null, 'Folder in repository'), inp('folder', { id: 'pf-folder', placeholder: 'repository root' }))),
+        msg),
+      actions: [{ label: 'Cancel' }, { label: isNew ? 'Add portfolio' : 'Save', primary: true, onClick: async () => {
+        const nc = { name: String(v.name || '').trim(), color: v.color, repo: String(v.repo || '').trim().replace(/^https?:\/\/github\.com\//, '').replace(/\/+$/, ''), token: sameToken.checked && cur ? cur.token : String(v.token || '').trim(), branch: String(v.branch || '').trim(), folder: String(v.folder || '').trim() };
+        if (!nc.name) { msg.className = 'small bad-text'; msg.textContent = 'Give the portfolio a name.'; return false; }
+        if (!/^[^/\s]+\/[^/\s]+$/.test(nc.repo) || !nc.token) { msg.className = 'small bad-text'; msg.textContent = 'Enter the repository as owner/name and paste the token.'; return false; }
+        if (PM.portfolio.list().some(x => x.id !== (p && p.id) && x.repo.toLowerCase() === nc.repo.toLowerCase() && (x.folder || '') === nc.folder)) { msg.className = 'small bad-text'; msg.textContent = 'Another portfolio already uses this repository (and folder).'; return false; }
+        msg.className = 'small muted'; msg.textContent = 'Checking access…';
+        try {
+          const info = await PM.github.test(nc);
+          if (!nc.branch) nc.branch = info.branch;
+          if (!info.private) PM.ui.toast('Note: this repository is public — anyone can read your project data. Make it private on GitHub (Settings → General → Danger zone).', 'warn');
+        } catch (e) { msg.className = 'small bad-text'; msg.textContent = e.code === 'auth' ? 'GitHub refused this token. Check that you copied all of it, and that it has not expired.' : e.message + (sameToken.checked ? ' — does the token have access to this repository?' : ''); return false; }
+        if (isNew) {
+          const rec = PM.portfolio.add(nc);
+          renderPortfolioBadge();
+          if (onDone) onDone(rec);
+          PM.ui.dialog({ title: 'Portfolio “' + rec.name + '” added', content: h('p', null, 'Switch to it now? Your current changes are saved first.'),
+            actions: [{ label: 'Later' }, { label: 'Switch now', primary: true, onClick: () => { PM.portfolio.switchTo(rec.id); } }] });
+        } else {
+          PM.portfolio.update(p.id, nc);
+          renderPortfolioBadge();
+          if (onDone) onDone();
+          const be = PM.store.backend;
+          if (cur && cur.id === p.id && be && be.kind === 'github') { be.c = PM.github.cfg(); PM.ui.toast('Portfolio saved.', 'ok'); }
+        }
+      } }]
+    });
+    syncToken();
+    setTimeout(() => { const n = document.getElementById('pf-name'); if (n) n.focus(); }, 50);
+  }
+
+  function managePortfolios() {
+    const body = h('div');
+    const draw = () => {
+      body.innerHTML = '';
+      const cur = PM.portfolio.current();
+      const list = PM.portfolio.list();
+      body.appendChild(h('p', { class: 'small muted' }, 'Each portfolio has its own GitHub repository with its own projects, people, rates, forms and templates. The list and the tokens are kept on this device only; set them up once on every device you use.'));
+      body.appendChild(list.length ? h('table', { class: 'data pf-table' },
+        h('thead', null, h('tr', null, h('th', null, 'Portfolio'), h('th', null, 'Repository'), h('th'))),
+        h('tbody', null, list.map(p => h('tr', { class: cur && cur.id === p.id ? 'on' : null },
+          h('td', null, h('i', { class: 'pf-dot', style: { background: p.color } }), h('b', { translate: 'no' }, p.name), cur && cur.id === p.id ? h('span', { class: 'small muted' }, ' · ', 'in use') : null),
+          h('td', { class: 'small', translate: 'no' }, p.repo + (p.folder ? '/' + p.folder : ''), p.token ? null : h('span', { class: 'bad-text' }, ' · ', 'no token')),
+          h('td', { class: 'right nowrap' },
+            cur && cur.id === p.id ? null : h('button', { class: 'btn small', onclick: () => PM.portfolio.switchTo(p.id) }, 'Switch'),
+            h('button', { class: 'btn ghost small', onclick: () => portfolioDialog(p, draw) }, 'Edit'),
+            h('button', { class: 'btn ghost small danger-text', onclick: () => {
+              PM.ui.dialog({ title: 'Remove “' + p.name + '” from this device?', content: h('p', null, 'Only the entry and the token on this device are removed. The repository and all its data on GitHub stay as they are; add it again at any time.'),
+                actions: [{ label: 'Cancel' }, { label: 'Remove', danger: true, onClick: () => { const wasCur = cur && cur.id === p.id; PM.portfolio.remove(p.id); if (wasCur) { location.hash = '#/dashboard'; location.reload(); return; } renderPortfolioBadge(); draw(); } }] });
+            } }, 'Remove'))))))
+        : PM.ui.empty('No portfolios yet. Connect GitHub to create the first one.'));
+      body.appendChild(h('div', { class: 'btn-row' },
+        h('button', { class: 'btn primary', id: 'pf-add', onclick: () => portfolioDialog(null, draw) }, '+ Add portfolio'),
+        list.length > 1 && PM.store.backend && PM.store.backend.kind === 'github' ? h('button', { class: 'btn', onclick: () => copySettingsDialog() }, 'Copy settings from another portfolio…') : null));
+    };
+    draw();
+    PM.ui.dialog({ title: 'Portfolios', content: body, className: 'pf-dlg', actions: [{ label: 'Close' }] });
+  }
+
+  /* start a new portfolio with the people, rates, forms, templates… of another one */
+  const SETTING_PARTS = [
+    ['people', 'People and roles & rates', ['settings/people.md', 'settings/roles.md']],
+    ['forms', 'Forms', ['settings/forms/']],
+    ['templates', 'Planning templates', ['settings/planning-templates.md']],
+    ['formats', 'Estimate formats', ['settings/estimate-formats.md']],
+    ['mails', 'Mail templates and recipients', ['settings/mail-templates.md']],
+    ['company', 'Company details and logo', ['settings/company.md']],
+    ['presets', 'PDF presets', ['settings/pdf-presets.md']]
+  ];
+  function copySettingsDialog() {
+    const cur = PM.portfolio.current();
+    const others = PM.portfolio.list().filter(p => !cur || p.id !== cur.id);
+    if (!others.length) return;
+    const src = h('select', { id: 'pf-copy-src' }, others.map(p => h('option', { value: p.id }, p.name)));
+    const picks = {};
+    const boxes = SETTING_PARTS.map(([k, label]) => { const cb = h('input', { type: 'checkbox', checked: k !== 'company' ? true : null }); picks[k] = cb; return h('label', { class: 'check' }, cb, ' ', label); });
+    const msg = h('p', { class: 'small', role: 'status' });
+    PM.ui.dialog({
+      title: 'Copy settings into “' + (cur ? cur.name : '') + '”',
+      content: h('div', null,
+        h('label', { class: 'form-row' }, h('span', null, 'Copy from'), src),
+        h('div', { class: 'pf-picks' }, boxes),
+        h('p', { class: 'small muted' }, 'Projects are never copied. Settings with the same name in this portfolio are replaced; after copying, both portfolios are independent again.'),
+        msg),
+      actions: [{ label: 'Cancel' }, { label: 'Copy', primary: true, onClick: async () => {
+        const from = PM.portfolio.get(src.value);
+        const target = PM.store.backend;
+        if (!from || !target || target.kind !== 'github') return false;
+        msg.className = 'small muted'; msg.textContent = 'Reading “' + from.name + '”…';
+        try {
+          const sb = new PM.github.GitHubBackend({ repo: from.repo, token: from.token, branch: from.branch, folder: from.folder });
+          await sb.prefetch();
+          const paths = Object.keys(sb.files).filter(f => SETTING_PARTS.some(([k, , pats]) => picks[k].checked && pats.some(pt => (pt.endsWith('/') ? f.startsWith(pt) && !f.slice(pt.length).includes('/') : f === pt))));
+          let n = 0;
+          for (const path of paths) { msg.textContent = 'Copying ' + (++n) + ' / ' + paths.length + '…'; await target.writeText(path, sb.files[path].text); }
+          if (picks.company.checked && sb.files['settings/company.md']) {
+            const m = /(settings\/logo\.(?:png|jpe?g))/i.exec(sb.files['settings/company.md'].text);
+            if (m) { try { const blob = await sb.readBinary(m[1]); if (blob) await target.writeBinary(m[1], blob); } catch (e) { console.warn('Logo not copied', e); } }
+          }
+          await useBackend(PM.github.backend(), true);
+          hideBanner();
+          PM.ui.toast(paths.length + ' settings file(s) copied from “' + from.name + '”.', 'ok');
+        } catch (e) { msg.className = 'small bad-text'; msg.textContent = e.message; return false; }
+      } }]
+    });
+  }
+
   /* ---------- boot ---------- */
   async function boot() {
     PM.i18n.start();
@@ -6085,9 +6460,11 @@ PM.app = (function () {
       navEl,
       h('div', { class: 'side-foot' }, h('div', { class: 'muted small' }, 'Data source'), h('div', { id: 'source-name', class: 'small' }, '—'), h('div', { class: 'side-lang' }, langSwitch()))));
     root.appendChild(h('div', { class: 'main', id: 'main' },
-      h('header', { class: 'topbar' }, projSel.el, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
+      h('header', { class: 'topbar' }, h('div', { id: 'pf-box', class: 'pf-box' }), projSel.el, h('button', { class: 'btn ghost hide-narrow', onclick: newProjectDialog, title: 'New project' }, '+ Project'), h('span', { class: 'spacer' }), statusEl, dataBtn),
       banner, viewEl));
     // table toolbars (search + Add) stick just below the top bar; keep that offset right when the bar changes height
+    renderPortfolioBadge();
+    PM.events.on('loaded', renderPortfolioBadge);
     PM.events.on('lang', () => { const box = root.querySelector('.side-lang'); if (box) { box.innerHTML = ''; box.appendChild(langSwitch()); } renderProjectSelect(); });
     const topbar = root.querySelector('.topbar');
     const setTop = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
@@ -6106,7 +6483,7 @@ PM.app = (function () {
     route = parseHash();
     if (!('project' in route.params)) {
       let last = '';
-      try { last = localStorage.getItem('pm.project') || ''; } catch (e) { /* ignore */ }
+      try { last = PM.portfolio.local.get('pm.project') || ''; } catch (e) { /* ignore */ }
       if (last) route.params.project = last;
     }
 
@@ -6147,7 +6524,7 @@ PM.app = (function () {
     }
 
     let lastSource = '';
-    try { lastSource = localStorage.getItem('pm.source') || ''; } catch (e) { /* ignore */ }
+    try { lastSource = PM.portfolio.local.get('pm.source') || ''; } catch (e) { /* ignore */ }
 
     // 2a) GitHub, if connected on this device
     if (PM.github.configured() && lastSource !== 'folder' && lastSource !== 'onedrive') {
@@ -6200,7 +6577,7 @@ PM.app = (function () {
 
   function isTouch() { return window.matchMedia && window.matchMedia('(pointer: coarse)').matches; }
 
-  return { boot, render, langSwitch, navigate, setProject, openFolder, saveToFolder, downloadZip, newProjectDialog, editProjectDialog, deleteProjectDialog, useBackend, connectOneDrive, copyToOneDrive, connectGitHub, copyDemoTo, isTouch, get route() { return route; } };
+  return { boot, render, langSwitch, managePortfolios, portfolioDialog, copySettingsDialog, navigate, setProject, openFolder, saveToFolder, downloadZip, newProjectDialog, editProjectDialog, deleteProjectDialog, useBackend, connectOneDrive, copyToOneDrive, connectGitHub, copyDemoTo, isTouch, get route() { return route; } };
 })();
 
   </script>
@@ -6336,12 +6713,12 @@ PM.registerModule({
 function commentsSection(p, ctx) {
   const U = PM.util, h = U.h;
   const LS_ME = 'pm.me';
-  let me = ''; try { me = localStorage.getItem(LS_ME) || ''; } catch (e) { /* ignore */ }
+  let me = ''; try { me = PM.portfolio.local.get(LS_ME) || ''; } catch (e) { /* ignore */ }
   const now = () => { const d = new Date(), z = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); };
   const fmt = s => { if (!s) return ''; const [d, t] = String(s).split(' '); return U.fmtDate(d) + (t ? ' ' + t : ''); };
   const list = h('div', { class: 'comments' });
   const people = PM.store.list('people', x => x.active !== false);
-  const who = h('select', { class: 'cm-who', 'aria-label': 'Written by', onchange: () => { try { localStorage.setItem(LS_ME, who.value); } catch (e) { /* ignore */ } } },
+  const who = h('select', { class: 'cm-who', 'aria-label': 'Written by', onchange: () => { try { PM.portfolio.local.set(LS_ME, who.value); } catch (e) { /* ignore */ } } },
     h('option', { value: '' }, '— by —'), people.map(x => h('option', { value: x.id, selected: x.id === me || null }, x.name)));
   const input = h('textarea', { class: 'cm-input', rows: 3, placeholder: 'Write a comment or note… (Ctrl+Enter to add)', 'aria-label': 'New comment' });
   const add = () => {
@@ -6396,7 +6773,7 @@ function commentsSection(p, ctx) {
   const U = PM.util, h = U.h;
   const ZOOM = { day: { px: 30, label: 'Days' }, week: { px: 12, label: 'Weeks' }, month: { px: 4, label: 'Months' } };
   const state = { zoom: 'week', collapsed: {}, expandedProjects: {}, view: 'timeline', filter: 'all', mode: 'projects', push: false, undo: null, order: 'id' };
-  try { state.order = localStorage.getItem('pm.planning.order') === 'milestone' ? 'milestone' : 'id'; } catch (e) { /* ignore */ }
+  try { state.order = PM.portfolio.local.get('pm.planning.order') === 'milestone' ? 'milestone' : 'id'; } catch (e) { /* ignore */ }
 
   /* milestones of a project, by date; "next" = the first one today or later that is not finished */
   function milestonesOf(lines) {
@@ -6928,7 +7305,7 @@ function commentsSection(p, ctx) {
       const undoBtn = state.undo ? h('button', { class: 'btn small', title: state.undo.label, onclick: undoShift }, '↶ Undo shift') : null;
       const filter = h('select', { 'aria-label': 'Show lines', onchange: e => { state.filter = e.target.value; ctx.rerender(); } },
         [['all', 'All lines'], ['linked', 'With tasks'], ['unlinked', 'Without tasks']].map(([v, t]) => h('option', { value: v, selected: state.filter === v || null }, t)));
-      const orderSel = !ctx.project && state.mode !== 'team' ? h('select', { 'aria-label': 'Order of the projects', id: 'pl-order', onchange: e => { state.order = e.target.value; try { localStorage.setItem('pm.planning.order', state.order); } catch (x) { /* ignore */ } ctx.rerender(); } },
+      const orderSel = !ctx.project && state.mode !== 'team' ? h('select', { 'aria-label': 'Order of the projects', id: 'pl-order', onchange: e => { state.order = e.target.value; try { PM.portfolio.local.set('pm.planning.order', state.order); } catch (x) { /* ignore */ } ctx.rerender(); } },
         [['id', 'Order: project number'], ['milestone', 'Order: next milestone first']].map(([v, t]) => h('option', { value: v, selected: state.order === v || null }, t))) : null;
 
       el.appendChild(h('div', { class: 'page-head' },
@@ -7428,7 +7805,7 @@ function commentsSection(p, ctx) {
   function open(projectId) {
     const project = PM.store.project(projectId);
     let last = {};
-    try { last = JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { /* ignore */ }
+    try { last = JSON.parse(PM.portfolio.local.get(LS) || '{}'); } catch (e) { /* ignore */ }
     let presetId = last.preset || 'customer';
     let o = presetOptions(presetId);
     const meta = { docNo: (project && project.pdf_docno) || '', revision: (project && project.pdf_revision) || '', preparedBy: last.preparedBy || '' };
@@ -7576,7 +7953,7 @@ function commentsSection(p, ctx) {
         const blob = await render(o, projectId);
         const name = U.slugify((o.scope === 'all' ? 'planning-all-projects' : (project.id + '-' + project.name)) + (o.revision ? '-rev-' + o.revision : '')) + '.pdf';
         if (project && o.scope !== 'all' && (project.pdf_docno !== meta.docNo || project.pdf_revision !== meta.revision)) PM.store.update('projects', project._key, { pdf_docno: meta.docNo, pdf_revision: meta.revision });
-        try { localStorage.setItem(LS, JSON.stringify({ preset: presetId === '_custom' ? 'customer' : presetId, preparedBy: meta.preparedBy })); } catch (e) { /* ignore */ }
+        try { PM.portfolio.local.set(LS, JSON.stringify({ preset: presetId === '_custom' ? 'customer' : presetId, preparedBy: meta.preparedBy })); } catch (e) { /* ignore */ }
         const how = await PM.pdf.deliver(blob, name);
         if (how !== 'cancelled') PM.ui.toast('PDF ready: ' + name, 'ok');
       } catch (e) { console.error(e); PM.ui.toast('Could not create the PDF: ' + e.message, 'error'); }
@@ -7624,8 +8001,8 @@ function commentsSection(p, ctx) {
   const PTASK_COLOR = '#5b6b8c';
   /* which people are shown: remembered per browser (a view setting, not shared data) */
   const LS_HIDDEN = 'pm.team.hidden';
-  function hiddenSet() { try { return new Set(JSON.parse(localStorage.getItem(LS_HIDDEN) || '[]')); } catch (e) { return new Set(); } }
-  function saveHidden(set) { try { localStorage.setItem(LS_HIDDEN, JSON.stringify(Array.from(set))); } catch (e) { /* ignore */ } }
+  function hiddenSet() { try { return new Set(JSON.parse(PM.portfolio.local.get(LS_HIDDEN) || '[]')); } catch (e) { return new Set(); } }
+  function saveHidden(set) { try { PM.portfolio.local.set(LS_HIDDEN, JSON.stringify(Array.from(set))); } catch (e) { /* ignore */ } }
   function visiblePeople() {
     const hid = hiddenSet();
     return PM.store.list('people', p => p.active !== false && !hid.has(p.id) && (!st.role || p.role === st.role));
@@ -10783,7 +11160,7 @@ PM.surveyPdf = (function () {
   const U = PM.util, h = U.h, S = PM.surveys;
   const STATUS = { draft: 'Draft', complete: 'Complete' };
   let lastSurveyor = '';
-  try { lastSurveyor = localStorage.getItem('pm.surveyor') || ''; } catch (e) { /* ignore */ }
+  try { lastSurveyor = PM.portfolio.local.get('pm.surveyor') || ''; } catch (e) { /* ignore */ }
 
   /* ---------- list ---------- */
   function renderList(el, ctx) {
@@ -10900,7 +11277,7 @@ PM.surveyPdf = (function () {
     const rerenderSoon = U.debounce(() => { saveNow(); ctx.rerender(); }, 500);
     const set = (key, val, now) => {
       if (val === '' || val == null || (Array.isArray(val) && !val.length)) delete v[key]; else v[key] = val;
-      if ((key === 'surveyor' || key === 'tester' || key === 'inspector') && val) { lastSurveyor = val; try { localStorage.setItem('pm.surveyor', val); } catch (e) { /* ignore */ } }
+      if ((key === 'surveyor' || key === 'tester' || key === 'inspector') && val) { lastSurveyor = val; try { PM.portfolio.local.set('pm.surveyor', val); } catch (e) { /* ignore */ } }
       refresh();
       if (repeatKeys.has(key)) rerenderSoon();          // number of repeated sections changed
       if (now) saveNow(); else save();
@@ -12872,7 +13249,7 @@ Onderdelen:
   function optionsFor(pid) {
     if (opts[pid]) return opts[pid];
     let saved = null;
-    try { saved = JSON.parse(localStorage.getItem('pm.write.' + pid) || 'null'); } catch (e) { saved = null; }
+    try { saved = JSON.parse(PM.portfolio.local.get('pm.write.' + pid) || 'null'); } catch (e) { saved = null; }
     const S = PM.structure;
     const prefabGuess = S && S.itemsOf(pid).some(i => !i.parent && /prefab|pompkamer|pump ?room/i.test(i.name));
     const o = Object.assign({ template: 'Expeditie', prefab: prefabGuess ? 'yes' : 'no', transporter: 'Leegwater', other: '', date: '', pickup: '', sel: null, main: '' }, saved || {});
@@ -12880,7 +13257,7 @@ Onderdelen:
     opts[pid] = o;
     return o;
   }
-  function remember(pid) { try { localStorage.setItem('pm.write.' + pid, JSON.stringify(opts[pid])); } catch (e) { /* ignore */ } }
+  function remember(pid) { try { PM.portfolio.local.set('pm.write.' + pid, JSON.stringify(opts[pid])); } catch (e) { /* ignore */ } }
 
   function names() { const out = []; PM.store.list('mails').forEach(m => { if (m.name && !out.includes(m.name)) out.push(m.name); }); return out; }
   function templateFor(name, prefab) {
@@ -12971,7 +13348,7 @@ Onderdelen:
   const splitAddr = s => String(s || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
   const joinAddr = list => Array.from(new Set(list)).join('; ');
   /* separator between addresses for the mail app: Outlook wants ";" (a comma only works when that Outlook option is on) */
-  const mailSep = () => { try { return localStorage.getItem('pm.mail.sep') === ',' ? ',' : ';'; } catch (e) { return ';'; } };
+  const mailSep = () => { try { return PM.portfolio.local.get('pm.mail.sep') === ',' ? ',' : ';'; } catch (e) { return ';'; } };
   /* save To / Cc on every template with this name (all its variants) */
   function saveRecipients(name, to, cc) {
     PM.store.list('mails', m => m.name === name).forEach(m => PM.store.update('mails', m._key, { to, cc }));
@@ -13122,7 +13499,7 @@ Onderdelen:
       }) }, 'Recipients…');
 
       const sepSel = h('select', { id: 'wr-sep', class: 'small', 'aria-label': 'Mail app', title: 'How the addresses are separated when the mail app opens',
-        onchange: e => { try { localStorage.setItem('pm.mail.sep', e.target.value); } catch (x) { /* ignore */ } } },
+        onchange: e => { try { PM.portfolio.local.set('pm.mail.sep', e.target.value); } catch (x) { /* ignore */ } } },
         [[';', 'Mail app: Outlook (;)'], [',', 'Mail app: other (,)']].map(([v, t]) => h('option', { value: v, selected: mailSep() === v || null }, t)));
 
       el.appendChild(h('div', { class: 'wr-grid' },
@@ -13182,7 +13559,7 @@ Onderdelen:
   function optionsFor(pid) {
     if (opts[pid]) return opts[pid];
     let saved = null;
-    try { saved = JSON.parse(localStorage.getItem('pm.summary.' + pid) || 'null'); } catch (e) { saved = null; }
+    try { saved = JSON.parse(PM.portfolio.local.get('pm.summary.' + pid) || 'null'); } catch (e) { saved = null; }
     const parts = {};
     CHAPTERS.forEach(c => c.parts.forEach(([k, , on]) => { parts[c.id + '.' + k] = on; }));
     const o = Object.assign({ lang: PM.i18n.lang, parts, forms: [], cover: true }, saved || {});
@@ -13190,7 +13567,7 @@ Onderdelen:
     opts[pid] = o;
     return o;
   }
-  function remember(pid) { try { localStorage.setItem('pm.summary.' + pid, JSON.stringify(opts[pid])); } catch (e) { /* ignore */ } }
+  function remember(pid) { try { PM.portfolio.local.set('pm.summary.' + pid, JSON.stringify(opts[pid])); } catch (e) { /* ignore */ } }
 
   /* ---------- the PDF ---------- */
   async function render(pid, o) {
@@ -13758,7 +14135,10 @@ Onderdelen:
     const c = PM.github.cfg();
     const be = PM.store.backend;
     const active = be && be.kind === 'github';
+    const pf = PM.portfolio.current(), n = PM.portfolio.list().length;
     return PM.ui.section('GitHub (phone, tablet and PC)', h('div', null,
+      pf ? h('p', { class: 'small' }, 'Portfolio ', h('i', { class: 'pf-dot', style: { background: pf.color } }), h('strong', { translate: 'no' }, pf.name),
+        ' · ' + n + ' ' + (n === 1 ? 'portfolio' : 'portfolios') + ' on this device. ', h('button', { class: 'btn small', onclick: () => PM.app.managePortfolios() }, 'Portfolios…')) : null,
       h('p', { class: 'small' }, PM.github.configured()
         ? ['Connected to ', h('strong', null, c.repo), c.branch ? ' (branch ' + c.branch + ')' : '', c.folder ? ', folder ' + c.folder : '', active ? ' — in use now.' : ' — not in use right now.']
         : 'Not connected on this device.'),
