@@ -991,6 +991,13 @@ textarea { font: inherit; }
 @media (max-width: 900px) { .cf-grid { grid-template-columns: 1fr; } .cf-form { position: static; max-height: none; } }
 .side-ver { margin-top: 8px; font-size: 11px; }
 .cf-noproj { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); font-size: 13px; }
+.cf-dlg { width: min(1000px, 96vw); }
+.cf-src { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.45; white-space: pre; overflow: auto; tab-size: 2; }
+.cf-examples { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 10px; }
+.cf-ex { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.cf-empty { text-align: left; max-width: 720px; }
+.tpl-badge.bad { background: var(--bad-weak); color: var(--bad); }
+.ok-text { color: var(--ok); }
 
 </style>
 </head>
@@ -2873,6 +2880,27 @@ PM.i18n.add('nl', {
   'You can try designs here. To save a design or add it to an estimate, choose a project in the bar at the top.': 'Je kunt hier ontwerpen uitproberen. Kies bovenaan een project om een ontwerp op te slaan of aan een calculatie toe te voegen.'
 });
 PM.i18n.pattern('nl', /^Version (.+)$/, (m, v) => 'Versie ' + v);
+PM.i18n.add('nl', {
+  'Configurators': 'Configurators',
+  'No configurator in this portfolio yet': 'Nog geen configurator in dit portfolio',
+  'A configurator turns a few design choices (sizes, material, options) into a cost package for the estimate. Its questions, prices and rules are stored in this portfolio only, so every portfolio can have its own.': 'Een configurator maakt van een paar ontwerpkeuzes (maten, materiaal, opties) een kostenpakket voor de calculatie. De vragen, prijzen en regels staan alleen in dit portfolio, dus elk portfolio kan zijn eigen hebben.',
+  '+ New configurator…': '+ Nieuwe configurator…', '+ New configurator': '+ Nieuwe configurator',
+  'Settings → Configurators': 'Instellingen → Configurators',
+  'New configurator': 'Nieuwe configurator', 'Edit configurator · ': 'Configurator bewerken · ',
+  'Questions, price tables, values, calculations, cost lines and the summary, as Markdown tables. Stored in this portfolio as ': 'Vragen, prijstabellen, waarden, berekeningen, kostenregels en de samenvatting, als Markdown-tabellen. Opgeslagen in dit portfolio als ',
+  '. All options: docs/CONFIGURATOR.md.': '. Alle mogelijkheden: docs/CONFIGURATOR.md.',
+  'The configurator has problems (see the message). Save anyway?': 'De configurator bevat fouten (zie de melding). Toch opslaan?',
+  'Start from:': 'Beginnen met:', 'Next': 'Volgende',
+  'It is added to this portfolio only. You can change everything afterwards.': 'Hij wordt alleen aan dit portfolio toegevoegd. Je kunt daarna alles aanpassen.',
+  'Empty starting point (a simple plate)': 'Lege basis (een eenvoudige plaat)',
+  'Skid frame (profiles, plate, coating, brackets, top plate)': 'Skidframe (profielen, plaat, coating, beugels, bovenplaat)',
+  'Configurators for Costs → Configurator. Each portfolio has its own: they are stored in this portfolio as ': 'Configurators voor Kosten → Configurator. Elk portfolio heeft zijn eigen: ze staan in dit portfolio als ',
+  'Reload': 'Opnieuw laden', 'No configurators in this portfolio yet.': 'Nog geen configurators in dit portfolio.',
+  'Check': 'Controleren', 'Files that could not be used': 'Bestanden die niet gebruikt konden worden',
+  'Configurator deleted.': 'Configurator verwijderd.',
+  'This data source cannot be written to.': 'Naar deze gegevensbron kan niet worden geschreven.'
+});
+PM.i18n.pattern('nl', /^Configurator “(.+)” saved\.$/, (m, x) => 'Configurator “' + x + '” opgeslagen.');
 
   </script>
   <script>/* js/core/registry.js */
@@ -3472,7 +3500,7 @@ PM.storage = (function () {
     async readBinary(p) { return (this.bin && this.bin[p]) || null; }
     async writeBinary(p, blob) { (this.bin = this.bin || {})[p] = blob; }
     async deleteFile(p) { if (this.bin) delete this.bin[p]; delete this.files[p]; }
-    async listFiles(dir) { const pre = dir.replace(/\/?$/, '/'); return Object.keys(this.files).filter(f => f.startsWith(pre) && !f.slice(pre.length).includes('/')).map(f => f.slice(pre.length)).sort(); }
+    async listFiles(dir) { const pre = dir ? dir.replace(/\/?$/, '/') : ''; return Object.keys(this.files).filter(f => f.startsWith(pre) && !f.slice(pre.length).includes('/')).map(f => f.slice(pre.length)).sort(); }
     async listDirs(p) {
       const pre = p.replace(/\/?$/, '/');
       const set = new Set();
@@ -5960,7 +5988,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-10-27.2';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-10-27.3';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -12934,9 +12962,9 @@ PM.costsPdf = (function () {
     render(el, ctx) {
       const views = ctx.projectId
         ? [['estimate', 'Estimate', 'Estimate'], ['extras', 'Additional work', 'Extras'], ['actual', 'Actual costs', 'Actual'], ['analysis', 'Analysis', 'Analysis']]
-          .concat(PM.configurator && PM.configurator.list().length ? [['config', 'Configurator', 'Config.']] : [])
+          .concat(PM.configurator ? [['config', 'Configurator', 'Config.']] : [])
         : [['actual', 'Actual costs', 'Actual costs'], ['analysis', 'Estimate vs actual', 'Estimate vs actual']]
-          .concat(PM.configurator && PM.configurator.list().length ? [['config', 'Configurator', 'Config.']] : []);
+          .concat(PM.configurator ? [['config', 'Configurator', 'Config.']] : []);
       if (!views.some(v => v[0] === state.view)) state.view = ctx.projectId ? 'estimate' : 'actual';
       el.appendChild(h('div', { class: 'page-head' },
         h('div', null, h('h1', null, 'Costs'), h('p', { class: 'muted' }, (ctx.project ? ctx.project.name : 'All projects') + ' · amounts in EUR, excl. VAT')),
@@ -12952,6 +12980,243 @@ PM.costsPdf = (function () {
     }
   });
 })();
+
+  </script>
+  <script>/* js/modules/configurator-examples.js */
+/* PM Tool — modules/configurator-examples.js
+ * Starting points for a new configurator (Settings → Configurators → New). They are NOT added to
+ * any portfolio by themselves: you choose one, and it is copied into that portfolio's data.
+ * The skid example is the same as docs/examples/skid.md.
+ */
+PM.configuratorExamples = [
+  { id: 'blank', name: 'Empty starting point (a simple plate)', text: `---
+id: my-configurator
+name: My configurator
+subject: Product
+description: What this configurator is for.
+---
+# My configurator
+
+Questions on the left, cost lines on the right. See docs/CONFIGURATOR.md for all options.
+
+## Parameters
+
+| key | label | type | options | unit | default | show |
+| --- | --- | --- | --- | --- | --- | --- |
+| length | Length | number | | mm | 1000 | |
+| width | Width | number | | mm | 500 | |
+| material | Material | choice | S235; RVS 304 | | S235 | |
+| coated | Coated | yesno | | | yes | |
+
+## Table: plate
+
+| material | price_kg | density |
+| --- | --- | --- |
+| S235 | 1.45 | 7.85 |
+| RVS 304 | 5.20 | 7.93 |
+
+## Values
+
+| key | label | value | unit |
+| --- | --- | --- | --- |
+| thickness | Plate thickness | 5 | mm |
+| labour_rate | Workshop rate | 62.50 | € / h |
+| coat_m2 | Coating | 20 | € / m² |
+
+## Calculations
+
+| key | label | formula | unit | decimals |
+| --- | --- | --- | --- | --- |
+| area | Area | length * width / 1000000 | m² | 2 |
+| mass | Weight | area * thickness * lookup("plate", "density", material) | kg | 1 |
+| hours | Work | 0.5 + area * 0.5 | h | 1 |
+
+## Cost lines
+
+| subject | description | qty | unit | price | show |
+| --- | --- | --- | --- | --- | --- |
+| Material | Plate {thickness} mm, {material} | mass | kg | lookup("plate", "price_kg", material) | |
+| Fabrication | Cutting and finishing | hours | h | labour_rate | |
+| Coating | Coating | area * 2 | m² | coat_m2 | coated |
+
+## Summary
+
+| label | value |
+| --- | --- |
+| Size | {length} × {width} mm |
+| Material | {material} |
+| Weight (approx.) | {mass} kg |
+` },
+  { id: 'skid', name: 'Skid frame (profiles, plate, coating, brackets, top plate)', text: `---
+id: skid
+name: Skid frame
+subject: Skid
+description: Steel or stainless skid frame of profiles, with optional floor plate, coating, side brackets and an instrument top plate. Prices are examples — replace them with your own.
+---
+# Skid frame configurator
+
+Fill in the design on the left; the cost package (cost prices, EUR excl. VAT) is worked out on the right. Change prices and rules in the tables below.
+
+## Parameters
+
+| key | label | type | options | unit | default | show |
+| --- | --- | --- | --- | --- | --- | --- |
+| length | Length | number | | mm | 2000 | |
+| width | Width | number | | mm | 1000 | |
+| profile_type | Profile type | choice | None; UNP; IPE; HEA; HEB; Koker | | UNP | |
+| profile_size | Profile size | choice | table=profiles; column=size; where=type:profile_type | | 160 | profile_type != "None" |
+| material | Material | choice | S235; S355; RVS 304; RVS 316 | | S235 | |
+| cross_spacing | Max. distance between cross members | number | | mm | 600 | profile_type != "None" |
+| plated | Inside plated (floor plate) | yesno | | | no | |
+| plate_t | Floor plate thickness | choice | 3; 4; 5; 6; 8; 10 | mm | 5 | plated |
+| coating | Coating | choice | table=coating; column=coating | | Primer + topcoat | |
+| ral | Colour (RAL) | text | | | RAL 3000 | coating = "Primer + topcoat" |
+| brackets | Brackets on the sides | number | | pcs | 4 | |
+| bracket_holes | Holes per bracket | number | | | 2 | brackets > 0 |
+| bracket_hole | Hole size brackets | choice | Ø14 (M12); Ø18 (M16); Ø22 (M20) | | Ø18 (M16) | brackets > 0 |
+| top_plate | Top plate for instrument attachment | yesno | | | no | |
+| top_l | Top plate length | number | | mm | 300 | top_plate |
+| top_w | Top plate width | number | | mm | 200 | top_plate |
+| top_t | Top plate thickness | choice | 6; 8; 10; 12; 15 | mm | 10 | top_plate |
+| top_hole_kind | Top plate hole kind | choice | table=holes; column=kind | | Threaded hole (tapped) | top_plate |
+| top_hole_size | Top plate hole size | choice | M8; M10; M12; M16; M20 | | M12 | top_plate |
+| top_holes | Number of holes in the top plate | number | | | 4 | top_plate |
+| hole_pitch | Centre distance between the holes | number | | mm | 100 | top_plate and top_holes > 1 |
+
+## Table: profiles
+
+Weight (kg/m), paint surface (m²/m) and price per metre for each material (EUR/m).
+
+| type | size | kg_m | m2_m | S235 | S355 | RVS 304 | RVS 316 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| UNP | 80 | 8.64 | 0.340 | 13.39 | 14.69 | 48.38 | 63.94 |
+| UNP | 100 | 10.60 | 0.400 | 16.43 | 18.02 | 59.36 | 78.44 |
+| UNP | 120 | 13.40 | 0.460 | 20.77 | 22.78 | 75.04 | 99.16 |
+| UNP | 140 | 16.00 | 0.520 | 24.80 | 27.20 | 89.60 | 118.40 |
+| UNP | 160 | 18.80 | 0.580 | 29.14 | 31.96 | 105.28 | 139.12 |
+| UNP | 180 | 22.00 | 0.640 | 34.10 | 37.40 | 123.20 | 162.80 |
+| UNP | 200 | 25.30 | 0.700 | 39.22 | 43.01 | 141.68 | 187.22 |
+| UNP | 220 | 29.40 | 0.760 | 45.57 | 49.98 | 164.64 | 217.56 |
+| UNP | 240 | 33.20 | 0.820 | 51.46 | 56.44 | 185.92 | 245.68 |
+| IPE | 100 | 8.10 | 0.420 | 12.55 | 13.77 | 45.36 | 59.94 |
+| IPE | 120 | 10.40 | 0.496 | 16.12 | 17.68 | 58.24 | 76.96 |
+| IPE | 140 | 12.90 | 0.572 | 20.00 | 21.93 | 72.24 | 95.46 |
+| IPE | 160 | 15.80 | 0.648 | 24.49 | 26.86 | 88.48 | 116.92 |
+| IPE | 180 | 18.80 | 0.724 | 29.14 | 31.96 | 105.28 | 139.12 |
+| IPE | 200 | 22.40 | 0.800 | 34.72 | 38.08 | 125.44 | 165.76 |
+| IPE | 220 | 26.20 | 0.880 | 40.61 | 44.54 | 146.72 | 193.88 |
+| IPE | 240 | 30.70 | 0.960 | 47.59 | 52.19 | 171.92 | 227.18 |
+| HEA | 100 | 16.70 | 0.592 | 25.88 | 28.39 | 93.52 | 123.58 |
+| HEA | 120 | 19.90 | 0.708 | 30.84 | 33.83 | 111.44 | 147.26 |
+| HEA | 140 | 24.70 | 0.826 | 38.28 | 41.99 | 138.32 | 182.78 |
+| HEA | 160 | 30.40 | 0.944 | 47.12 | 51.68 | 170.24 | 224.96 |
+| HEA | 180 | 35.50 | 1.062 | 55.02 | 60.35 | 198.80 | 262.70 |
+| HEA | 200 | 42.30 | 1.180 | 65.56 | 71.91 | 236.88 | 313.02 |
+| HEA | 220 | 50.50 | 1.300 | 78.28 | 85.85 | 282.80 | 373.70 |
+| HEA | 240 | 60.30 | 1.420 | 93.47 | 102.51 | 337.68 | 446.22 |
+| HEB | 100 | 20.40 | 0.600 | 31.62 | 34.68 | 114.24 | 150.96 |
+| HEB | 120 | 26.70 | 0.720 | 41.38 | 45.39 | 149.52 | 197.58 |
+| HEB | 140 | 33.70 | 0.840 | 52.24 | 57.29 | 188.72 | 249.38 |
+| HEB | 160 | 42.60 | 0.960 | 66.03 | 72.42 | 238.56 | 315.24 |
+| HEB | 180 | 51.20 | 1.080 | 79.36 | 87.04 | 286.72 | 378.88 |
+| HEB | 200 | 61.30 | 1.200 | 95.02 | 104.21 | 343.28 | 453.62 |
+| Koker | 80x80x4 | 9.22 | 0.320 | 14.29 | 15.67 | 51.63 | 68.23 |
+| Koker | 100x100x5 | 14.40 | 0.400 | 22.32 | 24.48 | 80.64 | 106.56 |
+| Koker | 120x120x5 | 17.50 | 0.480 | 27.12 | 29.75 | 98.00 | 129.50 |
+| Koker | 150x150x6 | 26.40 | 0.600 | 40.92 | 44.88 | 147.84 | 195.36 |
+
+## Table: plate
+
+| material | price_kg | density |
+| --- | --- | --- |
+| S235 | 1.45 | 7.85 |
+| S355 | 1.60 | 7.85 |
+| RVS 304 | 5.20 | 7.93 |
+| RVS 316 | 7.00 | 8.00 |
+
+## Table: coating
+
+| coating | per | price | note |
+| --- | --- | --- | --- |
+| None | m2 | 0 | |
+| Primer | m2 | 12.00 | blasted + 1 layer primer |
+| Primer + topcoat | m2 | 22.00 | blasted + primer + topcoat in RAL |
+| Hot-dip galvanised | kg | 0.85 | by subcontractor, per kg steel |
+
+## Table: holes
+
+| kind | price |
+| --- | --- |
+| Drilled hole | 2.50 |
+| Threaded hole (tapped) | 4.00 |
+| Slotted hole | 7.50 |
+| Countersunk hole | 3.50 |
+
+## Values
+
+| key | label | value | unit |
+| --- | --- | --- | --- |
+| labour_rate | Workshop rate | 62.50 | € / h |
+| weld_price | Weld (one joint, incl. preparation) | 12.50 | € / weld |
+| cut_price | Saw cut | 4.50 | € / cut |
+| drill_price | Hole in bracket | 2.50 | € / hole |
+| bracket_kg | Weight of one bracket (150 × 100 × 10 mm) | 1.20 | kg |
+| bracket_price | Bracket, cut to size | 9.50 | € / pc |
+| drawing_price | Drawing and work preparation | 150 | € |
+| packing_price | Packing and loading | 45 | € |
+
+## Calculations
+
+Keys that start with _ are worked out but not shown.
+
+| key | label | formula | unit | decimals |
+| --- | --- | --- | --- | --- |
+| _profile | | profile_type != "None" | | 0 |
+| n_cross | Cross members | if(_profile, max(0, ceil(length / cross_spacing) - 1), 0) | pcs | 0 |
+| profile_m | Profile length | if(_profile, 2 * (length + width) / 1000 + n_cross * width / 1000, 0) | m | 2 |
+| profile_kg | Profile weight | if(_profile, profile_m * lookup("profiles", "kg_m", profile_type, profile_size), 0) | kg | 1 |
+| n_cuts | Saw cuts | if(_profile, 2 * (4 + n_cross), 0) | cuts | 0 |
+| plate_area | Floor plate area | if(plated, length * width / 1000000, 0) | m² | 2 |
+| plate_kg | Floor plate weight | plate_area * plate_t * lookup("plate", "density", material) | kg | 1 |
+| top_kg | Top plate weight | if(top_plate, top_l * top_w / 1000000 * top_t * lookup("plate", "density", material), 0) | kg | 1 |
+| n_welds | Welds | if(_profile, 8 + 4 * n_cross, 0) + 2 * brackets + if(top_plate, 4, 0) + if(plated, 4, 0) | welds | 0 |
+| fit_hours | Fitting and assembly | 1 + if(_profile, 0.25 * (4 + n_cross), 0) + if(plated, 0.5 + 0.3 * plate_area, 0) + if(top_plate, 0.5, 0) + 0.1 * brackets | h | 1 |
+| mass | Total weight | profile_kg + plate_kg + top_kg + brackets * bracket_kg | kg | 0 |
+| paint_area | Surface to coat | if(_profile, profile_m * lookup("profiles", "m2_m", profile_type, profile_size), 0) + 2 * plate_area + if(top_plate, 2 * top_l * top_w / 1000000, 0) + 0.03 * brackets | m² | 1 |
+| _coat_per_kg | | lookup("coating", "per", coating) = "kg" | | 0 |
+| _coat_price | | lookup("coating", "price", coating) | | 2 |
+
+## Cost lines
+
+| subject | description | qty | unit | price | show |
+| --- | --- | --- | --- | --- | --- |
+| Material | Profile {profile_type} {profile_size}, {material} | profile_m | m | lookup("profiles", material, profile_type, profile_size) | _profile |
+| Material | Floor plate {plate_t} mm, {material} | plate_kg | kg | lookup("plate", "price_kg", material) | plated |
+| Material | Top plate {top_l} × {top_w} × {top_t} mm, {material} | top_kg | kg | lookup("plate", "price_kg", material) | top_plate |
+| Material | Brackets, {bracket_holes} holes {bracket_hole} | brackets | pcs | bracket_price | brackets > 0 |
+| Fabrication | Saw cuts | n_cuts | cuts | cut_price | |
+| Fabrication | Welds | n_welds | welds | weld_price | |
+| Fabrication | Holes in brackets | brackets * bracket_holes | holes | drill_price | brackets > 0 |
+| Fabrication | Top plate: {top_holes} × {top_hole_size} {top_hole_kind}, pitch {hole_pitch} mm | top_holes | holes | lookup("holes", "price", top_hole_kind) | top_plate |
+| Fabrication | Fitting and assembly | fit_hours | h | labour_rate | |
+| Coating | {coating} {ral} | if(_coat_per_kg, mass, paint_area) | if(_coat_per_kg, "kg", "m²") | _coat_price | coating != "None" |
+| Engineering | Drawing and work preparation | 1 | pcs | drawing_price | |
+| Logistics | Packing and loading | 1 | pcs | packing_price | |
+
+## Summary
+
+| label | value |
+| --- | --- |
+| Dimensions | {length} × {width} mm |
+| Frame | =if(_profile, profile_type + " " + profile_size + ", " + n_cross + " cross members", "plate only") |
+| Material | {material} |
+| Floor plate | =if(plated, plate_t + " mm", "") |
+| Coating | {coating} {ral} |
+| Brackets | =if(brackets > 0, brackets + " pcs, " + bracket_holes + " holes " + bracket_hole + " each", "") |
+| Top plate | =if(top_plate, top_l + " × " + top_w + " × " + top_t + " mm, " + top_holes + " × " + top_hole_size + " " + top_hole_kind, "") |
+| Weight (approx.) | {mass} kg |
+` }
+];
 
   </script>
   <script>/* js/modules/configurator.js */
@@ -13075,6 +13340,7 @@ PM.costsPdf = (function () {
           if (seen.has(d.id)) continue;
           seen.add(d.id);
           if (!d.params.length || !d.lines.length) { report.push({ path, error: 'no "## Parameters" or "## Cost lines" table found' }); continue; }
+          d.path = path; d.text = text;
           defs.push(d);
           report.push({ path, name: d.name, params: d.params.length, lines: d.lines.length, moved: dir !== DIR });
         } catch (e) { report.push({ path, error: e.message }); }
@@ -13254,7 +13520,12 @@ PM.costsPdf = (function () {
   function render(el, ctx) {
     const pid = ctx.projectId;
     if (!defs.length) {
-      el.appendChild(PM.ui.empty('No configurators in this portfolio. Put a configurator file in your data under settings/configurators/ (see docs/CONFIGURATOR.md).'));
+      el.appendChild(h('div', { class: 'card empty-state cf-empty' },
+        h('h2', null, 'No configurator in this portfolio yet'),
+        h('p', { class: 'muted' }, 'A configurator turns a few design choices (sizes, material, options) into a cost package for the estimate. Its questions, prices and rules are stored in this portfolio only, so every portfolio can have its own.'),
+        h('div', { class: 'btn-row' },
+          h('button', { class: 'btn primary', id: 'cf-new', onclick: () => newDialog(() => ctx.rerender()) }, '+ New configurator…'),
+          h('button', { class: 'btn', onclick: () => ctx.navigate('settings', { tab: 'configurators' }) }, 'Settings → Configurators'))));
       return;
     }
     if (!defs.some(d => d.id === st.def)) { st.def = defs[0].id; st.values = {}; st.cfg = ''; }
@@ -13356,6 +13627,97 @@ PM.costsPdf = (function () {
     el.appendChild(grid);
   }
 
+  /* ---------- managing configurators (Settings → Configurators) ---------- */
+  const slug = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'configurator';
+  async function reloadDefs() { await loadDefs(PM.store.backend); PM.events.emit('change', { collection: 'configurators', action: 'reload' }); }
+  /* write a configurator file; the file name follows the id in its front matter */
+  async function saveText(text, oldPath) {
+    const be = PM.store.backend;
+    if (!be || !be.writable) throw new Error('This data source cannot be written to.');
+    const d = parseDef(text, 'configurator');
+    const id = slug(d.id);
+    const path = DIR + '/' + id + '.md';
+    await be.writeText(path, text);
+    if (oldPath && oldPath !== path && be.deleteFile) { try { await be.deleteFile(oldPath); } catch (e) { console.warn(e); } }
+    await reloadDefs();
+    return path;
+  }
+  async function removeDef(d) {
+    const be = PM.store.backend;
+    if (be && be.deleteFile) await be.deleteFile(d.path);
+    await reloadDefs();
+  }
+  /* check a text: parse it and work out the default design */
+  function check(text) {
+    try {
+      const d = parseDef(text, 'configurator');
+      if (!d.params.length) return { ok: false, msg: 'No "## Parameters" table found.' };
+      if (!d.lines.length) return { ok: false, msg: 'No "## Cost lines" table found.' };
+      const r = compute(d, {});
+      return { ok: !r.errors.length, d, r, msg: r.errors.length ? r.errors.join(' · ') : d.name + ': ' + d.params.length + ' questions, ' + d.lines.length + ' cost lines · default design ' + U.fmtMoney(r.total, true) };
+    } catch (e) { return { ok: false, msg: e.message }; }
+  }
+  function editor(d, onDone) {
+    const ta = h('textarea', { class: 'cf-src', id: 'cf-src', spellcheck: 'false', rows: 26 }, d ? d.text : '');
+    const msg = h('p', { class: 'small', role: 'status' });
+    const run = () => { const c = check(ta.value); msg.className = 'small ' + (c.ok ? 'ok-text' : 'bad-text'); msg.textContent = (c.ok ? '✓ ' : '⚠ ') + c.msg; return c; };
+    ta.addEventListener('input', U.debounce(run, 400));
+    PM.ui.dialog({
+      title: d ? 'Edit configurator · ' + d.name : 'New configurator', className: 'cf-dlg',
+      content: h('div', null,
+        h('p', { class: 'small muted' }, 'Questions, price tables, values, calculations, cost lines and the summary, as Markdown tables. Stored in this portfolio as ', h('code', null, DIR + '/<id>.md'), '. All options: docs/CONFIGURATOR.md.'),
+        ta, msg),
+      actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, onClick: async () => {
+        const c = run();
+        if (!c.d) return false;
+        if (!c.ok && !confirm('The configurator has problems (see the message). Save anyway?')) return false;
+        try { await saveText(ta.value, d && d.path); PM.ui.toast('Configurator “' + c.d.name + '” saved.', 'ok'); if (onDone) onDone(); }
+        catch (e) { msg.className = 'small bad-text'; msg.textContent = e.message; return false; }
+      } }]
+    });
+    setTimeout(run, 0);
+  }
+  /* start from an example: it is copied into this portfolio, nothing else gets it */
+  function newDialog(onDone) {
+    const ex = PM.configuratorExamples || [];
+    const sel = h('div', { class: 'cf-examples' }, ex.map((x, i) => h('label', { class: 'cf-ex' }, h('input', { type: 'radio', name: 'cf-ex', value: x.id, checked: i === 0 || null }), ' ', x.name)));
+    PM.ui.dialog({
+      title: 'New configurator',
+      content: h('div', null, h('p', { class: 'small muted' }, 'Start from:'), sel, h('p', { class: 'small muted' }, 'It is added to this portfolio only. You can change everything afterwards.')),
+      actions: [{ label: 'Cancel' }, { label: 'Next', primary: true, onClick: () => {
+        const id = (sel.querySelector('input:checked') || {}).value;
+        const x = ex.find(e => e.id === id);
+        let text = x ? x.text : '';
+        // a new id when that one is already in use
+        const taken = new Set(defs.map(dd => dd.id));
+        const m = /^id:\s*(\S+)/m.exec(text);
+        if (m && taken.has(m[1])) { let n = 2; while (taken.has(m[1] + '-' + n)) n++; text = text.replace(/^id:\s*\S+/m, 'id: ' + m[1] + '-' + n); }
+        editor({ text, name: x ? x.name : '', path: null }, onDone);
+      } }]
+    });
+  }
+  function renderSettings(el, rerender) {
+    el.appendChild(h('p', { class: 'muted' }, 'Configurators for Costs → Configurator. Each portfolio has its own: they are stored in this portfolio as ', h('code', null, DIR + '/<id>.md'), '.'));
+    el.appendChild(h('div', { class: 'btn-row' },
+      h('button', { class: 'btn primary', id: 'cfs-new', onclick: () => newDialog(rerender) }, '+ New configurator'),
+      h('button', { class: 'btn ghost', onclick: async () => { await reloadDefs(); PM.ui.toast('Reloaded.', 'ok'); rerender(); } }, 'Reload')));
+    if (!defs.length) el.appendChild(PM.ui.empty('No configurators in this portfolio yet.'));
+    el.appendChild(h('div', { class: 'forms-list' }, defs.map(d => {
+      const c = check(d.text);
+      return h('div', { class: 'card form-card' },
+        h('div', { class: 'form-card-head' }, h('strong', { translate: 'no' }, d.name), h('span', { class: 'tpl-badge' + (c.ok ? '' : ' bad') }, c.ok ? 'OK' : 'Check')),
+        h('p', { class: 'small muted', translate: 'no' }, d.path + ' · ' + d.params.length + ' questions · ' + d.lines.length + ' cost lines'),
+        d.description ? h('p', { class: 'small', translate: 'no' }, d.description) : null,
+        c.ok ? null : h('p', { class: 'small bad-text' }, c.msg),
+        h('div', { class: 'btn-row' },
+          h('button', { class: 'btn small', onclick: () => editor(d, rerender) }, 'Edit'),
+          h('button', { class: 'btn ghost small', onclick: () => { const t = d.text.replace(/^id:\s*(\S+)/m, (a, id) => 'id: ' + id + '-copy').replace(/^name:\s*(.+)$/m, (a, n) => 'name: ' + n + ' (copy)'); editor({ text: t, name: d.name + ' (copy)', path: null }, rerender); } }, 'Duplicate'),
+          h('button', { class: 'btn ghost small danger-text', onclick: () => { if (!confirm('Delete the configurator “' + d.name + '”? Designs saved in projects keep their values, and lines already in estimates stay.')) return; removeDef(d).then(() => { PM.ui.toast('Configurator deleted.', 'ok'); rerender(); }); } }, 'Delete')));
+    })));
+    const bad = report.filter(r => r.error);
+    if (bad.length) el.appendChild(h('div', { class: 'card' }, h('b', null, 'Files that could not be used'), h('ul', { class: 'small' }, bad.map(r => h('li', null, h('code', null, r.path), ' — ' + r.error)))));
+  }
+
   /* PDF of the current design (Costs → PDF while the configurator is open) */
   function pdfSpec(ctx) {
     const d = defs.find(x => x.id === st.def);
@@ -13380,7 +13742,7 @@ PM.costsPdf = (function () {
     };
   }
 
-  PM.configurator = { list: () => defs.slice(), report: () => report.slice(), looksLike, parse: parseDef, compute, evaluate: (src, scope, d) => evaluate(src, scope || {}, d || { tables: {} }), render, pdfSpec, reload: () => loadDefs(PM.store.backend) };
+  PM.configurator = { renderSettings, newDialog, editor, check, saveText, list: () => defs.slice(), report: () => report.slice(), looksLike, parse: parseDef, compute, evaluate: (src, scope, d) => evaluate(src, scope || {}, d || { tables: {} }), render, pdfSpec, reload: () => loadDefs(PM.store.backend) };
 })();
 
   </script>
@@ -14837,7 +15199,7 @@ Onderdelen:
     id: 'settings', title: 'Settings', icon: '⚙', order: 90,
     render(el, ctx) {
       if (ctx.params.tab && ctx.params.tab !== state.lastParam) { state.tab = ctx.params.tab; state.lastParam = ctx.params.tab; }
-      const tabs = [['company', 'Company'], ['roles', 'Roles & rates'], ['people', 'People'], ['forms', 'Forms'], ['templates', 'Planning templates'], ['estformats', 'Estimate formats'], ['presets', 'PDF presets'], ['data', 'Data & import'], ['dev', 'Extensions']];
+      const tabs = [['company', 'Company'], ['roles', 'Roles & rates'], ['people', 'People'], ['forms', 'Forms'], ['configurators', 'Configurators'], ['templates', 'Planning templates'], ['estformats', 'Estimate formats'], ['presets', 'PDF presets'], ['data', 'Data & import'], ['dev', 'Extensions']];
       el.appendChild(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'Shared across all projects')),
         h('span', { class: 'spacer' }), h('label', { class: 'lang-row' }, h('span', { class: 'muted small' }, 'Language'), PM.app.langSwitch())));
       el.appendChild(h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, t]) => h('button', { role: 'tab', 'aria-selected': String(state.tab === k), class: state.tab === k ? 'on' : '', onclick: () => { state.tab = k; ctx.rerender(); } }, t))));
@@ -14853,7 +15215,8 @@ Onderdelen:
         el.appendChild(companyTab());
       } else if (state.tab === 'forms') {
         PM.formsEditor.renderTab(el);
-        el.appendChild(configuratorsSection());
+      } else if (state.tab === 'configurators') {
+        PM.configurator.renderSettings(el, ctx.rerender);
       } else if (state.tab === 'estformats') {
         PM.estimateFormats.renderSettings(el, ctx.rerender);
       } else if (state.tab === 'templates') {
