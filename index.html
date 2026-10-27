@@ -947,6 +947,49 @@ textarea { font: inherit; }
   .has-pf .status-pill.ok, .has-pf .status-pill:not(.warn):not(.error):not(.busy) { display: none; }
 }
 
+/* ---------- quotes and orders ---------- */
+.stage-seg button { display: inline-flex; align-items: center; gap: 6px; }
+.stage-seg .stage-n { font-size: 11px; background: var(--surface-2); border-radius: 8px; padding: 0 6px; color: var(--muted); }
+.stage-seg button.on .stage-n { background: color-mix(in srgb, var(--accent) 15%, var(--surface)); color: var(--accent); }
+.stage-seg.small button { padding: 4px 10px; font-size: 12.5px; }
+.pp-stage { margin: 0 0 6px; }
+.pp-stage .seg { width: 100%; }
+.pp-stage .seg button { flex: 1; justify-content: center; }
+.pill.st-quote, .pill-select.st-quote { background: #eef2ff; color: #4338ca; }
+.pill.st-lost, .pill-select.st-lost { background: var(--surface-2); color: var(--muted); text-decoration: line-through; }
+.quote-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; margin: 0 0 14px; border-radius: var(--radius); background: #eef2ff; border: 1px solid #c7d2fe; color: #312e81; }
+.quote-bar.lost { background: var(--surface-2); border-color: var(--border); color: var(--muted); }
+
+/* ---------- Costs → Configurator ---------- */
+.cf-top { margin-bottom: 14px; }
+.cf-top-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.cf-top-row .form-row { min-width: 220px; }
+.cf-desc { max-width: 560px; margin: 0; }
+.cf-saved { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.chip-btn { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.chip-btn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.cf-in { color: var(--ok); font-weight: 700; }
+.cf-grid { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 16px; align-items: start; }
+.cf-grid .card h2 { margin-top: 0; font-size: 16px; }
+.cf-form { display: flex; flex-direction: column; gap: 10px; position: sticky; top: calc(var(--topbar-h, 56px) + 12px); max-height: calc(100vh - var(--topbar-h, 56px) - 24px); overflow: auto; }
+.cf-row { display: flex; flex-direction: column; gap: 4px; }
+.cf-row select, .cf-row input { width: 100%; }
+.cf-calcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.cf-calc { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
+.cf-lines .cf-subj td { font-weight: 700; background: var(--surface-2); }
+.cf-lines tfoot td { font-weight: 700; border-top: 2px solid var(--border-strong); }
+.cf-errors { color: var(--bad); background: var(--bad-weak); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
+.cf-errors ul { margin: 4px 0 0; padding-left: 18px; }
+.cf-save { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.cf-save .form-row { flex: 1; min-width: 200px; }
+.cf-save .cf-qty { flex: 0 0 110px; min-width: 0; }
+.cf-save .btn-row { flex-basis: 100%; }
+.cf-warn { color: var(--warn); flex-basis: 100%; margin: 0; }
+.cf-summary { margin-top: 14px; }
+.cf-summary h3 { font-size: 14px; margin: 0 0 6px; }
+.cf-pre { white-space: pre-wrap; font: inherit; font-size: 13px; background: var(--surface-2); padding: 10px 12px; border-radius: 8px; margin: 0 0 8px; }
+@media (max-width: 900px) { .cf-grid { grid-template-columns: 1fr; } .cf-form { position: static; max-height: none; } }
+
 </style>
 </head>
 <body>
@@ -2781,6 +2824,42 @@ PM.i18n.add('nl', {
 });
 PM.i18n.pattern('nl', /^Portfolio: (.+)$/, (m, x) => 'Portfolio: ' + x);
 
+/* quotes and orders, configurator */
+PM.i18n.add('nl', {
+  'Orders': 'Orders', 'Quotes': 'Offertes', 'Show projects': 'Projecten tonen',
+  'quote': 'offerte', 'lost': 'verloren', 'Quote': 'Offerte', 'Lost': 'Verloren',
+  ' — not an order yet. It is shown under “Quotes” at the top.': ' — nog geen order. Staat bovenaan onder “Offertes”.',
+  '✓ Order received': '✓ Opdracht ontvangen',
+  'Quote lost': 'Offerte verloren',
+  ' — kept for reference under “Quotes”.': ' — bewaard ter referentie onder “Offertes”.',
+  'Reopen quote': 'Offerte heropenen',
+  'Configurator': 'Configurator', 'Config.': 'Config.', 'Configurations': 'Configuraties',
+  'No configurators in this portfolio. Put a configurator file in your data under settings/configurators/ (see docs/CONFIGURATOR.md).': 'Geen configurators in dit portfolio. Zet een configuratorbestand in je gegevens onder settings/configurators/ (zie docs/CONFIGURATOR.md).',
+  '+ New design': '+ Nieuw ontwerp',
+  'Saved designs in this project:': 'Opgeslagen ontwerpen in dit project:',
+  'Design': 'Ontwerp',
+  'Cost package': 'Kostenpakket',
+  'Check the configurator file: ': 'Controleer het configuratorbestand: ',
+  'Cost price per piece': 'Kostprijs per stuk',
+  'Name of this design': 'Naam van dit ontwerp',
+  'e.g. Skid 1 – pump unit': 'bijv. Skid 1 – pompunit',
+  'Save changes': 'Wijzigingen opslaan',
+  'Save design': 'Ontwerp opslaan',
+  'Design saved in this project.': 'Ontwerp opgeslagen in dit project.',
+  'Add to estimate': 'Toevoegen aan calculatie',
+  'Update estimate': 'Calculatie bijwerken',
+  'Delete design': 'Ontwerp verwijderen',
+  'Changed since it was added to the estimate — press “Update estimate”.': 'Gewijzigd sinds het aan de calculatie is toegevoegd — druk op “Calculatie bijwerken”.',
+  'Design summary (for the quote)': 'Ontwerpsamenvatting (voor de offerte)',
+  'Copy summary': 'Samenvatting kopiëren',
+  'Summary copied.': 'Samenvatting gekopieerd.',
+  'Parameter': 'Parameter', 'Value': 'Waarde', 'Calculated': 'Berekend', 'Quantity': 'Aantal'
+});
+PM.i18n.pattern('nl', /^(.+): order received — the project is now active and shown under Orders\.$/, (m, x) => x + ': opdracht ontvangen — het project is nu actief en staat onder Orders.');
+PM.i18n.pattern('nl', /^(.+) marked as lost\.$/, (m, x) => x + ' gemarkeerd als verloren.');
+PM.i18n.pattern('nl', /^Total for (\d+) pieces$/, (m, n) => 'Totaal voor ' + n + ' stuks');
+PM.i18n.pattern('nl', /^(\d+) line\(s\) added to the estimate(.*)\.$/, (m, n, rest) => n + ' regel(s) toegevoegd aan de calculatie' + rest.replace(/ \(replacing the (\d+) earlier line\(s\) of this design\)/, ' (vervangt de $1 eerdere regel(s) van dit ontwerp)') + '.');
+
   </script>
   <script>/* js/core/registry.js */
 /* PM Tool — core/registry.js
@@ -2873,7 +2952,7 @@ PM.i18n.pattern('nl', /^Portfolio: (.+)$/, (m, x) => 'Portfolio: ' + x);
  * saver, generic table editor and JSON/CSV adapters pick it up automatically.
  */
 (function () {
-  const STATUS_PROJECT = ['planned', 'active', 'on-hold', 'completed', 'archived'];
+  const STATUS_PROJECT = ['quote', 'planned', 'active', 'on-hold', 'completed', 'lost', 'archived'];   // quote / lost = quotes, the rest = orders (core/stage.js)
   const STATUS_TASK = ['todo', 'in-progress', 'review', 'blocked', 'done'];
 
   PM.defineCollection({
@@ -3341,7 +3420,7 @@ PM.md = (function () {
     }
   }
 
-  return { parseFrontmatter, stringifyFrontmatter, parseTableDoc, writeTableDoc, fromCell, yamlValue, parseYaml };
+  return { parseFrontmatter, stringifyFrontmatter, parseTableDoc, writeTableDoc, fromCell, yamlValue, parseYaml, splitRow };
 })();
 
   </script>
@@ -4012,6 +4091,46 @@ PM.portfolio = (function () {
 })();
 
   </script>
+  <script>/* js/core/stage.js */
+/* PM Tool — core/stage.js
+ * Quotes and orders. A project is a quote while its status is "quote" (or "lost" when the
+ * quote did not turn into an order); every other status is an order. The stage filter
+ * (Orders · Quotes · All) decides which projects the overviews show: the project list at the
+ * top, the planning of all projects, the team planning, the dashboard, tasks and costs.
+ * It is remembered per portfolio on this device.
+ *
+ *   PM.stage.get() / set('orders' | 'quotes' | 'all')
+ *   PM.stage.matches(project)         true when the project belongs in the current view
+ *   PM.stage.isQuote(project)
+ *   PM.stage.control()                the Orders · Quotes · All switch (with counts)
+ */
+PM.stage = (function () {
+  const QUOTE = ['quote', 'lost'];
+  const KEY = 'pm.stage';
+  const isQuote = p => !!p && QUOTE.includes(p.status);
+  function get() { const v = PM.portfolio.local.get(KEY); return v === 'quotes' || v === 'all' ? v : 'orders'; }
+  function set(v) { PM.portfolio.local.set(KEY, v); PM.events.emit('stage', { stage: v }); }
+  function matches(p, stage) {
+    stage = stage || get();
+    if (!p) return false;
+    return stage === 'all' || (stage === 'quotes' ? isQuote(p) : !isQuote(p));
+  }
+  function counts() {
+    const ps = PM.store.projects().filter(p => p.status !== 'archived');
+    const q = ps.filter(isQuote).length;
+    return { orders: ps.length - q, quotes: q, all: ps.length };
+  }
+  function control(opts) {
+    opts = opts || {};
+    const c = counts(), cur = get();
+    return PM.util.h('div', { class: 'seg stage-seg' + (opts.small ? ' small' : ''), role: 'radiogroup', 'aria-label': 'Show projects' },
+      [['orders', 'Orders'], ['quotes', 'Quotes'], ['all', 'All']].map(([k, t]) => PM.util.h('button', { type: 'button', role: 'radio', 'data-stage': k, 'aria-checked': String(cur === k), class: cur === k ? 'on' : '',
+        onclick: e => { e.stopPropagation(); if (opts.onChange) opts.onChange(k); set(k); } }, t, PM.util.h('span', { class: 'stage-n' }, String(c[k])))));
+  }
+  return { get, set, matches, isQuote, counts, control, QUOTE };
+})();
+
+  </script>
   <script>/* js/core/github.js */
 /* PM Tool — core/github.js
  * GitHub storage: the Markdown files live in a (private) GitHub repository.
@@ -4146,7 +4265,7 @@ PM.github = (function () {
         if (e.type !== 'blob' || !e.path.startsWith(pre) || !/\.md$/i.test(e.path)) return;
         const rel = e.path.slice(pre.length);
         const parts = rel.split('/');
-        if (parts[0] === 'settings' && (parts.length === 2 || (parts.length === 3 && parts[1] === 'forms'))) jobs.push([rel, e.sha]);
+        if (parts[0] === 'settings' && (parts.length === 2 || (parts.length === 3 && (parts[1] === 'forms' || parts[1] === 'configurators')))) jobs.push([rel, e.sha]);
         if (parts[0] === 'projects' && parts.length === 3) { projects.add(parts[1]); jobs.push([rel, e.sha]); }
       });
       this.dirs.projects = Array.from(projects).sort();
@@ -5872,7 +5991,7 @@ PM.app = (function () {
   }
 
   /* ---------- project picker in the top bar: type to filter (number, object or client) ---------- */
-  const STATUS_ORDER = ['active', 'planned', 'on-hold', 'completed', 'archived'];
+  const STATUS_ORDER = ['active', 'planned', 'on-hold', 'quote', 'completed', 'lost', 'archived'];
   const projLabel = p => p.id + ' · ' + p.name + (p.client ? ' · ' + p.client : '');
   const pick = { open: false, q: '', active: 0, items: [] };
   function renderProjectSelect() {
@@ -5883,10 +6002,13 @@ PM.app = (function () {
     if (pick.open) renderPickList();
   }
   function renderPickList() {
+    projSel.stageBox.innerHTML = '';
+    projSel.stageBox.appendChild(PM.stage.control({ small: true }));
     const pid = route.params.project || '';
     const words = pick.q.toLowerCase().split(/\s+/).filter(Boolean);
     const match = p => words.every(w => (p.id + ' ' + p.name + ' ' + (p.client || '')).toLowerCase().includes(w));
-    const all = PM.store.projects().filter(p => match(p) && (p.status !== 'archived' || p.id === pid || words.length));
+    // typing searches every stage; without a search the list follows the Orders · Quotes · All switch
+    const all = PM.store.projects().filter(p => match(p) && (words.length ? true : (p.status !== 'archived' || p.id === pid) && (PM.stage.matches(p) || p.id === pid)));
     const groups = U.groupBy(all, p => STATUS_ORDER.includes(p.status) ? p.status : 'active');
     pick.items = words.length ? [] : [{ id: '' }];
     const list = projSel.list;
@@ -5939,7 +6061,8 @@ PM.app = (function () {
     const btn = h('button', { type: 'button', class: 'pp-btn', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': 'Project', onclick: () => (pick.open ? closePicker(true) : openPicker()) }, btnText, h('span', { class: 'pp-caret', 'aria-hidden': 'true' }, '▾'));
     const input = h('input', { type: 'search', class: 'pp-search', placeholder: 'Search number, object or client…', 'aria-label': 'Search projects', autocomplete: 'off', role: 'combobox', 'aria-controls': 'pp-list', 'aria-expanded': 'true' });
     const list = h('div', { class: 'pp-list', id: 'pp-list', role: 'listbox' });
-    const panel = h('div', { class: 'pp-panel', hidden: true }, input, list);
+    const stageBox = h('div', { class: 'pp-stage' });
+    const panel = h('div', { class: 'pp-panel', hidden: true }, input, stageBox, list);
     const box = h('div', { class: 'pp' }, btn, panel);
     input.addEventListener('input', () => { pick.q = input.value; pick.active = 0; renderPickList(); });
     input.addEventListener('keydown', e => {
@@ -5951,7 +6074,7 @@ PM.app = (function () {
     });
     list.addEventListener('click', e => { const o = e.target.closest('.pp-opt'); if (o) choose(+o.dataset.i); });
     document.addEventListener('pointerdown', e => { if (pick.open && !box.contains(e.target)) closePicker(false); });
-    return { el: box, btn, btnText, input, list, panel };
+    return { el: box, btn, btnText, input, list, panel, stageBox };
   }
 
   function render() {
@@ -6209,7 +6332,7 @@ PM.app = (function () {
   function newProjectDialog() {
     if (!PM.store.backend) return;
     const today = U.todayISO();
-    const f = PM.ui.form('projects', { status: 'active', start: today, end: U.addDays(today, 90), color: '#2f6fed' }, { fields: NEW_PROJECT_FIELDS });
+    const f = PM.ui.form('projects', { status: PM.stage.get() === 'quotes' ? 'quote' : 'active', start: today, end: U.addDays(today, 90), color: '#2f6fed' }, { fields: NEW_PROJECT_FIELDS });
     PM.ui.dialog({
       title: 'New project', content: f.el,
       actions: [{ label: 'Cancel' }, { label: 'Create project', primary: true, onClick: () => {
@@ -6465,6 +6588,7 @@ PM.app = (function () {
     // table toolbars (search + Add) stick just below the top bar; keep that offset right when the bar changes height
     renderPortfolioBadge();
     PM.events.on('loaded', renderPortfolioBadge);
+    PM.events.on('stage', () => { if (pick.open) { renderPickList(); projSel.input.focus(); } render(); });
     PM.events.on('lang', () => { const box = root.querySelector('.side-lang'); if (box) { box.innerHTML = ''; box.appendChild(langSwitch()); } renderProjectSelect(); });
     const topbar = root.querySelector('.topbar');
     const setTop = () => document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px');
@@ -6595,7 +6719,7 @@ PM.registerModule({
 
     const st = this.state = this.state || { showAll: false };
     const all = PM.store.projects();
-    const projects = all.filter(p => st.showAll ? p.status !== 'archived' : ['active', 'planned', 'on-hold'].includes(p.status || 'active'));
+    const projects = all.filter(p => PM.stage.matches(p) && (st.showAll ? p.status !== 'archived' : ['active', 'planned', 'on-hold', 'quote'].includes(p.status || 'active')));
     const sum = calc.summary({});
     const month = U.todayISO().slice(0, 7);
     const monthSum = calc.summary({ from: month + '-01', to: month + '-31' });
@@ -6604,6 +6728,7 @@ PM.registerModule({
     el.appendChild(h('div', { class: 'page-head' },
       h('div', null, h('h1', null, 'Portfolio'), h('p', { class: 'muted' }, U.fmtDate(U.todayISO()) + ' · ' + all.filter(p => p.status === 'active').length + ' active project(s)')),
       h('span', { class: 'spacer' }),
+      PM.stage.control(),
       h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: st.showAll || null, onchange: e => { st.showAll = e.target.checked; ctx.rerender(); } }), ' Show completed'),
       h('button', { class: 'btn primary', onclick: () => PM.app.newProjectDialog() }, '+ New project')));
 
@@ -6650,6 +6775,14 @@ PM.registerModule({
         h('span', { class: 'spacer' }),
         h('span', { class: 'pill st-' + (p.status || 'active') }, p.status || 'active'),
         h('button', { class: 'btn', onclick: () => PM.app.editProjectDialog(p.id) }, '✎ Edit project')));
+      // a quote: one click when the order comes in (or when it is lost)
+      if (p.status === 'quote') el.appendChild(h('div', { class: 'quote-bar' },
+        h('span', null, h('b', null, 'Quote'), ' — not an order yet. It is shown under “Quotes” at the top.'),
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn primary small', id: 'q-won', onclick: () => { PM.store.update('projects', p._key, { status: 'active' }); PM.ui.toast(p.id + ': order received — the project is now active and shown under Orders.', 'ok'); } }, '✓ Order received'),
+        h('button', { class: 'btn ghost small', onclick: () => { PM.store.update('projects', p._key, { status: 'lost' }); PM.ui.toast(p.id + ' marked as lost.', 'ok'); } }, 'Quote lost')));
+      if (p.status === 'lost') el.appendChild(h('div', { class: 'quote-bar lost' }, h('span', null, h('b', null, 'Quote lost'), ' — kept for reference under “Quotes”.'), h('span', { class: 'spacer' }),
+        h('button', { class: 'btn ghost small', onclick: () => PM.store.update('projects', p._key, { status: 'quote' }) }, 'Reopen quote')));
       if (p.description) el.appendChild(h('p', { class: 'proj-desc' }, p.description));
 
       const q = '?project=' + p.id;
@@ -7034,7 +7167,7 @@ function commentsSection(p, ctx) {
         allLines.push(...ls);
       });
     } else {
-      const plist = PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed');
+      const plist = PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed' && p.status !== 'lost' && PM.stage.matches(p));
       if (state.order === 'milestone') {
         const key = p => { const n = milestonesOf(PM.store.list('lines', { project: p.id })).next; return n ? n.start : '9999'; };
         plist.sort((a, b) => key(a).localeCompare(key(b)) || a.id.localeCompare(b.id, undefined, { numeric: true }));
@@ -7322,6 +7455,7 @@ function commentsSection(p, ctx) {
         state.view === 'timeline' || !ctx.project ? zoomBtns : null,
         state.view === 'timeline' || !ctx.project ? h('button', { class: 'btn ghost small', onclick: () => state.scrollToday && state.scrollToday() }, 'Today') : null,
         filter,
+        !ctx.project ? PM.stage.control({ small: true }) : null,
         orderSel,
         pushBox,
         undoBtn,
@@ -8037,7 +8171,7 @@ function commentsSection(p, ctx) {
   function items(pid, from, to, opts) {
     opts = opts || {};
     const out = [];
-    const projOk = p => p && p.status !== 'archived' && (!opts.project || p.id === opts.project);
+    const projOk = p => p && p.status !== 'archived' && p.status !== 'lost' && PM.stage.matches(p) && (!opts.project || p.id === opts.project);
     PM.store.list('lines', l => l.person === pid && l.start).forEach(l => {
       const p = PM.store.project(l.project); if (!projOk(p)) return;
       const e = l.end && l.end >= l.start ? l.end : l.start;
@@ -8100,7 +8234,7 @@ function commentsSection(p, ctx) {
   function addTaskDialog(ctx, preset) {
     preset = preset || {};
     const people = PM.store.list('people', p => p.active !== false);
-    const projects = PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed');
+    const projects = PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed' && p.status !== 'lost' && PM.stage.matches(p));
     const title = h('input', { type: 'text', id: 'tt-title', placeholder: 'What needs to be done?' });
     const person = h('select', { id: 'tt-person' }, people.map(p => h('option', { value: p.id, selected: p.id === preset.person || null }, p.name)));
     const proj = h('select', { id: 'tt-project' }, h('option', { value: '' }, '— Personal task (no project) —'), projects.map(p => h('option', { value: p.id, selected: p.id === (preset.project || '') || null }, p.id + ' · ' + p.name)));
@@ -8232,6 +8366,7 @@ function commentsSection(p, ctx) {
       h('button', { class: 'btn ghost small', 'aria-label': 'Later', onclick: () => { st.offset++; ctx.rerender(); } }, '▶'),
       h('span', { class: 'muted small' }, U.fmtDate(from) + ' – ' + U.fmtDate(to) + ' · ' + step + ' week' + (step > 1 ? 's' : '') + ' per click'),
       h('span', { class: 'spacer' }),
+      PM.stage.control({ small: true }),
       roleSel,
       h('button', { class: 'btn small', onclick: () => peopleDialog(ctx) }, 'People' + (hiddenN ? ' (' + hiddenN + ' hidden)' : '') + '…'),
       ctx.projectId ? h('label', { class: 'check small' }, h('input', { type: 'checkbox', checked: st.onlyProject || null, onchange: e => { st.onlyProject = e.target.checked; ctx.rerender(); } }), ' Only ' + ctx.projectId) : null,
@@ -8660,7 +8795,7 @@ function commentsSection(p, ctx) {
   PM.registerModule({
     id: 'tasks', title: 'Tasks', icon: '☑', order: 30,
     render(el, ctx) {
-      const all = PM.store.list('tasks', ctx.projectId ? { project: ctx.projectId } : t => { const p = PM.store.project(t.project); return p && p.status !== 'archived'; });
+      const all = PM.store.list('tasks', ctx.projectId ? { project: ctx.projectId } : t => { const p = PM.store.project(t.project); return p && p.status !== 'archived' && PM.stage.matches(p); });
       const counts = { all: all.length, open: all.filter(t => t.status !== 'done').length, unlinked: all.filter(t => !t.line).length };
       PM.constants.STATUS_TASK.forEach(s => { counts[s] = all.filter(t => (t.status || 'todo') === s).length; });
       const today = U.todayISO();
@@ -10741,7 +10876,12 @@ PM.surveyPdf = (function () {
 
   /* A form PDF stays in the language of the form, whatever the app language is.
    * opts.doc: draw into that document (project summary); its pages are returned and no footers are drawn. */
-  function render(rec, opts) { return PM.i18n.withPdfLang('en', () => renderForm(rec, opts || {})); }
+  function render(rec, opts) {
+    // dates and numbers in the language of the form (12 okt 2026 / 4.921 in a Dutch form)
+    const t = S.get(rec.template), keep = PM.util.locale;
+    PM.util.setLocale(t && t.lang === 'nl' ? 'nl' : 'en');
+    return PM.i18n.withPdfLang('en', () => renderForm(rec, opts || {})).finally(() => PM.util.setLocale(keep));
+  }
   async function renderForm(rec, opts) {
     const t = S.get(rec.template);
     const L = TX[t.lang] || TX.en, F = S.lang(t);
@@ -11133,7 +11273,7 @@ PM.surveyPdf = (function () {
         const parts = String(t.footer || '').split('·').map(x => fill(x.trim())).filter(Boolean);
         const fx = [M, W / 2 - 15];
         parts.slice(0, 2).forEach((pt, k) => p.text(PM.pdf.fit(pt, 90, 7.5), fx[k], fy, { size: 7.5, color: C.text }));
-        p.text('page: ' + (i + 1) + '/' + pages.length, W - M, fy, { size: 7.5, color: C.text, align: 'right' });
+        p.text((t.lang === 'nl' ? 'pagina: ' : 'page: ') + (i + 1) + '/' + pages.length, W - M, fy, { size: 7.5, color: C.text, align: 'right' });
         return;
       }
       p.line(M, fy - 4, W - M, fy - 4, { stroke: C.line, lw: 0.2 });
@@ -11416,8 +11556,8 @@ PM.surveyPdf = (function () {
           const upd = () => {
             const c = S.calcCheck(t, v, f);
             out.innerHTML = '';
-            out.append(h('strong', null, c.text || '—'), f.unit ? h('span', { class: 'muted' }, ' ' + f.unit) : null,
-              c.ok == null ? null : h('span', { class: 'sv-chip ' + (c.ok ? 'ok' : 'bad') }, c.ok ? T.pass : T.fail));
+            [h('strong', null, c.text || '—'), f.unit ? h('span', { class: 'muted' }, ' ' + f.unit) : null,
+              c.ok == null ? null : h('span', { class: 'sv-chip ' + (c.ok ? 'ok' : 'bad') }, c.ok ? T.pass : T.fail)].filter(Boolean).forEach(x => out.appendChild(x));
           };
           liveUpdates.push(upd); upd();
           return out;
@@ -12621,7 +12761,7 @@ PM.costsPdf = (function () {
     }));
   }
   function actualRows(ctx) {
-    return PM.store.list('costs', ctx.projectId ? { project: ctx.projectId } : c => { const p = PM.store.project(c.project); return p && p.status !== 'archived'; });
+    return PM.store.list('costs', ctx.projectId ? { project: ctx.projectId } : c => { const p = PM.store.project(c.project); return p && p.status !== 'archived' && PM.stage.matches(p); });
   }
   function linkedFn() {
     const ids = new Set(PM.store.list('estimate').concat(PM.store.list('extras')).map(e => e.project + '|' + e.id));
@@ -12638,7 +12778,7 @@ PM.costsPdf = (function () {
 
   function portfolioList() {
     const calc = PM.services.calc;
-    return PM.store.projects().filter(p => p.status !== 'archived').map(p => Object.assign({ p }, calc.estimateAnalysis(p.id)));
+    return PM.store.projects().filter(p => p.status !== 'archived' && PM.stage.matches(p)).map(p => Object.assign({ p }, calc.estimateAnalysis(p.id)));
   }
   /* All projects: one line per project */
   function portfolioView(el, ctx) {
@@ -12767,7 +12907,8 @@ PM.costsPdf = (function () {
             { label: 'For the client', primary: true, onClick: () => { const s = pdfSpecs('extras', ctx, true); PM.costsPdf.exportPdf(s.spec, s.file, btn); } }] });
         return;
       }
-      const s = pdfSpecs(state.view, ctx, false);
+      const s = state.view === 'config' ? PM.configurator.pdfSpec(ctx) : pdfSpecs(state.view, ctx, false);
+      if (!s) return;
       PM.costsPdf.exportPdf(s.spec, s.file, btn);
     } }, 'PDF');
   }
@@ -12777,6 +12918,7 @@ PM.costsPdf = (function () {
     render(el, ctx) {
       const views = ctx.projectId
         ? [['estimate', 'Estimate', 'Estimate'], ['extras', 'Additional work', 'Extras'], ['actual', 'Actual costs', 'Actual'], ['analysis', 'Analysis', 'Analysis']]
+          .concat(PM.configurator && PM.configurator.list().length ? [['config', 'Configurator', 'Config.']] : [])
         : [['actual', 'Actual costs', 'Actual costs'], ['analysis', 'Estimate vs actual', 'Estimate vs actual']];
       if (!views.some(v => v[0] === state.view)) state.view = ctx.projectId ? 'estimate' : 'actual';
       el.appendChild(h('div', { class: 'page-head' },
@@ -12785,12 +12927,424 @@ PM.costsPdf = (function () {
           h('button', { class: state.view === k ? 'on' : '', role: 'tab', 'aria-selected': String(state.view === k), onclick: () => { state.view = k; ctx.rerender(); } },
             h('span', { class: 'lbl-long' }, t), h('span', { class: 'lbl-short' }, short)))),
         pdfButton(ctx)));
-      if (state.view === 'estimate') estimateView(el, ctx);
+      if (state.view === 'config') PM.configurator.render(el, ctx);
+      else if (state.view === 'estimate') estimateView(el, ctx);
       else if (state.view === 'extras') extrasView(el, ctx);
       else if (state.view === 'analysis') (ctx.projectId ? analysisView : portfolioView)(el, ctx);
       else actualView(el, ctx);
     }
   });
+})();
+
+  </script>
+  <script>/* js/modules/configurator.js */
+/* PM Tool — modules/configurator.js
+ * Costs → Configurator: build a cost package from a few design choices, e.g. a skid frame:
+ * length × width, profile type / size / material, plating, coating, brackets, top plate…
+ * The rules live in your data as Markdown, one file per configurator:
+ *     settings/configurators/<id>.md
+ * so a portfolio only shows the configurators that are in its own repository.
+ *
+ * File format (sections are "## <name>" headings, each with one table):
+ *   ---
+ *   id: skid
+ *   name: Skid frame
+ *   subject: Skid               default estimate subject for cost lines without one
+ *   ---
+ *   ## Parameters      | key | label | type | options | unit | default | show |
+ *        type: number, choice, yesno, text
+ *        options (choice): A; B; C   or   table=profiles; column=size; where=type:profile_type
+ *        show: an expression, e.g.  profile_type != "none"   (the question is hidden otherwise)
+ *   ## Table: <name>   any table; the first columns are the keys used by lookup()
+ *   ## Values          | key | label | value | unit |          fixed prices and rates
+ *   ## Calculations    | key | label | formula | unit | decimals |   worked out top to bottom
+ *   ## Cost lines      | subject | description | qty | unit | price | show |
+ *        description may contain {key}; qty and price are expressions; a line is left out when
+ *        its show is false or its qty is 0
+ *   ## Summary         | label | value |     the design output for the quote ({key} or =expression)
+ *
+ * Expressions: numbers, "text", keys of parameters / values / calculations,
+ *   + - * / ^ ( ), = != < > <= >=, and, or, not,
+ *   if(test, a, b) · min · max · round(x, decimals) · ceil · floor · abs · sqrt
+ *   lookup("table", "column", key1, key2…)   value from a table row whose first columns match the keys;
+ *                                             the column can itself be a parameter, e.g. lookup("profiles", material, …)
+ * yes/no parameters count as 1 / 0.
+ *
+ * Configurations are stored per project in configurations.md; "Add to estimate" writes the
+ * cost lines to the project's estimate (and replaces them when you add the same configuration again).
+ */
+(function () {
+  const U = PM.util, h = U.h;
+  const DIR = 'settings/configurators';
+  let defs = [];
+
+  PM.defineCollection({
+    name: 'configs', label: 'Configurations', scope: 'project', file: 'configurations.md',
+    heading: 'Configurations', idPrefix: 'CF-',
+    intro: 'Saved configurator designs (Costs → Configurator). values = the chosen parameters (JSON). total = cost price per piece.',
+    fields: [
+      { key: 'id', label: 'ID', type: 'id', width: 80 },
+      { key: 'configurator', label: 'Configurator', type: 'string', width: 120 },
+      { key: 'name', label: 'Name', type: 'string', required: true },
+      { key: 'qty', label: 'Qty', type: 'number', width: 60, default: 1 },
+      { key: 'total', label: 'Cost price / piece', type: 'money', width: 120 },
+      { key: 'in_estimate', label: 'In estimate', type: 'bool', width: 90 },
+      { key: 'values', label: 'Values', type: 'text' }
+    ],
+    title: r => r.name || r.id
+  });
+
+  /* ---------- reading the Markdown definition ---------- */
+  function parseDef(text, fileId) {
+    const fm = PM.md.parseFrontmatter(text);
+    const d = { id: fm.data.id || fileId, name: fm.data.name || fileId, description: fm.data.description || '', subject: fm.data.subject || fm.data.name || fileId,
+      params: [], tables: {}, values: [], calcs: [], lines: [], summary: [], intro: '' };
+    const lines = String(fm.body || '').split(/\r?\n/);
+    let sec = null, header = null, introDone = false;
+    const intro = [];
+    for (const raw of lines) {
+      const ln = raw.trim();
+      const hm = /^##\s+(.+?)\s*$/.exec(ln);
+      if (hm) { sec = hm[1]; header = null; introDone = true; continue; }
+      if (/^#\s/.test(ln)) continue;
+      if (!ln.startsWith('|')) { if (!introDone && ln) intro.push(ln); continue; }
+      const cells = PM.md.splitRow ? PM.md.splitRow(ln) : ln.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+      if (cells.every(c => /^:?-{2,}:?$/.test(c))) continue;
+      if (!header) { header = cells.map(c => c.toLowerCase()); continue; }
+      const row = {}; header.forEach((k, i) => { row[k] = cells[i] == null ? '' : cells[i]; });
+      const s = String(sec || '').toLowerCase();
+      if (s === 'parameters') d.params.push(param(row));
+      else if (s.startsWith('table:')) { const name = sec.slice(6).trim(); (d.tables[name] = d.tables[name] || { columns: header.slice(), rows: [] }).rows.push(cells); }
+      else if (s === 'values') d.values.push({ key: row.key, label: row.label || row.key, value: row.value, unit: row.unit || '' });
+      else if (s === 'calculations') d.calcs.push({ key: row.key, label: row.label || row.key, formula: row.formula, unit: row.unit || '', decimals: row.decimals === '' || row.decimals == null ? 1 : +row.decimals });
+      else if (s === 'cost lines') d.lines.push({ subject: row.subject || '', description: row.description || '', qty: row.qty || '1', unit: row.unit || '', price: row.price || '0', show: row.show || '' });
+      else if (s === 'summary') d.summary.push({ label: row.label || '', value: row.value || '' });
+    }
+    // tables: keep column names as written
+    Object.keys(d.tables).forEach(n => { d.tables[n].columns = d.tables[n].columns; });
+    d.intro = intro.join(' ');
+    return d;
+  }
+  function param(row) {
+    const p = { key: row.key, label: row.label || row.key, type: (row.type || 'number').toLowerCase(), unit: row.unit || '', def: row.default || '', show: row.show || '', options: [], from: null };
+    const o = row.options || '';
+    if (/^table\s*=/.test(o)) {
+      const kv = {}; o.split(';').forEach(part => { const i = part.indexOf('='); if (i > 0) kv[part.slice(0, i).trim()] = part.slice(i + 1).trim(); });
+      const w = kv.where ? kv.where.split(':').map(x => x.trim()) : null;
+      p.from = { table: kv.table, column: kv.column, where: w && w.length === 2 ? { column: w[0], key: w[1] } : null };
+    } else p.options = o.split(';').map(x => x.trim()).filter(Boolean);
+    return p;
+  }
+
+  async function loadDefs(be) {
+    defs = [];
+    if (!be || !be.listFiles) return;
+    let files = [];
+    try { files = (await be.listFiles(DIR)).filter(n => /\.md$/i.test(n)); } catch (e) { files = []; }
+    for (const n of files) {
+      try { const text = await be.readText(DIR + '/' + n); if (text != null) defs.push(parseDef(text, n.replace(/\.md$/i, ''))); }
+      catch (e) { console.warn('Configurator ' + n + ' could not be read', e); }
+    }
+  }
+  PM.store.addLoader(loadDefs);
+
+  /* ---------- expressions ---------- */
+  function tokenize(src) {
+    const out = []; const re = /\s*(\d+(?:[.,]\d+)?|"[^"]*"|'[^']*'|[A-Za-z_][A-Za-z0-9_]*|<=|>=|!=|<>|==|[-+*\/^(),<>=])/y;
+    let m; re.lastIndex = 0; src = String(src == null ? '' : src);
+    while (re.lastIndex < src.length) {
+      const at = re.lastIndex;
+      m = re.exec(src);
+      if (!m) { if (/^\s*$/.test(src.slice(at))) break; throw new Error('Cannot read "' + src.slice(at, at + 12) + '"'); }
+      out.push(m[1]);
+    }
+    return out;
+  }
+  const num = v => (typeof v === 'number' ? v : v === '' || v == null ? 0 : isFinite(+String(v).replace(',', '.')) ? +String(v).replace(',', '.') : NaN);
+  const same = (a, b) => (typeof a === 'number' || typeof b === 'number') && isFinite(num(a)) && isFinite(num(b)) ? Math.abs(num(a) - num(b)) < 1e-9 : String(a).toLowerCase() === String(b).toLowerCase();
+  function evaluate(src, scope, d) {
+    const tk = tokenize(src); let i = 0;
+    let skip = 0;                       // > 0 while reading the branch of if() that is not used
+    const peek = () => tk[i], next = () => tk[i++];
+    const FN = {
+      if: a => (truthy(a[0]) ? a[1] : a[2]),
+      min: a => Math.min.apply(null, a.map(num)), max: a => Math.max.apply(null, a.map(num)),
+      round: a => { const f = Math.pow(10, num(a[1] || 0)); return Math.round(num(a[0]) * f) / f; },
+      ceil: a => Math.ceil(num(a[0]) - 1e-9), floor: a => Math.floor(num(a[0]) + 1e-9), abs: a => Math.abs(num(a[0])), sqrt: a => Math.sqrt(num(a[0])),
+      lookup: a => lookup(d, a[0], a[1], a.slice(2))
+    };
+    function primary() {
+      const t = next();
+      if (t == null) throw new Error('Formula ends too early');
+      if (t === '(') { const v = or(); if (next() !== ')') throw new Error('Missing )'); return v; }
+      if (t === '-') return -num(primary());
+      if (/^\d/.test(t)) return parseFloat(t.replace(',', '.'));
+      if (/^["']/.test(t)) return t.slice(1, -1);
+      const low = t.toLowerCase();
+      if (low === 'not') return truthy(primary()) ? 0 : 1;
+      if (low === 'true' || low === 'yes') return 1;
+      if (low === 'false' || low === 'no') return 0;
+      if (low === 'if' && peek() === '(') {
+        next();
+        const test = or();
+        if (next() !== ',') throw new Error('if() needs 3 parts: if(test, then, else)');
+        const yes = !skip && truthy(test);
+        if (!yes) skip++; const a = or(); if (!yes) skip--;
+        if (next() !== ',') throw new Error('if() needs 3 parts: if(test, then, else)');
+        if (yes) skip++; const b = or(); if (yes) skip--;
+        if (next() !== ')') throw new Error('Missing ) after if');
+        return yes ? a : b;
+      }
+      if (FN[low] && peek() === '(') {
+        next(); const args = [];
+        if (peek() !== ')') { args.push(or()); while (peek() === ',') { next(); args.push(or()); } }
+        if (next() !== ')') throw new Error('Missing ) after ' + t);
+        return skip ? 0 : FN[low](args);
+      }
+      if (t in scope) return scope[t];
+      if (skip) return 0;
+      throw new Error('Unknown name "' + t + '"');
+    }
+    function pow() { let v = primary(); while (peek() === '^') { next(); v = Math.pow(num(v), num(primary())); } return v; }
+    function mul() { let v = pow(); while (peek() === '*' || peek() === '/') { const o = next(), r = pow(); v = o === '*' ? num(v) * num(r) : num(v) / num(r); } return v; }
+    // "+" joins texts when one side is text: plate_t + " mm"
+    const txt = x => (typeof x === 'number' ? U.fmtNum(Math.round(x * 100) / 100) : String(x));
+    function add() { let v = mul(); while (peek() === '+' || peek() === '-') { const o = next(), r = mul(); v = o === '+' ? (typeof v === 'string' && !isFinite(num(v)) || typeof r === 'string' && !isFinite(num(r)) ? txt(v) + txt(r) : num(v) + num(r)) : num(v) - num(r); } return v; }
+    function cmp() {
+      let v = add();
+      while (['=', '==', '!=', '<>', '<', '>', '<=', '>='].includes(peek())) {
+        const o = next(), r = add();
+        v = o === '=' || o === '==' ? +same(v, r) : o === '!=' || o === '<>' ? +!same(v, r) : o === '<' ? +(num(v) < num(r)) : o === '>' ? +(num(v) > num(r)) : o === '<=' ? +(num(v) <= num(r)) : +(num(v) >= num(r));
+      }
+      return v;
+    }
+    function and() { let v = cmp(); while (peek() && peek().toLowerCase() === 'and') { next(); const r = cmp(); v = +(truthy(v) && truthy(r)); } return v; }
+    function or() { let v = and(); while (peek() && peek().toLowerCase() === 'or') { next(); const r = and(); v = +(truthy(v) || truthy(r)); } return v; }
+    const v = or();
+    if (i < tk.length) throw new Error('Unexpected "' + tk[i] + '"');
+    return v;
+  }
+  const truthy = v => (typeof v === 'number' ? v !== 0 && !isNaN(v) : !!v && !/^(no|nee|none|geen|0|false)$/i.test(String(v)));
+  function lookup(d, tableName, column, keys) {
+    const t = d.tables[tableName];
+    if (!t) throw new Error('No table "' + tableName + '"');
+    const ci = t.columns.findIndex(c => c.toLowerCase() === String(column).toLowerCase());
+    if (ci < 0) throw new Error('Table "' + tableName + '" has no column "' + column + '"');
+    const row = t.rows.find(r => keys.every((k, j) => same(r[j], k)));
+    if (!row) throw new Error('No row in "' + tableName + '" for ' + keys.join(' / '));
+    const v = row[ci];
+    return isFinite(num(v)) && String(v).trim() !== '' ? num(v) : v;
+  }
+
+  /* ---------- working out a configuration ---------- */
+  function paramValue(p, raw) {
+    if (p.type === 'yesno') return truthy(raw) ? 1 : 0;
+    if (p.type === 'number') return num(raw);
+    return raw == null ? '' : (isFinite(num(raw)) && String(raw).trim() !== '' && p.type !== 'text' ? num(raw) : String(raw));
+  }
+  function optionsOf(d, p, scope) {
+    if (!p.from) return p.options;
+    const t = d.tables[p.from.table]; if (!t) return [];
+    const ci = t.columns.findIndex(c => c.toLowerCase() === String(p.from.column).toLowerCase());
+    const wi = p.from.where ? t.columns.findIndex(c => c.toLowerCase() === p.from.where.column.toLowerCase()) : -1;
+    const out = [];
+    t.rows.forEach(r => {
+      if (wi >= 0 && !same(r[wi], scope[p.from.where.key])) return;
+      if (ci >= 0 && r[ci] !== '' && !out.includes(r[ci])) out.push(r[ci]);
+    });
+    return out;
+  }
+  function visible(d, expr, scope) { if (!expr) return true; try { return truthy(evaluate(expr, scope, d)); } catch (e) { return true; } }
+  /* values: { key: raw } -> { scope, params: [{p, value, shown, options}], calcs, lines, total, errors, summary } */
+  function compute(d, values) {
+    const scope = {}, errors = [];
+    d.values.forEach(v => { scope[v.key] = isFinite(num(v.value)) ? num(v.value) : v.value; });
+    const params = [];
+    d.params.forEach(p => {
+      const opts = optionsOf(d, p, scope);
+      let raw = values[p.key];
+      if (raw == null || raw === '') raw = p.def;
+      if ((p.type === 'choice') && opts.length && !opts.some(o => same(o, raw))) raw = opts.some(o => same(o, p.def)) ? p.def : opts[0];
+      const shown = visible(d, p.show, scope);
+      scope[p.key] = shown ? paramValue(p, raw) : (p.type === 'choice' || p.type === 'text' ? '' : 0);
+      params.push({ p, raw, value: scope[p.key], shown, options: opts });
+    });
+    const calcs = d.calcs.map(c => {
+      let v = NaN;
+      try { v = evaluate(c.formula, scope, d); } catch (e) { errors.push(c.label + ': ' + e.message); }
+      scope[c.key] = typeof v === 'number' && !isFinite(v) ? 0 : v;
+      return { c, value: v };
+    });
+    const fill = s => String(s || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (all, k) => (k in scope ? fmtVal(scope[k], d, k) : all));
+    const lines = [];
+    d.lines.forEach(l => {
+      if (!visible(d, l.show, scope)) return;
+      let qty = 0, price = 0;
+      try { qty = num(evaluate(l.qty, scope, d)); } catch (e) { errors.push(fill(l.description) + ' (qty): ' + e.message); return; }
+      try { price = num(evaluate(l.price, scope, d)); } catch (e) { errors.push(fill(l.description) + ' (price): ' + e.message); return; }
+      if (!qty || !isFinite(qty)) return;
+      let unit = l.unit;
+      if (/^=|\(/.test(unit)) { try { unit = String(evaluate(unit.replace(/^=/, ''), scope, d)); } catch (e) { /* keep as written */ } }
+      lines.push({ subject: l.subject || d.subject, description: fill(l.description), qty: Math.round(qty * 1000) / 1000, unit, price: Math.round(price * 100) / 100, amount: Math.round(qty * price * 100) / 100 });
+    });
+    const summary = d.summary.map(s => {
+      let val = s.value;
+      if (/^=/.test(val)) { try { val = fmtVal(evaluate(val.slice(1), scope, d), d); } catch (e) { val = '—'; } }
+      else val = fill(val);
+      return { label: fill(s.label), value: val };
+    }).filter(s => s.value !== '' && s.value !== '—' && !/^(0|nee|no|none|geen)$/i.test(s.value));
+    return { scope, params, calcs, lines, total: Math.round(U.sum(lines, l => l.amount) * 100) / 100, errors, summary, fill };
+  }
+  function fmtVal(v, d, key) {
+    if (typeof v !== 'number') return String(v == null ? '' : v);
+    const c = key && d.calcs.find(x => x.key === key);
+    const dec = c ? c.decimals : 2;
+    const f = Math.pow(10, dec);
+    return U.fmtNum(Math.round(v * f) / f);
+  }
+
+  /* ---------- storing ---------- */
+  const marker = id => 'Configurator ' + id;
+  function addToEstimate(pid, cfg, res) {
+    const old = PM.store.list('estimate', e => e.project === pid && String(e.note || '').startsWith(marker(cfg.id)));
+    old.forEach(e => PM.store.remove('estimate', e._key));
+    const q = U.num(cfg.qty) || 1;
+    res.lines.forEach(l => PM.store.insert('estimate', { subject: l.subject, description: l.description + (cfg.name ? ' — ' + cfg.name : ''), qty: Math.round(l.qty * q * 1000) / 1000, unit: l.unit, unit_price: l.price, note: marker(cfg.id) + (q !== 1 ? ' (' + q + '×)' : '') }, pid));
+    PM.store.update('configs', cfg._key, { in_estimate: true, total: res.total });
+    return { removed: old.length, added: res.lines.length };
+  }
+
+  /* ---------- the view (Costs → Configurator) ---------- */
+  const st = { def: '', cfg: '', values: {}, name: '', qty: 1, dirty: false };
+  function render(el, ctx) {
+    const pid = ctx.projectId;
+    if (!defs.length) {
+      el.appendChild(PM.ui.empty('No configurators in this portfolio. Put a configurator file in your data under settings/configurators/ (see docs/CONFIGURATOR.md).'));
+      return;
+    }
+    if (!defs.some(d => d.id === st.def)) { st.def = defs[0].id; st.values = {}; st.cfg = ''; }
+    const d = defs.find(x => x.id === st.def);
+    const saved = PM.store.list('configs', { project: pid });
+    const cur = st.cfg ? saved.find(c => c.id === st.cfg) : null;
+    if (st.cfg && !cur) { st.cfg = ''; }
+    const res = compute(d, st.values);
+
+    // top: which configurator, and the saved designs of this project
+    const pick = h('select', { id: 'cf-def', 'aria-label': 'Configurator', onchange: e => { st.def = e.target.value; st.values = {}; st.cfg = ''; st.name = ''; st.qty = 1; ctx.rerender(); } },
+      defs.map(x => h('option', { value: x.id, selected: x.id === st.def || null }, x.name)));
+    const load = c => { st.def = c.configurator; let v = {}; try { v = JSON.parse(c.values || '{}'); } catch (e) { v = {}; } st.values = v; st.cfg = c.id; st.name = c.name; st.qty = U.num(c.qty) || 1; st.dirty = false; ctx.rerender(); };
+    el.appendChild(h('div', { class: 'card cf-top' },
+      h('div', { class: 'cf-top-row' },
+        h('label', { class: 'form-row' }, h('span', null, 'Configurator'), pick),
+        d.description ? h('p', { class: 'small muted cf-desc' }, d.description) : null,
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn', onclick: () => { st.values = {}; st.cfg = ''; st.name = ''; st.qty = 1; ctx.rerender(); } }, '+ New design')),
+      saved.length ? h('div', { class: 'cf-saved' }, h('span', { class: 'small muted' }, 'Saved designs in this project:'),
+        saved.map(c => h('button', { type: 'button', class: 'chip-btn' + (c.id === st.cfg ? ' on' : ''), onclick: () => load(c) },
+          h('b', { translate: 'no' }, c.name), ' · ' + (U.num(c.qty) || 1) + '× · ' + U.fmtMoney(c.total), c.in_estimate ? h('span', { class: 'cf-in' }, ' ✓') : null))) : null));
+
+    const grid = h('div', { class: 'cf-grid' });
+    // parameters
+    const form = h('div', { class: 'card cf-form' }, h('h2', null, 'Design'));
+    res.params.forEach(({ p, raw, shown, options }) => {
+      if (!shown) return;
+      const set = v => { st.values[p.key] = v; st.dirty = true; ctx.rerender(); };
+      let ctl;
+      if (p.type === 'choice') ctl = h('select', { 'data-key': p.key, onchange: e => set(e.target.value) }, options.map(o => h('option', { value: o, selected: same(o, raw) || null }, o)));
+      else if (p.type === 'yesno') ctl = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': p.label }, [['yes', 'Yes'], ['no', 'No']].map(([k, t]) => h('button', { type: 'button', role: 'radio', 'data-key': p.key + ':' + k, class: (truthy(raw) ? 'yes' : 'no') === k ? 'on' : '', 'aria-checked': String((truthy(raw) ? 'yes' : 'no') === k), onclick: () => set(k) }, t)));
+      else {
+        ctl = h('input', { type: p.type === 'number' ? 'number' : 'text', step: 'any', inputmode: p.type === 'number' ? 'decimal' : null, value: raw == null ? '' : raw, 'data-key': p.key, class: p.type === 'number' ? 'num' : null });
+        ctl.addEventListener('change', () => set(ctl.value));
+      }
+      form.appendChild(h('label', { class: 'form-row cf-row' }, h('span', null, p.label + (p.unit ? ' (' + p.unit + ')' : '')), ctl));
+    });
+    // results
+    const out = h('div', { class: 'card cf-out' }, h('h2', null, 'Cost package'));
+    if (res.errors.length) out.appendChild(h('div', { class: 'cf-errors' }, h('b', null, 'Check the configurator file: '), h('ul', null, res.errors.map(e => h('li', null, e)))));
+    const shownCalcs = res.calcs.filter(c => c.c.label && !/^_/.test(c.c.key));
+    if (shownCalcs.length) out.appendChild(h('div', { class: 'cf-calcs' }, shownCalcs.map(c => h('div', { class: 'cf-calc' }, h('span', { class: 'muted small' }, c.c.label), h('b', null, typeof c.value === 'number' ? fmtVal(c.value, d, c.c.key) + (c.c.unit ? ' ' + c.c.unit : '') : String(c.value))))));
+    const tb = h('tbody');
+    let lastSubj = null;
+    res.lines.forEach(l => {
+      if (l.subject !== lastSubj) { lastSubj = l.subject; tb.appendChild(h('tr', { class: 'cf-subj' }, h('td', { colspan: 5 }, l.subject))); }
+      tb.appendChild(h('tr', null, h('td', { translate: 'no' }, l.description), h('td', { class: 'right nowrap' }, U.fmtNum(l.qty)), h('td', { class: 'nowrap' }, l.unit), h('td', { class: 'right nowrap' }, U.fmtMoney(l.price, true)), h('td', { class: 'right nowrap' }, U.fmtMoney(l.amount, true))));
+    });
+    const q = U.num(st.qty) || 1;
+    out.appendChild(h('div', { class: 'tbl-scroll' }, h('table', { class: 'data cf-lines' },
+      h('thead', null, h('tr', null, h('th', null, 'Line'), h('th', { class: 'right' }, 'Qty'), h('th', null, 'Unit'), h('th', { class: 'right' }, 'Unit price'), h('th', { class: 'right' }, 'Amount'))),
+      tb,
+      h('tfoot', null,
+        h('tr', { class: 'total' }, h('td', { colspan: 4 }, 'Cost price per piece'), h('td', { class: 'right nowrap' }, U.fmtMoney(res.total, true))),
+        q !== 1 ? h('tr', { class: 'total' }, h('td', { colspan: 4 }, 'Total for ' + q + ' pieces'), h('td', { class: 'right nowrap' }, U.fmtMoney(res.total * q, true))) : null))));
+
+    // save / add to estimate
+    const nameInp = h('input', { type: 'text', id: 'cf-name', value: st.name || '', placeholder: 'e.g. Skid 1 – pump unit' });
+    nameInp.addEventListener('input', () => { st.name = nameInp.value; });
+    const qtyInp = h('input', { type: 'number', id: 'cf-qty', min: 1, step: 1, value: st.qty, class: 'num' });
+    qtyInp.addEventListener('change', () => { st.qty = Math.max(1, U.num(qtyInp.value) || 1); ctx.rerender(); });
+    const save = () => {
+      const name = String(st.name || '').trim() || (d.name + ' ' + (saved.length + 1));
+      const data = { configurator: d.id, name, qty: U.num(st.qty) || 1, values: JSON.stringify(st.values), total: res.total };
+      let rec;
+      if (cur) rec = PM.store.update('configs', cur._key, data);
+      else rec = PM.store.insert('configs', Object.assign({ in_estimate: false }, data), pid);
+      st.cfg = rec.id; st.name = name; st.dirty = false;
+      return rec;
+    };
+    const summaryText = () => [d.name + (st.name ? ' — ' + st.name : '') + (q !== 1 ? ' (' + q + '×)' : '')].concat(res.summary.map(s => '• ' + s.label + ': ' + s.value)).join('\n');
+    out.appendChild(h('div', { class: 'cf-save' },
+      h('label', { class: 'form-row' }, h('span', null, 'Name of this design'), nameInp),
+      h('label', { class: 'form-row cf-qty' }, h('span', null, 'Quantity'), qtyInp),
+      h('div', { class: 'btn-row' },
+        h('button', { class: 'btn', id: 'cf-save', onclick: () => { save(); PM.ui.toast('Design saved in this project.', 'ok'); ctx.rerender(); } }, cur ? 'Save changes' : 'Save design'),
+        h('button', { class: 'btn primary', id: 'cf-add', disabled: !res.lines.length || null, onclick: () => {
+          const rec = save();
+          const r = addToEstimate(pid, PM.store.list('configs', { project: pid }).find(c => c.id === rec.id), res);
+          PM.ui.toast(r.added + ' line(s) added to the estimate' + (r.removed ? ' (replacing the ' + r.removed + ' earlier line(s) of this design)' : '') + '.', 'ok');
+          ctx.rerender();
+        } }, cur && cur.in_estimate ? 'Update estimate' : 'Add to estimate'),
+        cur ? h('button', { class: 'btn ghost danger-text', onclick: () => {
+          if (!confirm('Delete design “' + cur.name + '”? Lines it added to the estimate stay there.')) return;
+          PM.store.remove('configs', cur._key); st.cfg = ''; ctx.rerender();
+        } }, 'Delete design') : null),
+      cur && cur.in_estimate && st.dirty ? h('p', { class: 'small cf-warn' }, 'Changed since it was added to the estimate — press “Update estimate”.') : null));
+
+    // design summary for the quote
+    if (res.summary.length) {
+      const txt = summaryText();
+      out.appendChild(h('div', { class: 'cf-summary' }, h('h3', null, 'Design summary (for the quote)'),
+        h('pre', { class: 'cf-pre', translate: 'no' }, txt),
+        h('button', { class: 'btn small', onclick: async () => { try { await navigator.clipboard.writeText(txt); PM.ui.toast('Summary copied.', 'ok'); } catch (e) { PM.ui.toast('Select the text and copy it.', 'warn'); } } }, 'Copy summary')));
+    }
+    grid.append(form, out);
+    el.appendChild(grid);
+  }
+
+  /* PDF of the current design (Costs → PDF while the configurator is open) */
+  function pdfSpec(ctx) {
+    const d = defs.find(x => x.id === st.def);
+    if (!d) return null;
+    const res = compute(d, st.values);
+    const q = U.num(st.qty) || 1;
+    const p = ctx.project;
+    const rows = [];
+    let last = null;
+    res.lines.forEach(l => { if (l.subject !== last) { last = l.subject; rows.push({ kind: 'group', cells: [l.subject, '', '', '', ''] }); } rows.push({ cells: [PM.pdf.raw(l.description), U.fmtNum(l.qty), l.unit, U.fmtMoney(l.price, true), U.fmtMoney(l.amount, true)] }); });
+    rows.push({ kind: 'total', cells: ['Cost price per piece', '', '', '', U.fmtMoney(res.total, true)] });
+    if (q !== 1) rows.push({ kind: 'total', cells: ['Total for ' + q + ' pieces', '', '', '', U.fmtMoney(res.total * q, true)] });
+    return {
+      spec: { title: d.name + (st.name ? ' — ' + st.name : ''), subtitle: (p ? p.id + ' · ' + p.name : '') + ' · ' + U.fmtDate(U.todayISO()), internal: true,
+        stats: [{ label: 'Cost price per piece', value: U.fmtMoney(res.total) }, { label: 'Quantity', value: String(q) }, { label: 'Total', value: U.fmtMoney(res.total * q) }],
+        sections: [
+          { title: 'Design', columns: [{ label: 'Parameter', w: 55 }, { label: 'Value', w: 45 }], rows: res.params.filter(x => x.shown).map(x => ({ cells: [x.p.label + (x.p.unit ? ' (' + x.p.unit + ')' : ''), PM.pdf.raw(x.p.type === 'yesno' ? (x.value ? 'Yes' : 'No') : String(x.raw))] })) },
+          { title: 'Calculated', columns: [{ label: 'Item', w: 55 }, { label: 'Value', w: 45 }], rows: res.calcs.filter(c => c.c.label && !/^_/.test(c.c.key)).map(c => ({ cells: [c.c.label, (typeof c.value === 'number' ? fmtVal(c.value, d, c.c.key) : String(c.value)) + (c.c.unit ? ' ' + c.c.unit : '')] })) },
+          { title: 'Cost package', columns: [{ label: 'Line', w: 46 }, { label: 'Qty', w: 10, align: 'right' }, { label: 'Unit', w: 10 }, { label: 'Unit price', w: 16, align: 'right' }, { label: 'Amount', w: 18, align: 'right' }], rows }
+        ] },
+      file: 'configuration-' + (p ? p.id : '') + '-' + d.id + '.pdf'
+    };
+  }
+
+  PM.configurator = { list: () => defs.slice(), parse: parseDef, compute, evaluate: (src, scope, d) => evaluate(src, scope || {}, d || { tables: {} }), render, pdfSpec, reload: () => loadDefs(PM.store.backend) };
 })();
 
   </script>
