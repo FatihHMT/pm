@@ -1059,6 +1059,23 @@ textarea { font: inherit; }
   .ct-back { display: inline-flex; }
 }
 
+/* plan: numbered tags, options, fine-tuning */
+.pl-opts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 6px; }
+.pl-tag-t { font-weight: 700; pointer-events: none; }
+.pl-tag { pointer-events: none; }
+.pl-tagb { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--c, #2f6fed); color: #fff; font-size: 11.5px; font-weight: 700; margin-right: 6px; vertical-align: 1px; }
+.pl-list { list-style: none; padding-left: 0; }
+.pl-props { flex-direction: column; align-items: stretch; }
+.pl-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.pl-unit { color: var(--muted); }
+.pl-ptitle { margin-right: 4px; }
+.pl-angle { min-width: 34px; font-weight: 600; }
+.pl-nudge { min-width: 36px; }
+.pl-gap { stroke: var(--accent); }
+.pl-gap-t { fill: var(--accent); font-weight: 600; paint-order: stroke; stroke: var(--surface); pointer-events: none; }
+.pl-dim line { stroke: var(--text); }
+.pl-dim-t { fill: var(--text); paint-order: stroke; stroke: var(--surface); pointer-events: none; }
+
 </style>
 </head>
 <body>
@@ -6145,7 +6162,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-10-28.1';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-10-28.2';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -10503,9 +10520,11 @@ Kies per positie een opgeslagen ontwerp uit Kosten → Configurator: de prijs vo
  *
  * Value (stored as compact JSON in the answer):
  *   { rooms: [{ id, name, x, y, w, h }],                       x/y = top-left, mm
- *     items: [{ id, c, room, wall: 'A'|'B'|'C'|'D', pos, w, hinge: 'L'|'R', open: 'in'|'out' }   wall items
- *             { id, c, x, y, w, h }],                           objects: centre + footprint, mm
- *     route: [[x, y], …] }
+ *     items: [{ id, c, room, wall: 'A'|'B'|'C'|'D', pos, w, hinge: 'L'|'R', open: 'in'|'out', leaves: 2 }   wall items
+ *             { id, c, x, y, w, h, rot }],                      objects: centre + footprint (mm), rot = degrees (steps of 15)
+ *     route: [[x, y], …],
+ *     opts: { dims: true, names: true } }                      dims = show the main dimensions, names = names instead of numbers
+ * In the drawing every item has a number (its tag); the list under it gives the number with the full name.
  * Walls of a room: A = top, B = right, C = bottom, D = left. "pos" = centre of the item
  * measured from the start of the wall (left end for A/C, top end for B/D).
  *
@@ -10519,11 +10538,11 @@ PM.plan = (function () {
   const NS = 'http://www.w3.org/2000/svg';
   const COLORS = ['#2f6fed', '#d14343', '#1f9d55', '#d9822b', '#8e5bd9', '#0f9d8a', '#b4235a', '#5b6b8c', '#a0711c', '#2a8bc9', '#6a8f2a', '#c2410c', '#4b5563', '#9333ea', '#0e7490'];
   const TX = {
-    en: { room: 'Room', wall: 'wall', from: 'from wall', width: 'width', hinge: 'hinge', in: 'opens inwards', out: 'opens outwards', inRoom: 'in', outside: 'outside the rooms', route: 'Route', points: 'points', centre: 'centre' },
-    nl: { room: 'Ruimte', wall: 'wand', from: 'van wand', width: 'breedte', hinge: 'scharnier', in: 'draait naar binnen', out: 'draait naar buiten', inRoom: 'in', outside: 'buiten de ruimtes', route: 'Route', points: 'punten', centre: 'hart' }
+    en: { room: 'Room', wall: 'wall', from: 'from wall', width: 'width', hinge: 'hinge', in: 'opens inwards', out: 'opens outwards', inRoom: 'in', outside: 'outside the rooms', route: 'Route', points: 'points', centre: 'centre', double: 'double door', turned: 'turned' },
+    nl: { room: 'Ruimte', wall: 'wand', from: 'van wand', width: 'breedte', hinge: 'scharnier', in: 'draait naar binnen', out: 'draait naar buiten', inRoom: 'in', outside: 'buiten de ruimtes', route: 'Route', points: 'punten', centre: 'hart', double: 'dubbele deur', turned: 'gedraaid' }
   };
   const tx = lang => TX[lang] || TX.en;
-  const mmTxt = v => U.fmtNum(Math.round(v / 10) * 10) + ' mm';
+  const mmTxt = v => U.fmtNum(Math.round(v)) + ' mm';
   let uid = 0;
   const newId = p => p + Date.now().toString(36).slice(-4) + (uid++).toString(36);
 
@@ -10531,13 +10550,16 @@ PM.plan = (function () {
     let p = null;
     try { p = text ? JSON.parse(text) : null; } catch (e) { p = null; }
     p = p && typeof p === 'object' ? p : {};
-    return { rooms: Array.isArray(p.rooms) ? p.rooms : [], items: Array.isArray(p.items) ? p.items : [], route: Array.isArray(p.route) ? p.route : [] };
+    return { rooms: Array.isArray(p.rooms) ? p.rooms : [], items: Array.isArray(p.items) ? p.items : [], route: Array.isArray(p.route) ? p.route : [], opts: p.opts && typeof p.opts === 'object' ? p.opts : {} };
   }
   function serialize(plan) {
     const r = v => Math.round(v);
     const out = { rooms: plan.rooms.map(m => ({ id: m.id, name: m.name, x: r(m.x), y: r(m.y), w: r(m.w), h: r(m.h) })),
-      items: plan.items.map(i => i.wall ? { id: i.id, c: i.c, room: i.room, wall: i.wall, pos: r(i.pos), w: r(i.w), hinge: i.hinge || undefined, open: i.open || undefined } : { id: i.id, c: i.c, x: r(i.x), y: r(i.y), w: r(i.w), h: r(i.h) }),
+      items: plan.items.map(i => i.wall ? { id: i.id, c: i.c, room: i.room, wall: i.wall, pos: r(i.pos), w: r(i.w), hinge: i.hinge || undefined, open: i.open || undefined, leaves: i.leaves === 2 ? 2 : undefined }
+        : { id: i.id, c: i.c, x: r(i.x), y: r(i.y), w: r(i.w), h: r(i.h), rot: normRot(i.rot) || undefined }),
       route: plan.route.map(pt => [r(pt[0]), r(pt[1])]) };
+    const o = plan.opts || {};
+    if (o.dims || o.names) out.opts = { dims: o.dims ? true : undefined, names: o.names ? true : undefined };
     if (!out.rooms.length && !out.items.length && !out.route.length) return '';
     return JSON.stringify(out);
   }
@@ -10577,16 +10599,62 @@ PM.plan = (function () {
     }));
     return best;
   }
+  /* rotation: degrees, kept between 0 and 180 (a rectangle turned 180° looks the same) */
+  const normRot = d => { d = Math.round((+d || 0) / 15) * 15 % 180; return d < 0 ? d + 180 : d; };
+  const rad = d => (d || 0) * Math.PI / 180;
+  /* half sizes of the box around an object (turned or not) */
+  function ext(i) { const a = rad(i.rot), c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); return [(i.w * c + i.h * sn) / 2, (i.w * sn + i.h * c) / 2]; }
+  function corners(i) {
+    const a = rad(i.rot), c = Math.cos(a), sn = Math.sin(a);
+    return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sy]) => [i.x + sx * i.w / 2 * c - sy * i.h / 2 * sn, i.y + sx * i.w / 2 * sn + sy * i.h / 2 * c]);
+  }
+  /* the number of every item in the drawing (its tag): 1, 2, 3… in the order they were added */
+  function tagsOf(plan) { const m = new Map(); plan.items.forEach((i, k) => m.set(i.id, k + 1)); return m; }
+  /* free distances of an object to the walls of its room: { A, B, C, D } (mm) */
+  function wallGaps(i, room) {
+    const [hx, hy] = ext(i);
+    return { A: i.y - hy - room.y, B: room.x + room.w - (i.x + hx), C: room.y + room.h - (i.y + hy), D: i.x - hx - room.x };
+  }
+  /* the nearest other object on each side (only objects that face this one): { left|right|up|down: { o, gap } } */
+  function neighbours(plan, i) {
+    const [hx, hy] = ext(i), out = {};
+    plan.items.forEach(o => {
+      if (o === i || o.wall) return;
+      const [ox, oy] = ext(o);
+      const overlapY = Math.min(i.y + hy, o.y + oy) - Math.max(i.y - hy, o.y - oy) > 1;
+      const overlapX = Math.min(i.x + hx, o.x + ox) - Math.max(i.x - hx, o.x - ox) > 1;
+      const cand = [];
+      if (overlapY && o.x - ox >= i.x + hx - 1) cand.push(['right', o.x - ox - (i.x + hx)]);
+      if (overlapY && o.x + ox <= i.x - hx + 1) cand.push(['left', i.x - hx - (o.x + ox)]);
+      if (overlapX && o.y - oy >= i.y + hy - 1) cand.push(['down', o.y - oy - (i.y + hy)]);
+      if (overlapX && o.y + oy <= i.y - hy + 1) cand.push(['up', i.y - hy - (o.y + oy)]);
+      cand.forEach(([side, gap]) => { if (!out[side] || gap < out[side].gap) out[side] = { o, gap: Math.max(0, gap) }; });
+    });
+    return out;
+  }
   const roomAt = (plan, x, y) => plan.rooms.find(m => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h) || null;
   function routeLength(route) { let s = 0; for (let i = 1; i < route.length; i++) s += Math.hypot(route[i][0] - route[i - 1][0], route[i][1] - route[i - 1][1]); return s; }
   function bbox(plan) {
     let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
     const add = (x, y) => { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x); y2 = Math.max(y2, y); };
     plan.rooms.forEach(m => { add(m.x, m.y); add(m.x + m.w, m.y + m.h); });
-    plan.items.forEach(i => { if (!i.wall) { add(i.x - i.w / 2, i.y - i.h / 2); add(i.x + i.w / 2, i.y + i.h / 2); } });
+    plan.items.forEach(i => { if (!i.wall) { const [hx, hy] = ext(i); add(i.x - hx, i.y - hy); add(i.x + hx, i.y + hy); } });
     plan.route.forEach(pt => add(pt[0], pt[1]));
     if (!isFinite(x1)) return { x: 0, y: 0, w: 8000, h: 4500 };
     return { x: x1, y: y1, w: Math.max(1000, x2 - x1), h: Math.max(1000, y2 - y1) };
+  }
+
+  /* the leaves of a door: one, or two for a double door (hinges at both ends, meeting in the middle) */
+  function doorLeaves(i, l, a, b) {
+    const n = i.open === 'in' ? [-l.out[0], -l.out[1]] : l.out;
+    const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const pairs = i.leaves === 2 ? [[a, mid], [b, mid]] : [i.hinge === 'R' ? [b, a] : [a, b]];
+    return pairs.map(([hp, fp]) => {
+      const r = Math.hypot(fp[0] - hp[0], fp[1] - hp[1]);
+      const tip = [hp[0] + n[0] * r, hp[1] + n[1] * r];
+      const cross = (tip[0] - hp[0]) * (fp[1] - hp[1]) - (tip[1] - hp[1]) * (fp[0] - hp[0]);
+      return { hp, fp, tip, r, sweep: cross > 0 ? 1 : 0 };
+    });
   }
 
   /* ---------- descriptions (list under the drawing and in the PDF) ---------- */
@@ -10595,6 +10663,7 @@ PM.plan = (function () {
     const out = [];
     const count = {}, total = {};
     plan.items.forEach(i => { total[i.c] = (total[i.c] || 0) + 1; });
+    const tags = tagsOf(plan);
     plan.rooms.forEach((m, k) => out.push({ color: '#1c2230', label: m.name || (T.room + ' ' + (k + 1)), text: U.fmtNum(m.w) + ' × ' + U.fmtNum(m.h) + ' mm', ref: { type: 'room', id: m.id } }));
     plan.items.forEach(i => {
       const inf = itemInfo(items, i.c);
@@ -10605,17 +10674,17 @@ PM.plan = (function () {
         const room = plan.rooms.find(m => m.id === i.room);
         const ref = i.wall === 'A' || i.wall === 'C' ? 'D' : 'A';
         text = (room ? (room.name || T.room) + ', ' : '') + T.wall + ' ' + i.wall + ', ' + T.centre + ' ' + mmTxt(i.pos) + ' ' + T.from + ' ' + ref + ', ' + T.width + ' ' + mmTxt(i.w) +
-          (i.c === 'door' ? ', ' + T.hinge + ' ' + (i.hinge || 'L') + ', ' + (i.open === 'in' ? T.in : T.out) : '');
+          (i.c === 'door' ? (i.leaves === 2 ? ', ' + T.double : ', ' + T.hinge + ' ' + (i.hinge || 'L')) + ', ' + (i.open === 'in' ? T.in : T.out) : '');
       } else {
         const room = roomAt(plan, i.x, i.y);
-        text = U.fmtNum(i.w) + ' × ' + U.fmtNum(i.h) + ' mm';
+        text = U.fmtNum(i.w) + ' × ' + U.fmtNum(i.h) + ' mm' + (normRot(i.rot) ? ', ' + T.turned + ' ' + normRot(i.rot) + '°' : '');
         if (room) {
-          const l = i.x - i.w / 2 - room.x, t = i.y - i.h / 2 - room.y;
-          text += ' · ' + T.inRoom + ' ' + (room.name || T.room) + ': ' + mmTxt(Math.max(0, t)) + ' ' + T.from + ' A, ' + mmTxt(Math.max(0, room.w - l - i.w)) + ' ' + T.from + ' B, ' +
-            mmTxt(Math.max(0, room.h - t - i.h)) + ' ' + T.from + ' C, ' + mmTxt(Math.max(0, l)) + ' ' + T.from + ' D';
+          const g = wallGaps(i, room);
+          text += ' · ' + T.inRoom + ' ' + (room.name || T.room) + ': ' + mmTxt(Math.max(0, g.A)) + ' ' + T.from + ' A, ' + mmTxt(Math.max(0, g.B)) + ' ' + T.from + ' B, ' +
+            mmTxt(Math.max(0, g.C)) + ' ' + T.from + ' C, ' + mmTxt(Math.max(0, g.D)) + ' ' + T.from + ' D';
         } else text += ' · ' + T.outside;
       }
-      out.push({ color: inf.color, label, text, ref: { type: 'item', id: i.id } });
+      out.push({ color: inf.color, label, tag: tags.get(i.id), text, ref: { type: 'item', id: i.id } });
     });
     if (plan.route.length > 1) out.push({ color: '#0b6b3a', label: T.route, text: (U.fmtNum(Math.round(routeLength(plan.route) / 100) / 10)) + ' m (' + plan.route.length + ' ' + T.points + ')', ref: { type: 'route' } });
     return out;
@@ -10636,6 +10705,8 @@ PM.plan = (function () {
     const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.keys(attrs || {}).forEach(k => { if (attrs[k] != null) e.setAttribute(k, attrs[k]); }); return e; };
 
     const palette = h('div', { class: 'pl-palette', role: 'group', 'aria-label': 'Add to the plan' });
+    const nl0 = o.lang === 'nl';
+    const optBox = h('div', { class: 'pl-opts small' });
     const hint = h('div', { class: 'pl-hint small' });
     const props = h('div', { class: 'pl-props' });
     const listEl = h('ol', { class: 'pl-list small' });
@@ -10668,6 +10739,24 @@ PM.plan = (function () {
     }
     const snap = v => Math.round(v / 50) * 50;
 
+    const opts = () => (plan.opts = plan.opts || {});
+    /* main dimensions: width above wall A and depth left of wall D of every room */
+    function dimLines(u) {
+      plan.rooms.forEach(m => {
+        const off = u * 2.2, tk = u * 0.7;
+        const g = el('g', { class: 'pl-dim' });
+        const ln = (x1, y1, x2, y2) => g.appendChild(el('line', { x1, y1, x2, y2, 'stroke-width': u * 0.14 }));
+        const ya = m.y - off;
+        ln(m.x, ya, m.x + m.w, ya); ln(m.x, ya - tk, m.x, ya + tk); ln(m.x + m.w, ya - tk, m.x + m.w, ya + tk);
+        const t1 = el('text', { x: m.x + m.w / 2, y: ya - u * 0.5, 'font-size': u * 1.25, 'text-anchor': 'middle', class: 'pl-dim-t' }); t1.textContent = U.fmtNum(m.w) + ' mm'; g.appendChild(t1);
+        const xd = m.x - off;
+        ln(xd, m.y, xd, m.y + m.h); ln(xd - tk, m.y, xd + tk, m.y); ln(xd - tk, m.y + m.h, xd + tk, m.y + m.h);
+        const cy = m.y + m.h / 2;
+        const t2 = el('text', { x: xd - u * 0.5, y: cy, 'font-size': u * 1.25, 'text-anchor': 'middle', class: 'pl-dim-t', transform: 'rotate(-90 ' + (xd - u * 0.5) + ' ' + cy + ')' }); t2.textContent = U.fmtNum(m.h) + ' mm'; g.appendChild(t2);
+        svg.appendChild(g);
+      });
+    }
+
     /* ----- drawing ----- */
     function draw() {
       if (!vb) fit();
@@ -10689,8 +10778,16 @@ PM.plan = (function () {
       });
       const roomLabels = () => plan.rooms.forEach(m => {
         const t1 = el('text', { x: m.x + u * 0.9, y: m.y + u * 2.3, 'font-size': u * 1.7, class: 'pl-room-name' }); t1.textContent = m.name || T.room; svg.appendChild(t1);
-        const t2 = el('text', { x: m.x + u * 0.9, y: m.y + u * 4.1, 'font-size': u * 1.3, class: 'pl-room-dim' }); t2.textContent = U.fmtNum(m.w) + ' × ' + U.fmtNum(m.h); svg.appendChild(t2);
+        if (!opts().dims) { const t2 = el('text', { x: m.x + u * 0.9, y: m.y + u * 4.1, 'font-size': u * 1.3, class: 'pl-room-dim' }); t2.textContent = U.fmtNum(m.w) + ' × ' + U.fmtNum(m.h) + ' mm'; svg.appendChild(t2); }
       });
+      const tags = tagsOf(plan), names = !!opts().names;
+      /* a numbered tag: small circle with the item's number */
+      const tagMark = (x, y, n, color) => {
+        const g = el('g', { class: 'pl-tag' });
+        g.appendChild(el('circle', { cx: x, cy: y, r: u * 1.15, fill: '#ffffff', stroke: color, 'stroke-width': u * 0.25 }));
+        const t = el('text', { x, y: y + u * 0.45, 'font-size': u * (n > 9 ? 1.1 : 1.3), 'text-anchor': 'middle', fill: color, class: 'pl-tag-t' }); t.textContent = n; g.appendChild(t);
+        return g;
+      };
       // wall letters of the selected room
       const sr = sel && sel.type === 'room' ? plan.rooms.find(m => m.id === sel.id) : null;
       if (sr) [['A', sr.x + sr.w / 2, sr.y + u * 2.2], ['B', sr.x + sr.w - u * 1.4, sr.y + sr.h / 2], ['C', sr.x + sr.w / 2, sr.y + sr.h - u * 0.8], ['D', sr.x + u * 1.4, sr.y + sr.h / 2]].forEach(([w, x, y]) => {
@@ -10700,10 +10797,13 @@ PM.plan = (function () {
       plan.items.filter(i => !i.wall).forEach(i => {
         const inf = itemInfo(items, i.c), s = sel && sel.type === 'item' && sel.id === i.id;
         const g = el('g', { class: 'pl-obj' + (s ? ' sel' : ''), 'data-type': 'item', 'data-id': i.id });
-        g.appendChild(el('rect', { x: i.x - i.w / 2, y: i.y - i.h / 2, width: i.w, height: i.h, fill: inf.color, 'fill-opacity': 0.2, stroke: inf.color, 'stroke-width': u * (s ? 0.45 : 0.25), rx: u * 0.2 }));
-        const fsz = Math.min(u * 1.5, Math.max(u * 0.9, Math.min(i.w, i.h) * 0.35));
-        const t = el('text', { x: i.x, y: i.y + fsz * 0.35, 'font-size': fsz, 'text-anchor': 'middle', fill: inf.color, class: 'pl-label' });
-        t.textContent = inf.label; g.appendChild(t);
+        g.appendChild(el('rect', { x: i.x - i.w / 2, y: i.y - i.h / 2, width: i.w, height: i.h, fill: inf.color, 'fill-opacity': 0.2, stroke: inf.color, 'stroke-width': u * (s ? 0.45 : 0.25), rx: u * 0.2,
+          transform: normRot(i.rot) ? 'rotate(' + normRot(i.rot) + ' ' + i.x + ' ' + i.y + ')' : null }));
+        if (names) {
+          const fsz = Math.min(u * 1.5, Math.max(u * 0.9, Math.min(i.w, i.h) * 0.35));
+          const t = el('text', { x: i.x, y: i.y + fsz * 0.35, 'font-size': fsz, 'text-anchor': 'middle', fill: inf.color, class: 'pl-label' });
+          t.textContent = inf.label; g.appendChild(t);
+        } else g.appendChild(tagMark(i.x, i.y, tags.get(i.id), inf.color));
         svg.appendChild(g);
       });
       // wall items
@@ -10715,22 +10815,35 @@ PM.plan = (function () {
         const g = el('g', { class: 'pl-wi' + (s ? ' sel' : ''), 'data-type': 'item', 'data-id': i.id });
         g.appendChild(el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: '#ffffff', 'stroke-width': u * 0.9 }));
         if (i.c === 'door') {
-          const n = i.open === 'in' ? [-l.out[0], -l.out[1]] : l.out;
-          const hingeAtB = i.hinge === 'R';
-          const hp = hingeAtB ? b : a, fp = hingeAtB ? a : b;
-          const tip = [hp[0] + n[0] * i.w, hp[1] + n[1] * i.w];
-          g.appendChild(el('line', { x1: hp[0], y1: hp[1], x2: tip[0], y2: tip[1], stroke: inf.color, 'stroke-width': u * 0.35 }));
-          const cross = (tip[0] - hp[0]) * (fp[1] - hp[1]) - (tip[1] - hp[1]) * (fp[0] - hp[0]);
-          g.appendChild(el('path', { d: 'M ' + tip[0] + ' ' + tip[1] + ' A ' + i.w + ' ' + i.w + ' 0 0 ' + (cross > 0 ? 1 : 0) + ' ' + fp[0] + ' ' + fp[1], fill: 'none', stroke: inf.color, 'stroke-width': u * 0.18, 'stroke-dasharray': (u * 0.6) + ' ' + (u * 0.4) }));
+          doorLeaves(i, l, a, b).forEach(lf => {
+            g.appendChild(el('line', { x1: lf.hp[0], y1: lf.hp[1], x2: lf.tip[0], y2: lf.tip[1], stroke: inf.color, 'stroke-width': u * 0.35 }));
+            g.appendChild(el('path', { d: 'M ' + lf.tip[0] + ' ' + lf.tip[1] + ' A ' + lf.r + ' ' + lf.r + ' 0 0 ' + lf.sweep + ' ' + lf.fp[0] + ' ' + lf.fp[1], fill: 'none', stroke: inf.color, 'stroke-width': u * 0.18, 'stroke-dasharray': (u * 0.6) + ' ' + (u * 0.4) }));
+          });
         } else g.appendChild(el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: inf.color, 'stroke-width': u * 0.9 }));
         const mid = wallPoint(room, i.wall, i.pos);
-        const lx = mid[0] + l.out[0] * u * 2.6, ly = mid[1] + l.out[1] * u * 2.6 + (horiz ? (l.out[1] > 0 ? u * 1.2 : 0) : u * 0.5);
-        const t = el('text', { x: lx, y: ly, 'font-size': u * 1.35, 'text-anchor': horiz ? 'middle' : (l.out[0] > 0 ? 'start' : 'end'), fill: inf.color, class: 'pl-label' });
-        t.textContent = inf.label; g.appendChild(t);
+        if (names) {
+          const lx = mid[0] + l.out[0] * u * 2.6, ly = mid[1] + l.out[1] * u * 2.6 + (horiz ? (l.out[1] > 0 ? u * 1.2 : 0) : u * 0.5);
+          const t = el('text', { x: lx, y: ly, 'font-size': u * 1.35, 'text-anchor': horiz ? 'middle' : (l.out[0] > 0 ? 'start' : 'end'), fill: inf.color, class: 'pl-label' });
+          t.textContent = inf.label; g.appendChild(t);
+        } else { const sd = i.c === 'door' && i.open !== 'in' ? -1 : 1; g.appendChild(tagMark(mid[0] + sd * l.out[0] * u * 2.2, mid[1] + sd * l.out[1] * u * 2.2, tags.get(i.id), inf.color)); }
         g.appendChild(el('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: 'transparent', 'stroke-width': u * 2.6, class: 'pl-hit' }));
         svg.appendChild(g);
       });
       roomLabels();
+      if (opts().dims) dimLines(u);
+      // the free distances of the selected object, as dimension lines
+      if (sel && sel.type === 'item') {
+        const i = plan.items.find(x => x.id === sel.id), room = i && !i.wall ? roomAt(plan, i.x, i.y) : null;
+        if (room) {
+          const [hx, hy] = ext(i), gp = wallGaps(i, room);
+          [['A', i.x, i.y - hy, i.x, room.y, gp.A], ['C', i.x, i.y + hy, i.x, room.y + room.h, gp.C], ['D', i.x - hx, i.y, room.x, i.y, gp.D], ['B', i.x + hx, i.y, room.x + room.w, i.y, gp.B]].forEach(([w, x1, y1, x2, y2, d]) => {
+            if (d < 1) return;
+            svg.appendChild(el('line', { x1, y1, x2, y2, class: 'pl-gap', 'stroke-width': u * 0.15, 'stroke-dasharray': (u * 0.5) + ' ' + (u * 0.3) }));
+            const t = el('text', { x: (x1 + x2) / 2 + (y1 === y2 ? 0 : u * 0.6), y: (y1 + y2) / 2 + (y1 === y2 ? -u * 0.6 : u * 0.4), 'font-size': u * 1.15, 'text-anchor': y1 === y2 ? 'middle' : 'start', class: 'pl-gap-t' });
+            t.textContent = U.fmtNum(Math.round(d)); svg.appendChild(t);
+          });
+        }
+      }
       // route
       if (plan.route.length) {
         const s = sel && sel.type === 'route';
@@ -10750,7 +10863,7 @@ PM.plan = (function () {
         svg.appendChild(g);
         if (s || drawingRoute) plan.route.forEach((pt, k) => svg.appendChild(el('circle', { cx: pt[0], cy: pt[1], r: u * 0.9, class: 'pl-handle', 'data-type': 'vertex', 'data-k': k })));
       }
-      svg.querySelectorAll('.pl-label, .pl-room-name, .pl-room-dim, .pl-wall-l').forEach(t => t.setAttribute('stroke-width', u * 0.3));
+      svg.querySelectorAll('.pl-label, .pl-room-name, .pl-room-dim, .pl-wall-l, .pl-gap-t, .pl-dim-t').forEach(t => t.setAttribute('stroke-width', u * 0.3));
       // handles of the selection
       const hs = u * 1.6;
       if (sel && sel.type === 'room') {
@@ -10759,7 +10872,7 @@ PM.plan = (function () {
       }
       if (sel && sel.type === 'item') {
         const i = plan.items.find(x => x.id === sel.id);
-        if (i && !i.wall) [[i.x - i.w / 2, i.y - i.h / 2, 'nw'], [i.x + i.w / 2, i.y - i.h / 2, 'ne'], [i.x + i.w / 2, i.y + i.h / 2, 'se'], [i.x - i.w / 2, i.y + i.h / 2, 'sw']].forEach(([x, y, c]) => svg.appendChild(el('rect', { x: x - hs / 2, y: y - hs / 2, width: hs, height: hs, class: 'pl-handle', 'data-type': 'corner', 'data-c': c })));
+        if (i && !i.wall && !normRot(i.rot)) [[i.x - i.w / 2, i.y - i.h / 2, 'nw'], [i.x + i.w / 2, i.y - i.h / 2, 'ne'], [i.x + i.w / 2, i.y + i.h / 2, 'se'], [i.x - i.w / 2, i.y + i.h / 2, 'sw']].forEach(([x, y, c]) => svg.appendChild(el('rect', { x: x - hs / 2, y: y - hs / 2, width: hs, height: hs, class: 'pl-handle', 'data-type': 'corner', 'data-c': c })));
         if (i && i.wall) {
           const room = plan.rooms.find(m => m.id === i.room);
           if (room) [['e1', Math.max(0, i.pos - i.w / 2)], ['e2', i.pos + i.w / 2]].forEach(([c, ps]) => { const p = wallPoint(room, i.wall, ps); svg.appendChild(el('circle', { cx: p[0], cy: p[1], r: hs * 0.6, class: 'pl-handle', 'data-type': 'wend', 'data-c': c })); });
@@ -10793,10 +10906,11 @@ PM.plan = (function () {
       if (drawingRoute) hint.appendChild(h('span', null, ' ', h('button', { type: 'button', class: 'btn primary small', onclick: () => { drawingRoute = false; armed = ''; sel = plan.route.length ? { type: 'route' } : null; save(); drawUi(); } }, nl ? 'Route klaar' : 'Finish route'),
         ' ', h('button', { type: 'button', class: 'btn ghost small', onclick: () => { plan.route.pop(); draw(); } }, nl ? 'Laatste punt weg' : 'Undo point')));
     }
-    function num(label, val, onSet, step) {
-      const i = h('input', { type: 'number', min: 0, step: step || 50, value: Math.round(val), class: 'num pl-num', 'aria-label': label });
-      i.addEventListener('change', () => { onSet(Math.max(10, U.num(i.value))); save(); draw(); drawList(); drawProps(); });
-      return h('label', { class: 'pl-field small' }, h('span', null, label), i);
+    /* a number field; the unit is always shown next to it (mm unless told otherwise) */
+    function num(label, val, onSet, step, unitTxt, min) {
+      const i = h('input', { type: 'number', min: min == null ? 0 : min, step: step || 10, value: Math.round(val), class: 'num pl-num', 'aria-label': label + ' (' + (unitTxt || 'mm') + ')' });
+      i.addEventListener('change', () => { onSet(Math.max(min == null ? 10 : min, U.num(i.value))); save(); draw(); drawList(); drawProps(); });
+      return h('label', { class: 'pl-field small' }, h('span', null, label), i, h('span', { class: 'pl-unit' }, unitTxt || 'mm'));
     }
     function drawProps() {
       props.innerHTML = '';
@@ -10811,7 +10925,7 @@ PM.plan = (function () {
         const name = h('input', { type: 'text', value: m.name || '', class: 'pl-name', 'aria-label': 'Name' });
         name.addEventListener('change', () => { m.name = name.value.trim(); save(); draw(); drawList(); });
         props.append(h('label', { class: 'pl-field small' }, h('span', null, nl ? 'Naam' : 'Name'), name),
-          num(nl ? 'Breedte (↔)' : 'Width (↔)', m.w, v => { m.w = v; }), num(nl ? 'Diepte (↕)' : 'Depth (↕)', m.h, v => { m.h = v; }),
+          num(nl ? 'Breedte (↔)' : 'Width (↔)', m.w, v => { m.w = v; }, 50), num(nl ? 'Diepte (↕)' : 'Depth (↕)', m.h, v => { m.h = v; }, 50),
           del(() => { plan.items = plan.items.filter(i => i.room !== m.id); plan.rooms = plan.rooms.filter(r => r !== m); }), done);
         return;
       }
@@ -10823,17 +10937,47 @@ PM.plan = (function () {
       }
       const i = plan.items.find(x => x.id === sel.id); if (!i) return;
       const inf = itemInfo(items, i.c);
+      const tag = tagsOf(plan).get(i.id);
+      const title = h('b', { class: 'small pl-ptitle' }, h('span', { class: 'pl-tagb', style: { '--c': inf.color } }, String(tag)), ' ' + inf.label);
       if (i.wall) {
-        props.append(h('b', { class: 'small' }, inf.label),
-          num(nl ? 'Breedte' : 'Width', i.w, v => { i.w = v; }),
-          i.c === 'door' ? h('button', { type: 'button', class: 'btn small', onclick: () => { i.hinge = i.hinge === 'R' ? 'L' : 'R'; save(); drawUi(); } }, (nl ? 'Scharnier: ' : 'Hinge: ') + (i.hinge || 'L')) : null,
-          i.c === 'door' ? h('button', { type: 'button', class: 'btn small', onclick: () => { i.open = i.open === 'in' ? 'out' : 'in'; save(); drawUi(); } }, i.open === 'in' ? T.in : T.out) : null,
-          del(() => { plan.items = plan.items.filter(x => x !== i); }), done);
+        const room = plan.rooms.find(m => m.id === i.room), len = room ? wallLine(room, i.wall).len : 0;
+        const c1 = i.wall === 'A' || i.wall === 'C' ? 'D' : 'A', c2 = i.wall === 'A' || i.wall === 'C' ? 'B' : 'C';
+        const row1 = h('div', { class: 'pl-row' }, title,
+          num(nl ? 'Breedte' : 'Width', i.w, v => { i.w = Math.min(v, len || v); i.pos = Math.max(i.w / 2, Math.min(len - i.w / 2, i.pos)); }),
+          room ? num((nl ? 'Afstand tot wand ' : 'Distance to wall ') + c1, i.pos - i.w / 2, v => { i.pos = Math.max(0, Math.min(len - i.w, v)) + i.w / 2; }, 10, 'mm', 0) : null,
+          room ? num((nl ? 'Afstand tot wand ' : 'Distance to wall ') + c2, len - i.pos - i.w / 2, v => { i.pos = len - Math.max(0, Math.min(len - i.w, v)) - i.w / 2; }, 10, 'mm', 0) : null);
+        const row2 = i.c === 'door' ? h('div', { class: 'pl-row' },
+          h('div', { class: 'seg', role: 'radiogroup', 'aria-label': nl ? 'Soort deur' : 'Door type' }, [[1, nl ? 'Enkele deur' : 'Single door'], [2, nl ? 'Dubbele deur' : 'Double door']].map(([k, t]) =>
+            h('button', { type: 'button', role: 'radio', class: (i.leaves === 2 ? 2 : 1) === k ? 'on' : '', 'aria-checked': String((i.leaves === 2 ? 2 : 1) === k), 'data-leaves': k, onclick: () => { i.leaves = k === 2 ? 2 : undefined; save(); drawUi(); } }, t))),
+          i.leaves === 2 ? null : h('button', { type: 'button', class: 'btn small', onclick: () => { i.hinge = i.hinge === 'R' ? 'L' : 'R'; save(); drawUi(); } }, (nl ? 'Scharnier: ' : 'Hinge: ') + (i.hinge || 'L')),
+          h('button', { type: 'button', class: 'btn small', onclick: () => { i.open = i.open === 'in' ? 'out' : 'in'; save(); drawUi(); } }, i.open === 'in' ? T.in : T.out)) : null;
+        props.append(row1, row2, h('div', { class: 'pl-row' }, del(() => { plan.items = plan.items.filter(x => x !== i); }), done));
       } else {
-        props.append(h('b', { class: 'small' }, inf.label),
-          num(nl ? 'Breedte (↔)' : 'Width (↔)', i.w, v => { i.w = v; }), num(nl ? 'Diepte (↕)' : 'Depth (↕)', i.h, v => { i.h = v; }),
-          h('button', { type: 'button', class: 'btn small', onclick: () => { const w = i.w; i.w = i.h; i.h = w; save(); drawUi(); } }, nl ? 'Draai 90°' : 'Turn 90°'),
-          del(() => { plan.items = plan.items.filter(x => x !== i); }), done);
+        const room = roomAt(plan, i.x, i.y);
+        const rot = normRot(i.rot);
+        const turn = d => { i.rot = normRot(rot + d); save(); drawUi(); };
+        const row1 = h('div', { class: 'pl-row' }, title,
+          num(nl ? 'Breedte (↔)' : 'Width (↔)', i.w, v => { i.w = v; }), num(nl ? 'Diepte (↕)' : 'Depth (↕)', i.h, v => { i.h = v; }));
+        const row2 = h('div', { class: 'pl-row' }, h('span', { class: 'small muted' }, nl ? 'Draaien' : 'Turn'),
+          h('button', { type: 'button', class: 'btn small', 'data-turn': '-15', title: nl ? '15° linksom' : '15° anticlockwise', onclick: () => turn(-15) }, '↺ 15°'),
+          h('button', { type: 'button', class: 'btn small', 'data-turn': '15', title: nl ? '15° rechtsom' : '15° clockwise', onclick: () => turn(15) }, '↻ 15°'),
+          h('button', { type: 'button', class: 'btn small', onclick: () => { const w = i.w; i.w = i.h; i.h = w; save(); drawUi(); } }, '90°'),
+          h('span', { class: 'small pl-angle' }, rot + '°'),
+          rot ? h('button', { type: 'button', class: 'btn ghost small', onclick: () => turn(-rot) }, nl ? 'Recht zetten' : 'Straighten') : null);
+        // fine-tuning: distances to the walls and to the nearest objects, and nudging in steps of 10 mm
+        const row3 = room ? h('div', { class: 'pl-row' }, h('span', { class: 'small muted' }, nl ? 'Afstand tot wand' : 'Distance to wall'),
+          ['A', 'B', 'C', 'D'].map(w => num(w, wallGaps(i, room)[w], v => { const g = wallGaps(i, room)[w], d = g - v; if (w === 'A') i.y -= d; else if (w === 'C') i.y += d; else if (w === 'D') i.x -= d; else i.x += d; }, 10, 'mm', 0))) : null;
+        const nb = neighbours(plan, i), tags = tagsOf(plan);
+        const SIDE = { left: [nl ? 'links' : 'left', 'x', -1], right: [nl ? 'rechts' : 'right', 'x', 1], up: [nl ? 'boven' : 'above', 'y', -1], down: [nl ? 'onder' : 'below', 'y', 1] };
+        const nKeys = Object.keys(SIDE).filter(k => nb[k]);
+        const row4 = nKeys.length ? h('div', { class: 'pl-row' }, h('span', { class: 'small muted' }, nl ? 'Afstand tot object' : 'Distance to object'),
+          nKeys.map(k => { const [lab, ax, sign] = SIDE[k], o2 = nb[k].o, inf2 = itemInfo(items, o2.c);
+            return num(lab + ' (' + tags.get(o2.id) + ' ' + inf2.label + ')', nb[k].gap, v => { i[ax] += sign * (nb[k].gap - v); }, 10, 'mm', 0); })) : null;
+        const step = 10;
+        const row5 = h('div', { class: 'pl-row' }, h('span', { class: 'small muted' }, (nl ? 'Schuiven ' : 'Nudge ') + step + ' mm'),
+          [['←', -step, 0], ['↑', 0, -step], ['↓', 0, step], ['→', step, 0]].map(([t, dx, dy]) => h('button', { type: 'button', class: 'btn small pl-nudge', 'aria-label': (nl ? 'Schuif ' : 'Move ') + t, onclick: () => { i.x += dx; i.y += dy; save(); draw(); drawList(); drawProps(); } }, t)),
+          h('span', { class: 'spacer' }), del(() => { plan.items = plan.items.filter(x => x !== i); }), done);
+        props.append(row1, row2, row3, row4, row5);
       }
       const d = describe(plan, items, o.lang).find(x => x.ref.type === 'item' && x.ref.id === i.id);
       if (d) props.appendChild(h('div', { class: 'small muted pl-desc' }, d.text));
@@ -10842,10 +10986,20 @@ PM.plan = (function () {
       listEl.innerHTML = '';
       describe(plan, items, o.lang).forEach(d => {
         const on = sel && sel.type === d.ref.type && (d.ref.type === 'route' || sel.id === d.ref.id);
-        listEl.appendChild(h('li', { class: on ? 'on' : '', onclick: () => { sel = Object.assign({}, d.ref); armed = ''; drawUi(); } }, h('i', { style: { background: d.color } }), h('b', null, d.label), ' — ' + d.text));
+        listEl.appendChild(h('li', { class: on ? 'on' : '', onclick: () => { sel = Object.assign({}, d.ref); armed = ''; drawUi(); } },
+          d.tag ? h('span', { class: 'pl-tagb', style: { '--c': d.color } }, String(d.tag)) : h('i', { style: { background: d.color } }), h('b', null, d.label), ' — ' + d.text));
       });
     }
-    function drawUi() { drawPalette(); drawHint(); draw(); drawProps(); drawList(); }
+    function drawUi() { drawPalette(); drawHint(); draw(); drawProps(); drawList(); drawOpts(); }
+    function drawOpts() {
+      optBox.innerHTML = '';
+      [['dims', nl0 ? 'Hoofdmaten tonen' : 'Show main dimensions'], ['names', nl0 ? 'Namen in de tekening (i.p.v. nummers)' : 'Names in the drawing (instead of numbers)']].forEach(([k, t]) => {
+        const cb = h('input', { type: 'checkbox', checked: opts()[k] || null, 'data-opt': k });
+        cb.addEventListener('change', () => { opts()[k] = cb.checked; if (!cb.checked) delete opts()[k]; save(); draw(); });
+        optBox.appendChild(h('label', { class: 'check' }, cb, ' ' + t));
+      });
+    }
+
 
     /* ----- placing ----- */
     function place(pt) {
@@ -11025,7 +11179,7 @@ PM.plan = (function () {
     zoomBtns.addEventListener('click', ev => { userView = !/Fit/.test(ev.target.textContent); });
     svg.addEventListener('pointermove', () => { if (pinch || (drag && drag.mode === 'pan' && drag.moved)) userView = true; });
     if (window.ResizeObserver) new ResizeObserver(() => { if (!userView && !drag) { fit(); draw(); } }).observe(svg);
-    const root = h('div', { class: 'pl' }, palette, hint, wrap, props, listEl);
+    const root = h('div', { class: 'pl' }, palette, hint, optBox, wrap, props, listEl);
     root.refresh = text => { if (drag || !text) return; const p2 = parse(text); if (serialize(p2) !== serialize(plan)) { plan = p2; drawUi(); } };
     root.reset = p2 => { if (drag) return; if (serialize(p2) !== serialize(plan)) { plan = p2; fit(); drawUi(); } };
     return root;
@@ -11035,7 +11189,7 @@ PM.plan = (function () {
   function drawPdf(pg, plan, items, x0, y0, W, H, lang) {
     const T = tx(lang);
     const b = bbox(plan);
-    const pad = 12;
+    const pad = (plan.opts || {}).dims ? 20 : 12;
     const sc = Math.min((W - 2 * pad) / b.w, (H - 2 * pad) / b.h);
     const ox = x0 + (W - b.w * sc) / 2 - b.x * sc, oy = y0 + (H - b.h * sc) / 2 - b.y * sc;
     const X = v => ox + v * sc, Y = v => oy + v * sc;
@@ -11043,8 +11197,13 @@ PM.plan = (function () {
     plan.rooms.forEach(m => {
       pg.rect(X(m.x), Y(m.y), m.w * sc, m.h * sc, { fill: '#f7f8fa', stroke: '#1c2230', lw: 0.6 });
     });
+    const o = plan.opts || {}, tags = tagsOf(plan);
+    const tagMark = (x, y, n, color) => {
+      pg.circle(x, y, 1.75, { fill: '#ffffff', stroke: color, lw: 0.35 });
+      pg.text(String(n), x, y + 0.95, { size: n > 9 ? 5 : 5.8, bold: true, color, align: 'center' });
+    };
     const roomLabels = () => plan.rooms.forEach(m => {
-      const name = PM.pdf.fit(m.name || T.room, Math.max(10, m.w * sc - 2), 6.5, true), dims = U.fmtNum(m.w) + ' × ' + U.fmtNum(m.h);
+      const name = PM.pdf.fit(m.name || T.room, Math.max(10, m.w * sc - 2), 6.5, true), dims = o.dims ? '' : U.fmtNum(m.w) + ' × ' + U.fmtNum(m.h) + ' mm';
       const tw = Math.max(PM.pdf.textWidth(name, 6.5, true), PM.pdf.textWidth(dims, 5.5));
       pg.rect(X(m.x) + 0.6, Y(m.y) + 0.6, Math.min(tw + 1, m.w * sc - 1.2), 6.2, { fill: '#f7f8fa' });
       pg.text(name, X(m.x) + 1, Y(m.y) + 3.2, { size: 6.5, bold: true, color: '#1c2230' });
@@ -11053,7 +11212,9 @@ PM.plan = (function () {
     plan.items.filter(i => !i.wall).forEach(i => {
       const inf = itemInfo(items, i.c);
       const rx = X(i.x - i.w / 2), ry = Y(i.y - i.h / 2), rw = i.w * sc, rh = i.h * sc;
-      pg.rect(rx, ry, rw, rh, { fill: shade(inf.color, 0.78), stroke: inf.color, lw: 0.35, r: 0.3 });
+      if (normRot(i.rot)) pg.poly(corners(i).map(c => [X(c[0]), Y(c[1])]), { fill: shade(inf.color, 0.78), stroke: inf.color, lw: 0.35 });
+      else pg.rect(rx, ry, rw, rh, { fill: shade(inf.color, 0.78), stroke: inf.color, lw: 0.35, r: 0.3 });
+      if (!o.names) { tagMark(X(i.x), Y(i.y), tags.get(i.id), inf.color); return; }
       if (PM.pdf.textWidth(inf.label, 5.5, true) < rw - 1 && rh > 2.5) pg.text(inf.label, rx + rw / 2, ry + rh / 2 + 1, { size: 5.5, bold: true, color: inf.color, align: 'center' });
       else pg.text(PM.pdf.fit(inf.label, 30, 5, true), rx + rw / 2, ry + rh + 2.4, { size: 5, bold: true, color: inf.color, align: 'center' });
     });
@@ -11063,19 +11224,28 @@ PM.plan = (function () {
       const a = wallPoint(room, i.wall, Math.max(0, i.pos - i.w / 2)), bb = wallPoint(room, i.wall, Math.min(l.len, i.pos + i.w / 2));
       pg.line(X(a[0]), Y(a[1]), X(bb[0]), Y(bb[1]), { stroke: '#ffffff', lw: 1.1 });
       if (i.c === 'door') {
-        const n = i.open === 'in' ? [-l.out[0], -l.out[1]] : l.out;
-        const hp = i.hinge === 'R' ? bb : a, fp = i.hinge === 'R' ? a : bb;
-        const tip = [hp[0] + n[0] * i.w, hp[1] + n[1] * i.w];
-        pg.line(X(hp[0]), Y(hp[1]), X(tip[0]), Y(tip[1]), { stroke: inf.color, lw: 0.45 });
-        const a0 = Math.atan2(tip[1] - hp[1], tip[0] - hp[0]), a1 = Math.atan2(fp[1] - hp[1], fp[0] - hp[0]);
-        let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
-        let prev = tip;
-        for (let k = 1; k <= 12; k++) { const an = a0 + da * k / 12, p = [hp[0] + Math.cos(an) * i.w, hp[1] + Math.sin(an) * i.w]; pg.line(X(prev[0]), Y(prev[1]), X(p[0]), Y(p[1]), { stroke: inf.color, lw: 0.25, dash: [0.6, 0.4] }); prev = p; }
+        doorLeaves(i, l, a, bb).forEach(({ hp, fp, tip, r }) => {
+          pg.line(X(hp[0]), Y(hp[1]), X(tip[0]), Y(tip[1]), { stroke: inf.color, lw: 0.45 });
+          const a0 = Math.atan2(tip[1] - hp[1], tip[0] - hp[0]), a1 = Math.atan2(fp[1] - hp[1], fp[0] - hp[0]);
+          let da = a1 - a0; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+          let prev = tip;
+          for (let k = 1; k <= 12; k++) { const an = a0 + da * k / 12, p = [hp[0] + Math.cos(an) * r, hp[1] + Math.sin(an) * r]; pg.line(X(prev[0]), Y(prev[1]), X(p[0]), Y(p[1]), { stroke: inf.color, lw: 0.25, dash: [0.6, 0.4] }); prev = p; }
+        });
       } else pg.line(X(a[0]), Y(a[1]), X(bb[0]), Y(bb[1]), { stroke: inf.color, lw: 1.1 });
       const mid = wallPoint(room, i.wall, i.pos), horiz = i.wall === 'A' || i.wall === 'C';
+      if (!o.names) { const sd = i.c === 'door' && i.open !== 'in' ? -1 : 1; tagMark(X(mid[0]) + sd * l.out[0] * 2.6, Y(mid[1]) + sd * l.out[1] * 2.6, tags.get(i.id), inf.color); return; }
       pg.text(PM.pdf.fit(inf.label, 28, 5.5, true), X(mid[0]) + l.out[0] * 2.2, Y(mid[1]) + l.out[1] * 2.2 + (horiz ? (l.out[1] > 0 ? 1.6 : -0.3) : 0.8), { size: 5.5, bold: true, color: inf.color, align: horiz ? 'center' : l.out[0] > 0 ? 'left' : 'right' });
     });
     roomLabels();
+    if (o.dims) plan.rooms.forEach(m => {
+      const st = { stroke: '#1c2230', lw: 0.2 }, off = 3.2, tk = 0.9;
+      const ya = Y(m.y) - off, x1 = X(m.x), x2 = X(m.x + m.w);
+      pg.line(x1, ya, x2, ya, st); pg.line(x1, ya - tk, x1, ya + tk, st); pg.line(x2, ya - tk, x2, ya + tk, st);
+      pg.text(U.fmtNum(m.w) + ' mm', (x1 + x2) / 2, ya - 0.8, { size: 5.5, color: '#1c2230', align: 'center' });
+      const xd = X(m.x) - off, y1 = Y(m.y), y2 = Y(m.y + m.h);
+      pg.line(xd, y1, xd, y2, st); pg.line(xd - tk, y1, xd + tk, y1, st); pg.line(xd - tk, y2, xd + tk, y2, st);
+      pg.text(U.fmtNum(m.h) + ' mm', xd - 0.8, (y1 + y2) / 2 + 1, { size: 5.5, color: '#1c2230', align: 'right' });
+    });
     if (plan.route.length > 1) {
       for (let k = 1; k < plan.route.length; k++) {
         const p0 = plan.route[k - 1], p1 = plan.route[k];
@@ -11541,7 +11711,8 @@ PM.surveyPdf = (function () {
             const dl = PM.pdf.wrap(d.text, CW - 52, 7.8);
             const rh = 4.6 + (dl.length - 1) * 3.6;
             ensure(rh);
-            pg.circle(M + 1.6, y + 2.4, 1.3, { fill: d.color });
+            if (d.tag) { pg.circle(M + 1.9, y + 2.3, 1.85, { fill: d.color }); pg.text(String(d.tag), M + 1.9, y + 3.3, { size: d.tag > 9 ? 5 : 5.8, bold: true, color: '#ffffff', align: 'center' }); }
+            else pg.circle(M + 1.6, y + 2.4, 1.3, { fill: d.color });
             pg.text(PM.pdf.fit(d.label, 44, 8, true), M + 4.5, y + 3.4, { size: 8, bold: true, color: C.text });
             dl.forEach((ln, k) => pg.text(ln, M + 52, y + 3.4 + k * 3.6, { size: 7.8, color: C.muted }));
             y += rh;
@@ -11983,7 +12154,7 @@ PM.surveyPdf = (function () {
           const parts = [];
           f.parts.forEach((pt, i) => {
             if (i) parts.push(h('span', { class: 'times', 'aria-hidden': 'true' }, '×'));
-            parts.push(h('label', { class: 'sv-dim' }, h('span', { class: 'small muted' }, pt), numInput(f.key + '_' + pt.toLowerCase(), { id: i ? id + '_' + pt.toLowerCase() : id, 'aria-label': f.label + ' ' + pt })));
+            parts.push(h('label', { class: 'sv-dim' }, h('span', { class: 'small muted' }, pt + (f.unit ? ' (' + f.unit + ')' : '')), numInput(f.key + '_' + pt.toLowerCase(), { id: i ? id + '_' + pt.toLowerCase() : id, 'aria-label': f.label + ' ' + pt })));
           });
           return h('div', { class: 'sv-dims' }, parts, f.unit ? h('span', { class: 'affix' }, f.unit + ' (' + f.parts.join('×') + ')') : null);
         }
