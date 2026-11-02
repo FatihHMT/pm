@@ -1119,6 +1119,10 @@ textarea { font: inherit; }
 .map-pin.c { border-radius: 4px 4px 4px 0; }
 .map-pop { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }
 @media (max-width: 760px) { .map-box { height: 58vh; } }
+.menu-ver { padding: 6px 12px 4px; }
+.settings-ver { margin-top: 2px; }
+/* phones: tabs wrap onto a second line instead of hiding off-screen */
+@media (max-width: 760px) { .tabs { flex-wrap: wrap; overflow-x: visible; } .tabs button { padding: 8px 10px; } }
 
 </style>
 </head>
@@ -6244,7 +6248,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-02.5';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-02.6';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -6617,7 +6621,8 @@ PM.app = (function () {
       { label: 'Reload from source', run: () => be && useBackend(be), hide: !be || be.kind === 'memory' },
       { label: 'Load demo data', run: () => useBackend(demoBackend()) }
     ].filter(i => !i.hide);
-    const menu = h('div', { class: 'menu', role: 'menu' }, items.map(i => h('button', { role: 'menuitem', onclick: () => { close(); i.run(); } }, i.label)));
+    const menu = h('div', { class: 'menu', role: 'menu' }, items.map(i => h('button', { role: 'menuitem', onclick: () => { close(); i.run(); } }, i.label)),
+      h('div', { class: 'menu-sep', role: 'separator' }), h('div', { class: 'menu-ver small muted' }, 'Version ' + PM.version));
     const r = anchor.getBoundingClientRect();
     Object.assign(menu.style, { top: (r.bottom + 4) + 'px', right: (window.innerWidth - r.right) + 'px' });
     document.body.appendChild(menu);
@@ -17032,7 +17037,7 @@ Onderdelen:
     render(el, ctx) {
       if (ctx.params.tab && ctx.params.tab !== state.lastParam) { state.tab = ctx.params.tab; state.lastParam = ctx.params.tab; }
       const tabs = [['company', 'Company'], ['roles', 'Roles & rates'], ['people', 'People'], ['forms', 'Forms'], ['configurators', 'Configurators'], ['templates', 'Planning templates'], ['estformats', 'Estimate formats'], ['presets', 'PDF presets'], ['data', 'Data & import'], ['dev', 'Extensions']];
-      el.appendChild(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'Shared across all projects')),
+      el.appendChild(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Settings'), h('p', { class: 'muted' }, 'Shared across all projects'), h('p', { class: 'small muted settings-ver' }, 'Version ' + PM.version)),
         h('span', { class: 'spacer' }), h('label', { class: 'lang-row' }, h('span', { class: 'muted small' }, 'Language'), PM.app.langSwitch())));
       el.appendChild(h('div', { class: 'tabs', role: 'tablist' }, tabs.map(([k, t]) => h('button', { role: 'tab', 'aria-selected': String(state.tab === k), class: state.tab === k ? 'on' : '', onclick: () => { state.tab = k; ctx.rerender(); } }, t))));
 
