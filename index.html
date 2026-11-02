@@ -1076,6 +1076,49 @@ textarea { font: inherit; }
 .pl-dim line { stroke: var(--text); }
 .pl-dim-t { fill: var(--text); paint-order: stroke; stroke: var(--surface); pointer-events: none; }
 .sv-na-toggle { display: inline-flex; align-items: center; gap: 4px; margin: 6px 0 2px; }
+.task-open { text-align: left; font-weight: 600; white-space: normal; }
+.task-has-desc { color: var(--muted); font-weight: 400; }
+.task-dlg .td-title { font-size: 16px; font-weight: 600; }
+.task-dlg .td-desc { min-height: 220px; resize: vertical; font-size: 14.5px; line-height: 1.45; }
+.cf-calcs-box { margin-bottom: 10px; }
+.cf-calcs-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cf-onoff { width: 28px; }
+.cf-off td { color: var(--muted); text-decoration: line-through; }
+.cf-off td.cf-onoff { text-decoration: none; }
+.cf-off-head td { font-style: italic; }
+
+/* project dropdown: object – client – project name */
+.pp-opt .pp-name { flex: 0 1 auto; font-weight: 500; }
+.pp-opt .pp-client, .pp-opt .pp-title { flex: 0 1 auto; max-width: none; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-opt .pp-client::before, .pp-opt .pp-title::before { content: '– '; }
+@media (max-width: 760px) { .pp-opt { flex-wrap: wrap; } .pp-opt .pp-client { padding-left: 0; flex-basis: auto; } }
+
+/* sales */
+.sales-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.sales-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.sales-stats b { font-size: 17px; }
+.sales-grid .overdue input { border-color: var(--bad, #d14343); }
+.sales-acts li { align-items: flex-start; }
+.sales-ic { width: 22px; text-align: center; font-size: 15px; }
+.sales-note { white-space: pre-wrap; }
+.sales-dlg .seg { margin-bottom: 10px; flex-wrap: wrap; }
+.sales-next { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.sales-next input[type=date] { width: 170px; }
+.sales-pipe tr.due td { background: color-mix(in srgb, #d14343 6%, transparent); }
+/* the project button shrinks instead of running over the buttons next to it */
+@media (min-width: 761px) { .pp { flex: 0 1 520px; min-width: 200px; } .pp-btn { width: 100%; min-width: 0; max-width: none; } }
+
+/* Advanced → Map */
+.map-bar { gap: 6px 14px; }
+.map-layer { display: inline-flex; align-items: center; gap: 4px; }
+.map-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.map-box { height: 65vh; min-height: 360px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface-2, #eef1f5); z-index: 0; position: relative; }
+.map-info { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.map-pin-wrap { background: none; border: 0; }
+.map-pin { display: block; width: 22px; height: 22px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--c); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.45); }
+.map-pin.c { border-radius: 4px 4px 4px 0; }
+.map-pop { display: flex; flex-direction: column; gap: 2px; min-width: 160px; }
+@media (max-width: 760px) { .map-box { height: 58vh; } }
 
 </style>
 </head>
@@ -3020,8 +3063,8 @@ PM.i18n.add('nl', {
     'De vragen van het ontwerp. Keuze: de opties gescheiden door ; — of table=profiles; column=size; where=type:profile_type om ze uit een tabel te halen. “Alleen als…” verbergt de vraag tenzij de voorwaarde klopt, bijv. profile_type != "None" of plated.',
   'Look-up tables, e.g. weight and paint surface per profile. Use them in formulas with lookup("table", "column", key1, key2…): the first columns are the keys. Prices do not belong here — put them in Costs → Price list.':
     'Opzoektabellen, bijv. gewicht en verfoppervlak per profiel. Gebruik ze in formules met lookup("tabel", "kolom", sleutel1, sleutel2…): de eerste kolommen zijn de sleutels. Prijzen horen hier niet — die staan in Kosten → Prijslijst.',
-  'Values are fixed numbers (not prices). Calculations are worked out from top to bottom and can use questions, values and earlier calculations. Functions: if(test, a, b), min, max, round(x, dec), ceil, floor, abs, sqrt, lookup(…), price("code"), unit("code"). A key starting with _ is hidden.':
-    'Waarden zijn vaste getallen (geen prijzen). Berekeningen worden van boven naar beneden uitgerekend en kunnen vragen, waarden en eerdere berekeningen gebruiken. Functies: if(test, a, b), min, max, round(x, dec), ceil, floor, abs, sqrt, lookup(…), price("code"), unit("code"). Een sleutel die met _ begint wordt niet getoond.',
+  'Values are fixed numbers (not prices). Calculations are worked out from top to bottom and can use questions, values and earlier calculations. Functions: if(test, a, b), min, max, round(x, dec), ceil, floor, abs, sqrt, lookup(…), price("code"), unit("code"). A key starting with _ is hidden. Set “Show” to No to keep a value out of the cost package (it is still worked out and can be used in formulas).':
+    'Waarden zijn vaste getallen (geen prijzen). Berekeningen worden van boven naar beneden uitgerekend en kunnen vragen, waarden en eerdere berekeningen gebruiken. Functies: if(test, a, b), min, max, round(x, dec), ceil, floor, abs, sqrt, lookup(…), price("code"), unit("code"). Een sleutel die met _ begint wordt niet getoond. Zet “Tonen” op Nee om een waarde niet in het kostenpakket te tonen (hij wordt wel uitgerekend en kan in formules gebruikt worden).',
   'One line per cost item. Quantity and unit price are formulas; a unit price normally comes from the price list: price("weld") or price("plate " + material). A line is left out when “Only when…” is false or the quantity is 0.':
     'Eén regel per kostenpost. Aantal en eenheidsprijs zijn formules; een eenheidsprijs komt normaal uit de prijslijst: price("weld") of price("plate " + material). Een regel vervalt als “Alleen als…” niet klopt of het aantal 0 is.',
   'The design summary for the quote. Text with {key} for an answer, or =formula, e.g. =if(plated, plate_t + " mm", ""). Empty results are left out.':
@@ -3055,6 +3098,31 @@ PM.i18n.add('nl', {
   ' · this portfolio only': ' · alleen dit portfolio',
   ' Hide questions answered N/A (on screen and in the PDF), unless “Show N/A questions” is switched on in the filled-in form': ' Vragen met antwoord NVT verbergen (op het scherm en in de PDF), tenzij “NVT-vragen tonen” aan staat in het ingevulde formulier',
   'Show N/A questions': 'NVT-vragen tonen',
+  'Show': 'Tonen',
+  'Map': 'Kaart', 'Clients': 'Klanten', 'Suppliers': 'Leveranciers', 'Partners': 'Partners', 'Other companies': 'Overige bedrijven', 'This project': 'Dit project', 'Projects': 'Projecten',
+  ' incl. completed projects': ' incl. afgeronde projecten', 'Open project': 'Project openen', 'Open company': 'Bedrijf openen', 'Position saved.': 'Positie opgeslagen.',
+  'Looking up addresses: ': 'Adressen opzoeken: ', 'Address not found: ': 'Adres niet gevonden: ', 'No address: ': 'Geen adres: ',
+  ' — check the address (street + number, postcode, town), or drag a marker there by hand after correcting it.': ' — controleer het adres (straat + nummer, postcode, plaats).',
+  'Positions come from OpenStreetMap and are kept with the project or company. A marker in the wrong place can be dragged to the right spot.': 'Posities komen van OpenStreetMap en worden bij het project of bedrijf bewaard. Staat een markering verkeerd, sleep hem dan naar de juiste plek.',
+  'The map could not be loaded (no internet connection?)': 'De kaart kon niet geladen worden (geen internetverbinding?)',
+  'Projects and companies on a map.': 'Projecten en bedrijven op een kaart.',
+  'Sales': 'Verkoop', 'Quote value': 'Offertewaarde', 'Chance': 'Kans', 'Weighted': 'Gewogen', 'Next follow-up': 'Volgende opvolging', ' set offer price': ' aanneemsom invullen',
+  'Sales phase': 'Verkoopfase', 'Chance of order (%)': 'Kans op order (%)', 'Expected order date': 'Verwachte orderdatum', 'Quote sent': 'Offerte verstuurd',
+  'Next step': 'Volgende stap', 'Competitor': 'Concurrent', 'Reason lost': 'Reden verloren',
+  'lead': 'lead', 'qualified': 'gekwalificeerd', 'quote sent': 'offerte verstuurd', 'negotiation': 'onderhandeling', 'verbal yes': 'mondeling akkoord',
+  'call': 'telefoon', 'mail': 'mail', 'visit': 'bezoek', 'meeting': 'overleg', 'note': 'notitie',
+  'Follow-ups and contact moments': 'Opvolging en contactmomenten', '+ Log a call, mail or visit': '+ Telefoon, mail of bezoek vastleggen', 'Nothing logged yet.': 'Nog niets vastgelegd.',
+  'Contact person': 'Contactpersoon', '+2 days': '+2 dagen', '+1 week': '+1 week', '+2 weeks': '+2 weken', '+1 month': '+1 maand',
+  'e.g. call back about the revised price': 'bijv. terugbellen over de aangepaste prijs', 'Saved.': 'Opgeslagen.',
+  'Quote pipeline': 'Offertepijplijn', 'Open quotes': 'Open offertes', 'Pipeline value': 'Waarde pijplijn', 'Weighted value': 'Gewogen waarde', 'value × chance of order': 'waarde × kans op order',
+  'Follow-ups due': 'Opvolging nodig', 'today or earlier': 'vandaag of eerder', 'none due': 'niets open', 'Quote': 'Offerte', 'Phase': 'Fase', 'Value': 'Waarde', 'Expected order': 'Verwachte order',
+  'Reason lost (optional)': 'Reden verloren (optioneel)', 'Competitor (optional)': 'Concurrent (optioneel)', 'Mark as lost': 'Als verloren markeren',
+  'e.g. price, delivery time, competitor chosen': 'bijv. prijs, levertijd, concurrent gekozen', 'Calculated values': 'Berekende waarden', 'Choose what is shown…': 'Kiezen wat getoond wordt…',
+  'Choose which calculated values are shown: Edit → Values & calculations → Show': 'Kies welke berekende waarden getoond worden: Bewerken → Waarden & berekeningen → Tonen',
+  'Left out of this design': 'Weggelaten in dit ontwerp', 'Untick to leave a line out of this design': 'Vinkje weghalen om een regel weg te laten in dit ontwerp',
+  'Leave this line out of this design': 'Deze regel weglaten in dit ontwerp', 'Include this line again': 'Deze regel weer meenemen',
+  'Task': 'Taak', 'Task *': 'Taak *', 'Open the task': 'Taak openen', '(no title)': '(geen titel)', 'Give the task a title.': 'Geef de taak een titel.',
+  'Project name': 'Projectnaam', 'Object': 'Object',
   'All projects · amounts in EUR, excl. VAT': 'Alle projecten · bedragen in EUR, excl. btw'
 });
 (function () {
@@ -3070,6 +3138,13 @@ PM.i18n.add('nl', {
   P(/^(\d+) price\(s\) added to the price list( — fill in the empty ones)?\.$/, (m, n, e) => n + ' prijs/prijzen toegevoegd aan de prijslijst' + (e ? ' — vul de lege in' : '') + '.');
   P(/^Prices changed by (.+)%\.$/, (m, x) => 'Prijzen gewijzigd met ' + x + '%.');
   P(/^Not in the price list: (.+)$/, (m, x) => 'Niet in de prijslijst: ' + x);
+  P(/^Log a contact moment · (.+)$/, (m, x) => 'Contactmoment vastleggen · ' + x);
+  P(/^Quote lost · (.+)$/, (m, x) => 'Offerte verloren · ' + x);
+  P(/^· (\d+) on the map$/, (m, n) => '· ' + n + ' op de kaart');
+  P(/^(\d+) address\(es\) are being looked up…$/, (m, n) => n + ' adres(sen) worden opgezocht…');
+  P(/^Logged: (.+) h$/, (m, x) => 'Geschreven: ' + x + ' u');
+  P(/^Delete task (.+)\?$/, (m, x) => 'Taak ' + x + ' verwijderen?');
+  P(/^(Leave out|Include): (.+)$/, (m, a, x) => (a === 'Include' ? 'Meenemen: ' : 'Weglaten: ') + x);
   P(/^([✓⚠] )?(.+): (\d+) questions, (\d+) cost lines · default design (.+)$/, (m, ic, n, q, c, rest) => (ic || '') + n + ': ' + q + ' vragen, ' + c + ' kostenregels · standaardontwerp ' + rest);
   P(/^(.+) · (\d+) questions · (\d+) cost lines$/, (m, p, q, c) => p + ' · ' + q + ' vragen · ' + c + ' kostenregels');
   P(/^— replaces your current “(.+)”$/, (m, x) => '— vervangt je huidige “' + x + '”');
@@ -3178,6 +3253,7 @@ PM.i18n.add('nl', {
     name: 'projects', label: 'Projects', scope: 'meta', idPrefix: 'P-', idPad: 3,
     fields: [
       { key: 'id', label: 'ID', type: 'id' },
+      { key: 'title', label: 'Project name', type: 'string' },
       { key: 'name', label: 'Object', type: 'string', required: true },
       { key: 'client', label: 'Client', type: 'string' },
       { key: 'address', label: 'Project address', type: 'text', multiline: true, rows: 2 },
@@ -3190,8 +3266,10 @@ PM.i18n.add('nl', {
       { key: 'budget_costs', label: 'Offer price / budget (EUR)', type: 'money' },
       { key: 'color', label: 'Color', type: 'color', default: '#2f6fed' }
     ],
-    title: r => r.name || r.id
+    title: r => r.title || r.name || r.id
   });
+  /* the name shown for a project: its project name, or the object when there is none */
+  PM.pname = p => (p ? String(p.title || p.name || p.id || '') : '');
 
   PM.defineCollection({
     name: 'roles', label: 'Roles & rates', scope: 'global', file: 'settings/roles.md',
@@ -5985,9 +6063,10 @@ PM.ui = (function () {
       const pid = opts.projectId;
       if (def.scope === 'project' && !pid) { toast('Select a project first (top bar) to add rows.', 'warn'); return; }
       const rec = PM.store.insert(opts.collection, (opts.newRecord && opts.newRecord()) || {}, pid);
+      st.q = '';
+      if (opts.onAdd) { opts.onAdd(rec); return; }
       const firstEditable = fields.find(f => f.type !== 'id');
       PM.ui.pendingFocus = opts.collection + '|' + rec._key + '|' + (firstEditable ? firstEditable.key : '');
-      st.q = '';
     } }, '+ Add') : null;
 
     const head = h('tr', null, cols.map(c => h('th', {
@@ -6022,7 +6101,7 @@ PM.ui = (function () {
         return h('div', { class: 'rec-card', 'data-key': r._key },
           h('div', { class: 'rec-head' },
             h('span', { class: 'cell-id' }, r.id),
-            proj ? h('a', { class: 'small', href: '#/' + (PM.app.route.module) + '?project=' + r.project }, proj.name) : null,
+            proj ? h('a', { class: 'small', href: '#/' + (PM.app.route.module) + '?project=' + r.project }, PM.pname(proj)) : null,
             h('span', { class: 'spacer' }),
             opts.readonly ? null : delBtn(r)),
           titleCol ? h('div', { class: 'rec-title' }, cellContent(titleCol, r)) : null,
@@ -6165,7 +6244,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-02.2';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-02.5';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -6213,7 +6292,8 @@ PM.app = (function () {
 
   /* ---------- project picker in the top bar: type to filter (number, object or client) ---------- */
   const STATUS_ORDER = ['active', 'planned', 'on-hold', 'quote', 'completed', 'lost', 'archived'];
-  const projLabel = p => p.id + ' · ' + p.name + (p.client ? ' · ' + p.client : '');
+  /* the dropdown shows object – client – project name (the number is still found when you type it) */
+  const projLabel = p => [p.name, p.client, p.title].filter(Boolean).join(' – ') || p.id;
   const pick = { open: false, q: '', active: 0, items: [] };
   function renderProjectSelect() {
     const pid = route.params.project || '';
@@ -6227,7 +6307,7 @@ PM.app = (function () {
     projSel.stageBox.appendChild(PM.stage.control({ small: true }));
     const pid = route.params.project || '';
     const words = pick.q.toLowerCase().split(/\s+/).filter(Boolean);
-    const match = p => words.every(w => (p.id + ' ' + p.name + ' ' + (p.client || '')).toLowerCase().includes(w));
+    const match = p => words.every(w => (p.id + ' ' + PM.pname(p) + ' ' + (p.name || '') + ' ' + (p.client || '')).toLowerCase().includes(w));
     // typing searches every stage; without a search the list follows the Orders · Quotes · All switch
     const all = PM.store.projects().filter(p => match(p) && (words.length ? true : (p.status !== 'archived' || p.id === pid) && (PM.stage.matches(p) || p.id === pid)));
     const groups = U.groupBy(all, p => STATUS_ORDER.includes(p.status) ? p.status : 'active');
@@ -6243,7 +6323,7 @@ PM.app = (function () {
         const i = pick.items.length;
         pick.items.push(p);
         list.appendChild(h('div', { class: 'pp-opt' + (p.id === pid ? ' current' : ''), role: 'option', 'data-i': i, 'aria-selected': String(p.id === pid), id: 'pp-opt-' + i },
-          h('span', { class: 'pp-id' }, p.id), h('span', { class: 'pp-name', translate: 'no' }, p.name), p.client ? h('span', { class: 'pp-client', translate: 'no' }, p.client) : null));
+          h('span', { class: 'pp-name', translate: 'no' }, p.name || p.id), p.client ? h('span', { class: 'pp-client', translate: 'no' }, p.client) : null, p.title ? h('span', { class: 'pp-title', translate: 'no' }, p.title) : null));
       });
     });
     if (!pick.items.length) list.appendChild(h('div', { class: 'pp-none muted small' }, 'No project matches “' + pick.q + '”.'));
@@ -6305,7 +6385,7 @@ PM.app = (function () {
     renderNav();
     renderProjectSelect();
     const c = ctx();
-    document.title = mod.title + (c.project ? ' · ' + c.project.name : '') + ' — Project Manager';
+    document.title = mod.title + (c.project ? ' · ' + PM.pname(c.project) : '') + ' — Project Manager';
 
     // keep scroll + focus across re-renders
     const main = document.getElementById('main');
@@ -6340,7 +6420,7 @@ PM.app = (function () {
     return h('div', null,
       h('div', { class: 'page-head' }, h('h1', null, mod.title), h('p', { class: 'muted' }, 'Choose a project.')),
       list.length ? h('div', { class: 'picker-grid' }, list.map(p => h('button', { class: 'picker-item', onclick: () => setProject(p.id) },
-        h('span', { class: 'swatch', style: { background: p.color || '#2f6fed' } }), h('strong', null, p.name), h('span', { class: 'muted small' }, p.id + (p.client ? ' · ' + p.client : '')))))
+        h('span', { class: 'swatch', style: { background: p.color || '#2f6fed' } }), h('strong', null, PM.pname(p)), h('span', { class: 'muted small' }, p.id + (p.client ? ' · ' + p.client : '')))))
         : PM.ui.empty('There are no projects yet.', h('button', { class: 'btn primary', onclick: () => PM.app.newProjectDialog() }, 'New project')));
   }
 
@@ -6548,7 +6628,7 @@ PM.app = (function () {
     menu.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
   }
 
-  const NEW_PROJECT_FIELDS = ['name', 'company', 'client', 'contact', 'address', 'description', 'status', 'manager', 'start', 'end', 'budget_costs', 'color'];
+  const NEW_PROJECT_FIELDS = ['title', 'name', 'company', 'client', 'contact', 'address', 'description', 'status', 'manager', 'start', 'end', 'budget_costs', 'color'];
 
   function newProjectDialog(defaults) {
     if (!PM.store.backend) return;
@@ -6570,7 +6650,7 @@ PM.app = (function () {
   function editProjectDialog(pid) {
     const p = PM.store.project(pid);
     if (!p) return;
-    const f = PM.ui.form('projects', p);
+    const f = PM.ui.form('projects', p, { fields: PM.collection('projects').fields.filter(x => x.type !== 'id' && x.group !== 'sales' && !x.hidden).map(x => x.key) });
     const dlg = PM.ui.dialog({
       title: 'Edit project ' + p.id, content: f.el,
       footLeft: h('button', { class: 'btn ghost danger-text', onclick: () => { dlg.close(); deleteProjectDialog(p.id); } }, 'Delete project…'),
@@ -6597,7 +6677,7 @@ PM.app = (function () {
     PM.ui.dialog({
       title: 'Delete project ' + p.id + '?',
       content: h('div', null,
-        h('p', null, h('b', null, p.name), p.client ? ' · ' + p.client : ''),
+        h('p', null, h('b', null, PM.pname(p)), p.client ? ' · ' + p.client : ''),
         h('p', null, 'This permanently deletes the project and everything in it' + (counts.length ? ': ' + counts.map(c => c[1] + ' ' + c[0]).join(', ') : '') + ', including photos.'),
         kind === 'github' ? h('p', { class: 'muted small' }, 'On GitHub the history of pm-data still keeps a copy, so it can be restored from there if needed.') : h('p', { class: 'small bad-text' }, 'This cannot be undone.'),
         h('p', { class: 'small' }, 'Only want it out of sight? Set the status to ', h('b', null, 'archived'), ' instead – it disappears from the lists but keeps all data.'),
@@ -6966,6 +7046,7 @@ PM.registerModule({
       return;
     }
 
+    if (PM.sales && PM.stage.get() !== 'orders') PM.sales.pipeline(el, ctx);
     const byId = new Map(sum.byProject.map(x => [x.project, x]));
     el.appendChild(h('div', { class: 'proj-grid' }, projects.map(p => {
       const s = byId.get(p.id) || { hours: 0, total: 0 };
@@ -6973,9 +7054,9 @@ PM.registerModule({
       const prog = calc.progress(p.id);
       return h('a', { class: 'proj-card', href: '#/dashboard?project=' + p.id, style: { '--pc': p.color || '#2f6fed' } },
         h('div', { class: 'proj-card-head' },
-          h('div', null, h('div', { class: 'proj-name' }, p.name), h('div', { class: 'muted small' }, p.id + (p.client ? ' · ' + p.client : ''))),
+          h('div', null, h('div', { class: 'proj-name' }, PM.pname(p)), h('div', { class: 'muted small' }, p.id + (p.client ? ' · ' + p.client : '') + (p.title && p.name ? ' · ' + p.name : ''))),
           h('span', { class: 'pill st-' + (p.status || 'active') }, p.status || 'active'),
-          h('button', { class: 'icon-btn edit', title: 'Edit project', 'aria-label': 'Edit ' + p.name, onclick: e => { e.preventDefault(); e.stopPropagation(); PM.app.editProjectDialog(p.id); } }, '✎')),
+          h('button', { class: 'icon-btn edit', title: 'Edit project', 'aria-label': 'Edit ' + PM.pname(p), onclick: e => { e.preventDefault(); e.stopPropagation(); PM.app.editProjectDialog(p.id); } }, '✎')),
         p.description ? h('div', { class: 'small proj-card-desc' }, p.description) : null,
         h('div', { class: 'muted small' }, U.fmtDate(p.start) + ' – ' + U.fmtDate(p.end)),
         h('div', { class: 'kv' }, h('span', null, 'Progress'), PM.ui.meter(prog, 1, 'Planning progress', 'progress')),
@@ -6993,7 +7074,7 @@ PM.registerModule({
 
       el.appendChild(h('div', { class: 'page-head' },
         h('span', { class: 'swatch big', style: { background: p.color || '#2f6fed' } }),
-        h('div', null, h('h1', null, p.name), h('p', { class: 'muted' }, p.id + ' · ',
+        h('div', null, h('h1', null, PM.pname(p)), h('p', { class: 'muted' }, p.id + ' · ',
           p.company && PM.store.find('companies', p.company) ? h('a', { href: '#/contacts?company=' + p.company }, p.client || PM.store.find('companies', p.company).name) : (p.client || ''),
           (() => { const cp = PM.contacts && PM.contacts.contactOf(p); return cp ? [' · ', cp.name, cp.phone ? ' · ' + cp.phone : '', cp.email ? [' · ', h('a', { href: 'mailto:' + cp.email }, cp.email)] : ''] : ''; })(),
           ' · ' + U.fmtDate(p.start) + ' – ' + U.fmtDate(p.end))),
@@ -7004,11 +7085,12 @@ PM.registerModule({
       if (p.status === 'quote') el.appendChild(h('div', { class: 'quote-bar' },
         h('span', null, h('b', null, 'Quote'), ' — not an order yet. It is shown under “Quotes” at the top.'),
         h('span', { class: 'spacer' }),
-        h('button', { class: 'btn primary small', id: 'q-won', onclick: () => { PM.store.update('projects', p._key, { status: 'active' }); PM.ui.toast(p.id + ': order received — the project is now active and shown under Orders.', 'ok'); } }, '✓ Order received'),
-        h('button', { class: 'btn ghost small', onclick: () => { PM.store.update('projects', p._key, { status: 'lost' }); PM.ui.toast(p.id + ' marked as lost.', 'ok'); } }, 'Quote lost')));
+        h('button', { class: 'btn primary small', id: 'q-won', onclick: () => { PM.store.update('projects', p._key, { status: 'active', q_chance: 100, q_followup: '' }); PM.ui.toast(p.id + ': order received — the project is now active and shown under Orders.', 'ok'); } }, '✓ Order received'),
+        h('button', { class: 'btn ghost small', id: 'q-lost', onclick: () => PM.sales ? PM.sales.lostDialog(p) : PM.store.update('projects', p._key, { status: 'lost' }) }, 'Quote lost')));
       if (p.status === 'lost') el.appendChild(h('div', { class: 'quote-bar lost' }, h('span', null, h('b', null, 'Quote lost'), ' — kept for reference under “Quotes”.'), h('span', { class: 'spacer' }),
         h('button', { class: 'btn ghost small', onclick: () => PM.store.update('projects', p._key, { status: 'quote' }) }, 'Reopen quote')));
       if (p.description) el.appendChild(h('p', { class: 'proj-desc' }, p.description));
+      if (PM.sales) PM.sales.projectCards(el, p, ctx);
 
       const q = '?project=' + p.id;
       const link = (href, node) => h('a', { class: 'stat-link', href: href + q, title: 'Open' }, node);
@@ -7399,7 +7481,7 @@ function commentsSection(p, ctx) {
       }
       plist.forEach(p => {
         const ls = PM.store.list('lines', { project: p.id });
-        rows.push({ type: 'project', key: p.id, title: p.name, project: p, lines: ls, color: p.color });
+        rows.push({ type: 'project', key: p.id, title: PM.pname(p), project: p, lines: ls, color: p.color });
         allLines.push(...ls);
         if (state.expandedProjects[p.id]) ls.filter(passes).forEach(l => rows.push({ type: 'line', line: l, indent: true }));
         if (!ls.length && p.start && p.end) allLines.push({ start: p.start, end: p.end });
@@ -7673,7 +7755,7 @@ function commentsSection(p, ctx) {
         [['id', 'Order: project number'], ['milestone', 'Order: next milestone first']].map(([v, t]) => h('option', { value: v, selected: state.order === v || null }, t))) : null;
 
       el.appendChild(h('div', { class: 'page-head' },
-        h('div', null, h('h1', null, 'Planning'), h('p', { class: 'muted' }, ctx.project ? ctx.project.name : 'All active projects — expand a project to see its lines')),
+        h('div', null, h('h1', null, 'Planning'), h('p', { class: 'muted' }, ctx.project ? PM.pname(ctx.project) : 'All active projects — expand a project to see its lines')),
         h('span', { class: 'spacer' }),
         h('div', { class: 'legend' },
           h('span', null, h('i', { class: 'lg unlinked' }), 'No tasks'),
@@ -7903,7 +7985,7 @@ function commentsSection(p, ctx) {
     const rightW = 62;
     const titleW = W - M - rightW - 6 - x - (o.label ? PM.pdf.textWidth(o.label.toUpperCase(), 7, true) + 10 : 0);
     pg.text(PM.pdf.fit(o.title || 'Project planning', titleW, 8, false), x, top + 3.5, { size: 8, color: C.muted });
-    pg.text(PM.pdf.fit(o.scope === 'all' ? 'All active projects' : p.name, titleW, 15, true), x, top + 10, { size: 15, bold: true, color: C.text });
+    pg.text(PM.pdf.fit(o.scope === 'all' ? 'All active projects' : PM.pname(p), titleW, 15, true), x, top + 10, { size: 15, bold: true, color: C.text });
     const sub = o.scope === 'all' ? '' : [p.client, p.id].filter(Boolean).join('  ·  ');
     if (sub) pg.text(PM.pdf.fit(sub, titleW, 9), x, top + 15, { size: 9, color: C.muted });
     // document block (right)
@@ -8316,7 +8398,7 @@ function commentsSection(p, ctx) {
       exportBtn.disabled = true; exportBtn.textContent = 'Creating PDF…';
       try {
         const blob = await render(o, projectId);
-        const name = U.slugify((o.scope === 'all' ? 'planning-all-projects' : (project.id + '-' + project.name)) + (o.revision ? '-rev-' + o.revision : '')) + '.pdf';
+        const name = U.slugify((o.scope === 'all' ? 'planning-all-projects' : (project.id + '-' + PM.pname(project))) + (o.revision ? '-rev-' + o.revision : '')) + '.pdf';
         if (project && o.scope !== 'all' && (project.pdf_docno !== meta.docNo || project.pdf_revision !== meta.revision)) PM.store.update('projects', project._key, { pdf_docno: meta.docNo, pdf_revision: meta.revision });
         try { PM.portfolio.local.set(LS, JSON.stringify({ preset: presetId === '_custom' ? 'customer' : presetId, preparedBy: meta.preparedBy })); } catch (e) { /* ignore */ }
         const how = await PM.pdf.deliver(blob, name);
@@ -8468,7 +8550,7 @@ function commentsSection(p, ctx) {
     const projects = PM.store.projects().filter(p => p.status !== 'archived' && p.status !== 'completed' && p.status !== 'lost' && PM.stage.matches(p));
     const title = h('input', { type: 'text', id: 'tt-title', placeholder: 'What needs to be done?' });
     const person = h('select', { id: 'tt-person' }, people.map(p => h('option', { value: p.id, selected: p.id === preset.person || null }, p.name)));
-    const proj = h('select', { id: 'tt-project' }, h('option', { value: '' }, '— Personal task (no project) —'), projects.map(p => h('option', { value: p.id, selected: p.id === (preset.project || '') || null }, p.id + ' · ' + p.name)));
+    const proj = h('select', { id: 'tt-project' }, h('option', { value: '' }, '— Personal task (no project) —'), projects.map(p => h('option', { value: p.id, selected: p.id === (preset.project || '') || null }, p.id + ' · ' + PM.pname(p))));
     const line = h('select', { id: 'tt-line' });
     const fillLines = () => {
       line.innerHTML = '';
@@ -9023,6 +9105,43 @@ function commentsSection(p, ctx) {
   const U = PM.util, h = U.h;
   const state = { status: 'open', person: '' };
 
+  /* a task in a larger window: title and description get room; the other fields as well */
+  function taskDialog(rec, isNew) {
+    const def = PM.collection('tasks');
+    const v = Object.assign({}, rec);
+    const fieldRow = (key, wide) => {
+      const f = def.fields.find(x => x.key === key);
+      const inp = PM.ui.input(f, v[key], { record: v, projectId: rec.project, collection: 'tasks', onCommit: val => { v[key] = val; } });
+      if (inp.tagName === 'INPUT' && inp.type !== 'checkbox') inp.addEventListener('input', () => { v[key] = inp.value; });
+      return h('label', { class: 'form-row' + (wide ? ' wide' : '') }, h('span', null, f.label + (f.required ? ' *' : '')), inp);
+    };
+    const title = h('input', { type: 'text', id: 'td-title', value: v.title || '', class: 'td-title' });
+    title.addEventListener('input', () => { v.title = title.value; });
+    const desc = h('textarea', { id: 'td-desc', rows: 12, class: 'td-desc' });
+    desc.value = v.description || '';
+    desc.addEventListener('input', () => { v.description = desc.value; });
+    const logged = U.sum(PM.store.list('hours', x => x.project === rec.project && x.task === rec.id), x => U.num(x.hours));
+    const p = PM.store.project(rec.project);
+    const dlg = PM.ui.dialog({
+      title: rec.id + (p ? ' · ' + PM.pname(p) : ''), wide: true, className: 'task-dlg',
+      content: h('div', null,
+        h('label', { class: 'form-row wide', for: 'td-title' }, h('span', null, 'Task *'), title),
+        h('label', { class: 'form-row wide', for: 'td-desc' }, h('span', null, 'Description'), desc),
+        h('div', { class: 'form-grid' }, ['status', 'priority', 'assignee', 'line', 'start', 'due', 'estimate'].map(k => fieldRow(k))),
+        logged ? h('p', { class: 'small muted' }, 'Logged: ' + U.fmtNum(logged) + ' h') : null),
+      footLeft: h('button', { class: 'btn ghost danger-text', onclick: () => { if (!confirm('Delete task ' + rec.id + '?')) return; PM.store.remove('tasks', rec._key); dlg.close(); } }, 'Delete'),
+      actions: [{ label: 'Cancel', onClick: () => { if (isNew && !String(rec.title || '').trim() && !String(v.title || '').trim()) PM.store.remove('tasks', rec._key); } },
+        { label: 'Save', primary: true, onClick: () => {
+          if (!String(v.title || '').trim()) { PM.ui.toast('Give the task a title.', 'warn'); title.focus(); return false; }
+          const patch = {};
+          def.fields.forEach(f => { if (f.type !== 'id' && v[f.key] !== rec[f.key] && !(v[f.key] == null && rec[f.key] === '')) patch[f.key] = v[f.key]; });
+          if (Object.keys(patch).length) PM.store.update('tasks', rec._key, patch);
+        } }]
+    });
+    setTimeout(() => (isNew ? title : desc).focus(), 50);
+  }
+  PM.taskDialog = taskDialog;
+
   PM.registerModule({
     id: 'tasks', title: 'Tasks', icon: '☑', order: 30, hidden: true, navAs: 'planning',   // reached through Planning → Tasks
     render(el, ctx) {
@@ -9044,7 +9163,7 @@ function commentsSection(p, ctx) {
       PM.store.list('hours', ctx.projectId ? { project: ctx.projectId } : null).forEach(x => { if (x.task) { const k = x.project + '/' + x.task; hoursByTask.set(k, (hoursByTask.get(k) || 0) + U.num(x.hours)); } });
 
       el.appendChild(h('div', { class: 'page-head' },
-        h('div', null, h('h1', null, 'Tasks'), h('p', { class: 'muted' }, (ctx.project ? ctx.project.name : 'All projects') + ' · ' + counts.open + ' open, ' + counts.done + ' done'))));
+        h('div', null, h('h1', null, 'Tasks'), h('p', { class: 'muted' }, (ctx.project ? PM.pname(ctx.project) : 'All projects') + ' · ' + counts.open + ' open, ' + counts.done + ' done'))));
 
       el.appendChild(h('div', { class: 'toolbar' }, PM.planSwitch ? PM.planSwitch(ctx, 'tasks') : null));
       el.appendChild(h('div', { class: 'toolbar wrap' },
@@ -9061,7 +9180,10 @@ function commentsSection(p, ctx) {
         id: 'tasks', collection: 'tasks', projectId: ctx.projectId, rows, showProject: !ctx.projectId,
         emptyText: ctx.projectId ? 'No tasks match this filter.' : 'No tasks match. Select a project to add tasks.',
         newRecord: ctx.projectId ? () => ({ status: 'todo', assignee: state.person || '' }) : false,
-        extra: [{ key: 'logged', label: 'Logged h', width: 85, align: 'right', after: 'estimate', value: t => { const v = hoursByTask.get(t.project + '/' + t.id) || 0; return v ? U.fmtNum(v) : ''; }, sortVal: t => hoursByTask.get(t.project + '/' + t.id) || 0 }],
+        onAdd: rec => taskDialog(rec, true),
+        columns: PM.collection('tasks').fields.map(f => f.key).filter(k => k !== 'title'),
+        extra: [{ key: 'title', label: 'Task', after: 'id', width: 220, value: t => t.title || '', sortVal: t => t.title || '',
+          render: t => h('button', { type: 'button', class: 'link-btn task-open', title: 'Open the task', onclick: () => taskDialog(t) }, t.title || '(no title)', t.description ? h('span', { class: 'task-has-desc', 'aria-hidden': 'true' }, ' ¶') : null) },{ key: 'logged', label: 'Logged h', width: 85, align: 'right', after: 'estimate', value: t => { const v = hoursByTask.get(t.project + '/' + t.id) || 0; return v ? U.fmtNum(v) : ''; }, sortVal: t => hoursByTask.get(t.project + '/' + t.id) || 0 }],
         totals: { estimate: r => U.fmtNum(U.sum(r, t => t.estimate)), logged: r => U.fmtNum(U.sum(r, t => hoursByTask.get(t.project + '/' + t.id) || 0)) }
       }));
     }
@@ -9200,6 +9322,8 @@ PM.surveys = (function () {
         const co = PM.contacts ? PM.contacts.companyOf(p) : null, cp = PM.contacts ? PM.contacts.contactOf(p) : null;
         switch (pf) {
           case 'number': return p.number || '';
+          case 'name': return PM.pname(p);
+          case 'object': return p.name || '';
           case 'address': return p.address || '';
           case 'client': return p.client || (co && co.name) || '';
           case 'contact': return cp ? cp.name : '';
@@ -11866,7 +11990,7 @@ PM.surveyPdf = (function () {
     const all = PM.store.list('surveys', ctx.projectId ? { project: ctx.projectId } : null)
       .sort((a, b) => String((b.values || {}).date || '').localeCompare(String((a.values || {}).date || '')) || b.id.localeCompare(a.id));
     el.appendChild(h('div', { class: 'page-head' },
-      h('div', null, h('h1', null, 'Forms'), h('p', { class: 'muted' }, (ctx.project ? ctx.project.name : 'All projects') + ' · ' + all.length + ' form' + (all.length === 1 ? '' : 's'))),
+      h('div', null, h('h1', null, 'Forms'), h('p', { class: 'muted' }, (ctx.project ? PM.pname(ctx.project) : 'All projects') + ' · ' + all.length + ' form' + (all.length === 1 ? '' : 's'))),
       h('span', { class: 'spacer' }),
       h('a', { class: 'btn ghost', href: '#/settings?tab=forms' }, 'Edit forms'),
       h('button', { class: 'btn primary', onclick: () => newDialog(ctx) }, '+ New form')));
@@ -11893,7 +12017,7 @@ PM.surveyPdf = (function () {
           h('span', { class: 'pill small st-' + (r.status === 'complete' ? 'done' : 'review') }, STATUS[r.status] || r.status),
           h('button', { type: 'button', class: 'icon-btn sv-card-del', title: 'Delete', 'aria-label': 'Delete ' + r.id, onclick: e => { e.preventDefault(); e.stopPropagation(); deleteSurvey(r, () => ctx.rerender()); } }, '✕')),
         h('div', { class: 'survey-card-title' }, v.client || (p ? p.client : '') || (p ? p.name : '')),
-        h('div', { class: 'muted small' }, [v.address ? v.address.split('\n')[0] : '', p && !ctx.projectId ? p.name : ''].filter(Boolean).join(' · ') || ' '),
+        h('div', { class: 'muted small' }, [v.address ? v.address.split('\n')[0] : '', p && !ctx.projectId ? PM.pname(p) : ''].filter(Boolean).join(' · ') || ' '),
         h('div', { class: 'kv' }, h('span', { class: 'small' }, pr.done + ' / ' + pr.total), PM.ui.meter(pr.done, pr.total, '', 'progress')),
         h('div', { class: 'muted small' }, [r.id, v.date ? U.fmtDate(v.date) : '', who ? who.name : '', S.photoCount(r) + ' photo' + (S.photoCount(r) === 1 ? '' : 's')].filter(Boolean).join(' · ')));
     })));
@@ -11923,7 +12047,7 @@ PM.surveyPdf = (function () {
     };
     drawTpl();
     const projects = PM.store.projects().filter(p => p.status !== 'archived');
-    const projSel = h('select', { id: 'sv-project' }, h('option', { value: '' }, '— choose a project —'), projects.map(p => h('option', { value: p.id, selected: p.id === pid || null }, p.id + ' · ' + p.name + (p.client ? ' (' + p.client + ')' : ''))),
+    const projSel = h('select', { id: 'sv-project' }, h('option', { value: '' }, '— choose a project —'), projects.map(p => h('option', { value: p.id, selected: p.id === pid || null }, p.id + ' · ' + PM.pname(p) + (p.client ? ' (' + p.client + ')' : ''))),
       h('option', { value: '_new' }, '+ New project…'));
     const newObj = h('input', { type: 'text', id: 'sv-newobj', placeholder: 'Object, e.g. Pump room Hospital North' });
     const newClient = h('input', { type: 'text', id: 'sv-newclient', placeholder: 'Client' });
@@ -12036,7 +12160,7 @@ PM.surveyPdf = (function () {
     el.appendChild(h('div', { class: 'sv-head' },
       h('a', { class: 'back-link', href: '#/surveys?project=' + rec.project }, '‹ Forms'),
       h('div', { class: 'sv-title-row' },
-        h('div', { class: 'grow' }, h('h1', { translate: 'no' }, t.name), h('p', { class: 'muted' }, rec.id + ' · ' + (p ? p.name : rec.project))),
+        h('div', { class: 'grow' }, h('h1', { translate: 'no' }, t.name), h('p', { class: 'muted' }, rec.id + ' · ' + (p ? PM.pname(p) : rec.project))),
         h('div', { class: 'sv-actions' }, statusSel, pdfBtn, delBtn)),
       h('div', { class: 'sv-progress' }, progMeter, progEl),
       naBox,
@@ -12833,7 +12957,7 @@ PM.formsEditor = (function () {
       if (state.person) rows = rows.filter(x => x.person === state.person);
 
       el.appendChild(h('div', { class: 'page-head' },
-        h('div', null, h('h1', null, 'Hours'), h('p', { class: 'muted' }, (ctx.project ? ctx.project.name : 'All projects') + ' · ' + U.fmtNum(U.sum(rows, x => x.hours)) + ' h · ' + U.fmtMoney(U.sum(rows, calc.entryCost)) + ' labour in this selection'))));
+        h('div', null, h('h1', null, 'Hours'), h('p', { class: 'muted' }, (ctx.project ? PM.pname(ctx.project) : 'All projects') + ' · ' + U.fmtNum(U.sum(rows, x => x.hours)) + ' h · ' + U.fmtMoney(U.sum(rows, calc.entryCost)) + ' labour in this selection'))));
 
       // Quick entry
       if (ctx.project) {
@@ -13287,7 +13411,7 @@ PM.costsPdf = (function () {
   function copyDialog(ctx) {
     const sources = PM.store.projects().filter(p => p.id !== ctx.projectId && PM.store.list('estimate', { project: p.id }).length);
     if (!sources.length) { PM.ui.toast('No other project has an estimate yet.', 'warn'); return; }
-    const sel = h('select', { id: 'est-copy-src' }, sources.map(p => h('option', { value: p.id }, p.id + ' · ' + p.name + ' (' + PM.store.list('estimate', { project: p.id }).length + ' lines)')));
+    const sel = h('select', { id: 'est-copy-src' }, sources.map(p => h('option', { value: p.id }, p.id + ' · ' + PM.pname(p) + ' (' + PM.store.list('estimate', { project: p.id }).length + ' lines)')));
     const prices = h('input', { type: 'checkbox', checked: true, id: 'est-copy-prices' });
     PM.ui.dialog({
       title: 'Copy estimate from another project',
@@ -13446,7 +13570,7 @@ PM.costsPdf = (function () {
       PM.ui.stat('Actual costs so far', M(act)),
       PM.ui.stat('Current margin', M(rev - act), rev ? pct((rev - act) / rev) + ' of revenue' : '', rev - act < 0 ? 'bad' : 'accent')));
     el.appendChild(PM.ui.reportTable('Estimate vs actual per project', [
-      { key: 'name', label: 'Project', value: x => x.p.id + ' · ' + x.p.name, format: (v, x) => h('a', { href: '#/costs?project=' + x.p.id, onclick: () => { state.view = 'analysis'; } }, v) },
+      { key: 'name', label: 'Project', value: x => x.p.id + ' · ' + PM.pname(x.p), format: (v, x) => h('a', { href: '#/costs?project=' + x.p.id, onclick: () => { state.view = 'analysis'; } }, v) },
       { key: 'offer', label: 'Offer price', format: v => v ? M(v) : '—' },
       { key: 'extrasRevenue', label: 'Extras', format: v => v ? M(v) : '' },
       { key: 'estimate', label: 'Estimate', format: (v, x) => x.lines ? M(v) : h('span', { class: 'muted' }, 'none') },
@@ -13463,7 +13587,7 @@ PM.costsPdf = (function () {
   function pdfSpecs(view, ctx, customer) {
     const calc = PM.services.calc;
     const p = ctx.project;
-    const sub = p ? [p.id + ' · ' + p.name, p.client].filter(Boolean).join(' · ') : 'All projects';
+    const sub = p ? [p.id + ' · ' + PM.pname(p), p.client].filter(Boolean).join(' · ') : 'All projects';
     const file = (name) => U.slugify(name + '-' + (p ? p.id : 'all-projects') + '-' + U.todayISO()) + '.pdf';
     const st = (label, value, sub2, bad) => ({ label, value, sub: sub2 || '', bad: !!bad });
 
@@ -13531,7 +13655,7 @@ PM.costsPdf = (function () {
     if (!p) {
       const list = portfolioList(), T = k => U.sum(list, x => x[k]);
       const rev = T('revenue'), act = T('actual'), cost = U.sum(list, x => x.baseEstimate + x.extrasCost);
-      const rows = list.map(x => ({ bad: x.currentMargin != null && x.currentMargin < 0 ? [8] : [], cells: [x.p.id + ' ' + x.p.name, x.offer ? M(x.offer) : '—', x.extrasRevenue ? M(x.extrasRevenue) : '', x.lines ? M(x.estimate) : 'none', pct(x.marginPct), M(x.actual), pct(x.used), U.fmtPct(x.progress), x.currentMargin == null ? '—' : M(x.currentMargin) + ' · ' + pct(x.currentMarginPct)] }));
+      const rows = list.map(x => ({ bad: x.currentMargin != null && x.currentMargin < 0 ? [8] : [], cells: [x.p.id + ' ' + PM.pname(x.p), x.offer ? M(x.offer) : '—', x.extrasRevenue ? M(x.extrasRevenue) : '', x.lines ? M(x.estimate) : 'none', pct(x.marginPct), M(x.actual), pct(x.used), U.fmtPct(x.progress), x.currentMargin == null ? '—' : M(x.currentMargin) + ' · ' + pct(x.currentMarginPct)] }));
       rows.push({ kind: 'total', cells: ['Total', M(T('offer')), M(T('extrasRevenue')), M(T('estimate')), rev ? pct((rev - cost) / rev) : '', M(act), '', '', rev ? M(rev - act) + ' · ' + pct((rev - act) / rev) : ''] });
       return { file: file('estimate-vs-actual'), spec: { title: 'Estimate vs actual', subtitle: sub, internal: true, orientation: 'landscape',
         stats: [st('Revenue', M(rev)), st('Estimated cost', M(cost), rev ? 'planned margin ' + pct((rev - cost) / rev) : ''), st('Actual costs so far', M(act)), st('Current margin', M(rev - act), rev ? pct((rev - act) / rev) + ' of revenue' : '', rev - act < 0)],
@@ -13579,7 +13703,7 @@ PM.costsPdf = (function () {
           .concat(PM.configurator ? [['config', 'Configurator', 'Config.']] : []).concat(PM.prices ? [['prices', 'Price list', 'Prices']] : []);
       if (!views.some(v => v[0] === state.view)) state.view = ctx.projectId ? 'estimate' : 'actual';
       el.appendChild(h('div', { class: 'page-head' },
-        h('div', null, h('h1', null, 'Costs'), h('p', { class: 'muted' }, (ctx.project ? ctx.project.name : 'All projects') + ' · amounts in EUR, excl. VAT')),
+        h('div', null, h('h1', null, 'Costs'), h('p', { class: 'muted' }, (ctx.project ? PM.pname(ctx.project) : 'All projects') + ' · amounts in EUR, excl. VAT')),
         h('div', { class: 'seg seg-main', role: 'tablist', 'aria-label': 'View' }, views.map(([k, t, short]) =>
           h('button', { class: state.view === k ? 'on' : '', role: 'tab', 'aria-selected': String(state.view === k), onclick: () => { state.view = k; ctx.rerender(); } },
             h('span', { class: 'lbl-long' }, t), h('span', { class: 'lbl-short' }, short)))),
@@ -14185,7 +14309,7 @@ Example prices (EUR, cost price, excl. VAT) to get started — not WB's real pri
       else if (s.startsWith('table:')) { const name = sec.slice(6).trim(); (d.tables[name] = d.tables[name] || { columns: rawHeader.slice(), rows: [] }).rows.push(cells); }
       else if (s === 'prices') { if (row.code) d.prices.push({ code: row.code, category: row.category || '', description: row.description || '', unit: row.unit || '', price: row.price || '' }); }
       else if (s === 'values') d.values.push({ key: row.key, label: row.label || row.key, value: row.value, unit: row.unit || '' });
-      else if (s === 'calculations') d.calcs.push({ key: row.key, label: row.label || row.key, formula: row.formula, unit: row.unit || '', decimals: row.decimals === '' || row.decimals == null ? 1 : +row.decimals });
+      else if (s === 'calculations') d.calcs.push({ key: row.key, label: row.label || row.key, formula: row.formula, unit: row.unit || '', decimals: row.decimals === '' || row.decimals == null ? 1 : +row.decimals, hidden: /^(no|nee|n|0|false|hide|verberg)$/i.test(String(row.show || '').trim()) });
       else if (s === 'cost lines') d.lines.push({ subject: row.subject || '', description: row.description || '', qty: row.qty || '1', unit: row.unit || '', price: row.price || '0', show: row.show || '' });
       else if (s === 'summary') d.summary.push({ label: row.label || '', value: row.value || '' });
     }
@@ -14380,8 +14504,9 @@ Example prices (EUR, cost price, excl. VAT) to get started — not WB's real pri
       return { c, value: v };
     });
     const fill = s => String(s || '').replace(/\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (all, k) => (k in scope ? fmtVal(scope[k], d, k) : all));
-    const lines = [];
-    d.lines.forEach(l => {
+    const lines = [], offLines = [];
+    const off = new Set(Array.isArray(values._off) ? values._off : []);     // cost lines switched off in this design
+    d.lines.forEach((l, li) => {
       if (!visible(d, l.show, scope)) return;
       let qty = 0, price = 0;
       try { qty = num(evaluate(l.qty, scope, d)); } catch (e) { errors.push(fill(l.description) + ' (qty): ' + e.message); return; }
@@ -14389,7 +14514,8 @@ Example prices (EUR, cost price, excl. VAT) to get started — not WB's real pri
       if (!qty || !isFinite(qty)) return;
       let unit = l.unit;
       if (/^=|\(/.test(unit)) { try { unit = String(evaluate(unit.replace(/^=/, ''), scope, d)); } catch (e) { /* keep as written */ } }
-      lines.push({ subject: l.subject || d.subject, description: fill(l.description), qty: Math.round(qty * 1000) / 1000, unit, price: Math.round(price * 100) / 100, amount: Math.round(qty * price * 100) / 100 });
+      const line = { ref: l.description, subject: l.subject || d.subject, description: fill(l.description), qty: Math.round(qty * 1000) / 1000, unit, price: Math.round(price * 100) / 100, amount: Math.round(qty * price * 100) / 100 };
+      (off.has(l.description) ? offLines : lines).push(line);
     });
     const summary = d.summary.map(s => {
       let val = s.value;
@@ -14397,7 +14523,7 @@ Example prices (EUR, cost price, excl. VAT) to get started — not WB's real pri
       else val = fill(val);
       return { label: fill(s.label), value: val };
     }).filter(s => s.value !== '' && s.value !== '—' && !/^(0|nee|no|none|geen)$/i.test(s.value));
-    return { scope, params, calcs, lines, total: Math.round(U.sum(lines, l => l.amount) * 100) / 100, errors, summary, fill };
+    return { scope, params, calcs, lines, offLines, total: Math.round(U.sum(lines, l => l.amount) * 100) / 100, errors, summary, fill };
   }
   function fmtVal(v, d, key) {
     if (typeof v !== 'number') return String(v == null ? '' : v);
@@ -14487,21 +14613,34 @@ Example prices (EUR, cost price, excl. VAT) to get started — not WB's real pri
       h('div', { class: 'btn-row' },
         h('button', { class: 'btn small primary', id: 'cf-add-prices', onclick: () => { const n = PM.prices.addMissing(res.missing); PM.ui.toast(n + ' price(s) added to the price list' + (res.missing.some(m => m.price === '') ? ' — fill in the empty ones' : '') + '.', 'ok'); ctx.rerender(); } }, 'Add to the price list'),
         h('button', { class: 'btn small', onclick: () => ctx.navigate('costs', { view: 'prices' }) }, 'Open price list'))));
-    const shownCalcs = res.calcs.filter(c => c.c.label && !/^_/.test(c.c.key));
-    if (shownCalcs.length) out.appendChild(h('div', { class: 'cf-calcs', translate: 'no' }, shownCalcs.map(c => h('div', { class: 'cf-calc' }, h('span', { class: 'muted small' }, c.c.label), h('b', null, typeof c.value === 'number' ? fmtVal(c.value, d, c.c.key) + (c.c.unit ? ' ' + c.c.unit : '') : String(c.value))))));
+    const shownCalcs = res.calcs.filter(c => c.c.label && !/^_/.test(c.c.key) && !c.c.hidden);
+    const editCalcs = () => PM.configuratorEditor.open(Object.assign({}, d, { tab: 'calc' }), () => ctx.rerender());
+    if (res.calcs.some(c => c.c.label && !/^_/.test(c.c.key))) out.appendChild(h('div', { class: 'cf-calcs-box' },
+      h('div', { class: 'cf-calcs-head' }, h('span', { class: 'small muted' }, 'Calculated values'), h('span', { class: 'spacer' }),
+        h('button', { type: 'button', class: 'link-btn small', id: 'cf-edit-calcs', title: 'Choose which calculated values are shown: Edit → Values & calculations → Show' }, 'Choose what is shown…')),
+      h('div', { class: 'cf-calcs', translate: 'no' }, shownCalcs.map(c => h('div', { class: 'cf-calc' }, h('span', { class: 'muted small' }, c.c.label), h('b', null, typeof c.value === 'number' ? fmtVal(c.value, d, c.c.key) + (c.c.unit ? ' ' + c.c.unit : '') : String(c.value)))))));
+    const ecb = out.querySelector('#cf-edit-calcs'); if (ecb) ecb.addEventListener('click', editCalcs);
     const tb = h('tbody');
     let lastSubj = null;
+    const toggleLine = (ref, on) => { const s2 = new Set(Array.isArray(st.values._off) ? st.values._off : []); if (on) s2.delete(ref); else s2.add(ref); st.values._off = Array.from(s2); if (!st.values._off.length) delete st.values._off; st.dirty = true; ctx.rerender(); };
+    const lineRow = (l, on) => h('tr', { class: on ? null : 'cf-off' },
+      h('td', { class: 'cf-onoff' }, h('input', { type: 'checkbox', checked: on || null, 'aria-label': (on ? 'Leave out: ' : 'Include: ') + l.description, title: on ? 'Leave this line out of this design' : 'Include this line again', onchange: e => toggleLine(l.ref, e.target.checked) })),
+      h('td', { translate: 'no' }, l.description), h('td', { class: 'right nowrap' }, U.fmtNum(l.qty)), h('td', { class: 'nowrap', translate: 'no' }, l.unit), h('td', { class: 'right nowrap' }, U.fmtMoney(l.price, true)), h('td', { class: 'right nowrap' }, on ? U.fmtMoney(l.amount, true) : '—'));
     res.lines.forEach(l => {
-      if (l.subject !== lastSubj) { lastSubj = l.subject; tb.appendChild(h('tr', { class: 'cf-subj' }, h('td', { colspan: 5, translate: 'no' }, l.subject))); }
-      tb.appendChild(h('tr', null, h('td', { translate: 'no' }, l.description), h('td', { class: 'right nowrap' }, U.fmtNum(l.qty)), h('td', { class: 'nowrap', translate: 'no' }, l.unit), h('td', { class: 'right nowrap' }, U.fmtMoney(l.price, true)), h('td', { class: 'right nowrap' }, U.fmtMoney(l.amount, true))));
+      if (l.subject !== lastSubj) { lastSubj = l.subject; tb.appendChild(h('tr', { class: 'cf-subj' }, h('td', { colspan: 6, translate: 'no' }, l.subject))); }
+      tb.appendChild(lineRow(l, true));
     });
+    if (res.offLines.length) {
+      tb.appendChild(h('tr', { class: 'cf-subj cf-off-head' }, h('td', { colspan: 6 }, 'Left out of this design')));
+      res.offLines.forEach(l => tb.appendChild(lineRow(l, false)));
+    }
     const q = U.num(st.qty) || 1;
     out.appendChild(h('div', { class: 'tbl-scroll' }, h('table', { class: 'data cf-lines' },
-      h('thead', null, h('tr', null, h('th', null, 'Line'), h('th', { class: 'right' }, 'Qty'), h('th', null, 'Unit'), h('th', { class: 'right' }, 'Unit price'), h('th', { class: 'right' }, 'Amount'))),
+      h('thead', null, h('tr', null, h('th', { title: 'Untick to leave a line out of this design' }, '✓'), h('th', null, 'Line'), h('th', { class: 'right' }, 'Qty'), h('th', null, 'Unit'), h('th', { class: 'right' }, 'Unit price'), h('th', { class: 'right' }, 'Amount'))),
       tb,
       h('tfoot', null,
-        h('tr', { class: 'total' }, h('td', { colspan: 4 }, 'Cost price per piece'), h('td', { class: 'right nowrap' }, U.fmtMoney(res.total, true))),
-        q !== 1 ? h('tr', { class: 'total' }, h('td', { colspan: 4 }, 'Total for ' + q + ' pieces'), h('td', { class: 'right nowrap' }, U.fmtMoney(res.total * q, true))) : null))));
+        h('tr', { class: 'total' }, h('td', { colspan: 5 }, 'Cost price per piece'), h('td', { class: 'right nowrap' }, U.fmtMoney(res.total, true))),
+        q !== 1 ? h('tr', { class: 'total' }, h('td', { colspan: 5 }, 'Total for ' + q + ' pieces'), h('td', { class: 'right nowrap' }, U.fmtMoney(res.total * q, true))) : null))));
 
     // save / add to estimate
     const nameInp = h('input', { type: 'text', id: 'cf-name', value: st.name || '', placeholder: 'e.g. Skid 1 – pump unit' });
@@ -14735,7 +14874,7 @@ PM.configuratorEditor = (function () {
       { key: 'options', label: 'Choices (A; B; C)', w: 220 }, { key: 'unit', label: 'Unit', w: 60 }, { key: 'default', label: 'Default', w: 110 },
       { key: 'show', label: 'Only when…', w: 170, mono: true }, { key: 'key', label: 'Key', w: 120, mono: true }],
     values: [{ key: 'label', label: 'Name', w: 260 }, { key: 'value', label: 'Value', w: 110 }, { key: 'unit', label: 'Unit', w: 90 }, { key: 'key', label: 'Key', w: 140, mono: true }],
-    calculations: [{ key: 'label', label: 'Name (empty = hidden)', w: 200 }, { key: 'formula', label: 'Formula', w: 420, mono: true }, { key: 'unit', label: 'Unit', w: 60 }, { key: 'decimals', label: 'Dec.', w: 50 }, { key: 'key', label: 'Key', w: 120, mono: true }],
+    calculations: [{ key: 'label', label: 'Name', w: 200 }, { key: 'show', label: 'Show', w: 80, select: [['yes', 'Yes'], ['no', 'No']] }, { key: 'formula', label: 'Formula', w: 420, mono: true }, { key: 'unit', label: 'Unit', w: 60 }, { key: 'decimals', label: 'Dec.', w: 50 }, { key: 'key', label: 'Key', w: 120, mono: true }],
     'cost lines': [{ key: 'subject', label: 'Subject', w: 110 }, { key: 'description', label: 'Description ({key} = answer)', w: 260 }, { key: 'qty', label: 'Quantity (formula)', w: 190, mono: true }, { key: 'unit', label: 'Unit', w: 70 },
       { key: 'price', label: 'Unit price (formula, e.g. price("weld"))', w: 260, mono: true }, { key: 'show', label: 'Only when…', w: 150, mono: true }],
     summary: [{ key: 'label', label: 'Line', w: 180 }, { key: 'value', label: 'Text ({key}) or =formula', w: 520, mono: true }],
@@ -14823,14 +14962,14 @@ PM.configuratorEditor = (function () {
   const HELP = {
     parameters: 'The questions of the design. Choice: the options separated by ; — or table=profiles; column=size; where=type:profile_type to take them from a table. “Only when…” hides the question unless the condition is true, e.g. profile_type != "None" or plated.',
     tables: 'Look-up tables, e.g. weight and paint surface per profile. Use them in formulas with lookup("table", "column", key1, key2…): the first columns are the keys. Prices do not belong here — put them in Costs → Price list.',
-    calc: 'Values are fixed numbers (not prices). Calculations are worked out from top to bottom and can use questions, values and earlier calculations. Functions: if(test, a, b), min, max, round(x, dec), ceil, floor, abs, sqrt, lookup(…), price("code"), unit("code"). A key starting with _ is hidden.',
+    calc: 'Values are fixed numbers (not prices). Calculations are worked out from top to bottom and can use questions, values and earlier calculations. Functions: if(test, a, b), min, max, round(x, dec), ceil, floor, abs, sqrt, lookup(…), price("code"), unit("code"). A key starting with _ is hidden. Set “Show” to No to keep a value out of the cost package (it is still worked out and can be used in formulas).',
     'cost lines': 'One line per cost item. Quantity and unit price are formulas; a unit price normally comes from the price list: price("weld") or price("plate " + material). A line is left out when “Only when…” is false or the quantity is 0.',
     summary: 'The design summary for the quote. Text with {key} for an answer, or =formula, e.g. =if(plated, plate_t + " mm", ""). Empty results are left out.',
     prices: 'The prices this configurator uses, with example values. When you save, codes that are not in Costs → Price list yet are added there. After that, change prices in the price list only — not here.'
   };
   function open(d, onDone) {
     const m = parse(d.text || '');
-    let tab = 'parameters', textMode = false, textVal = '';
+    let tab = d.tab || 'parameters', textMode = false, textVal = '';
     const body = h('div', { class: 'ce-body' });
     const msg = h('p', { class: 'small ce-msg', role: 'status' });
     const tabsEl = h('div', { class: 'tabs ce-tabs', role: 'tablist' });
@@ -14985,7 +15124,7 @@ PM.configuratorEditor = (function () {
         h('input', { type: 'date', value: state.to, 'aria-label': 'To', onchange: e => { state.to = e.target.value; ctx.rerender(); } })] : null;
 
       el.appendChild(h('div', { class: 'page-head' },
-        h('div', null, h('h1', null, 'Report · ' + (ctx.project ? ctx.project.name : 'All projects')),
+        h('div', null, h('h1', null, 'Report · ' + (ctx.project ? PM.pname(ctx.project) : 'All projects')),
           h('p', { class: 'muted' }, periodText + (ctx.project ? ' · ' + ctx.project.id + (ctx.project.client ? ' · ' + ctx.project.client : '') : ' · ' + s.projects.length + ' project(s)') + ' · generated ' + U.fmtDate(U.todayISO())))));
 
       el.appendChild(h('div', { class: 'toolbar no-print' }, periodSel, custom,
@@ -15272,7 +15411,7 @@ PM.configuratorEditor = (function () {
  * Templates with the same name and a different "variant" (prefab / no prefab) are one mail
  * whose text follows the Prefab option.
  *
- * Placeholders: {deliverydate} {transporter} {project_address} {object} {project_id} {client}
+ * Placeholders: {deliverydate} {transporter} {project_address} {object} {project_name} {project_id} {client}
  *   {pickup} {pickup_name} {items} {mass} {size} {manager} {today}
  */
 (function () {
@@ -15281,7 +15420,7 @@ PM.configuratorEditor = (function () {
   PM.defineCollection({
     name: 'mails', label: 'Mail templates', scope: 'global', file: 'settings/mail-templates.md',
     heading: 'Mail templates', idPrefix: 'MT-',
-    intro: 'Mail templates for Advanced → Write. Same name + variant "prefab" / "no prefab" = one mail whose text follows the Prefab option. Placeholders: {deliverydate} {transporter} {project_address} {object} {project_id} {client} {pickup} {pickup_name} {items} {mass} {size} {manager} {today}.',
+    intro: 'Mail templates for Advanced → Write. Same name + variant "prefab" / "no prefab" = one mail whose text follows the Prefab option. Placeholders: {deliverydate} {transporter} {project_address} {object} {project_name} {project_id} {client} {pickup} {pickup_name} {items} {mass} {size} {manager} {today}.',
     fields: [
       { key: 'id', label: 'ID', type: 'id', width: 80 },
       { key: 'name', label: 'Name', type: 'string', width: 150, required: true, suggest: true },
@@ -15425,7 +15564,7 @@ Onderdelen:
     return {
       deliverydate: o.date ? nlDate(o.date) : '',
       transporter: o.transporter === 'Other' ? o.other : o.transporter,
-      project_address: address, object: p.name || '', project_id: p.id || '', client: p.client || '',
+      project_address: address, object: p.name || '', project_name: p.title || p.name || '', project_id: p.id || '', client: p.client || '',
       pickup, pickup_name: pickup.split(',')[0].trim(),
       items: itemsText(pid, o.sel),
       mass: m ? S.kg(m, 'nl') : '',
@@ -15718,7 +15857,7 @@ Onderdelen:
     function header() {
       if (logo) { const lh = 9, lw = Math.min(40, lh * logo.ratio); pg.image(logo, M, M - 2, lw, lw / logo.ratio); }
       else if (co.name) pg.text(co.name, M, M + 4, { size: 10, bold: true, color: C.text });
-      pg.text(PM.pdf.fit(raw(p.id + ' · ' + p.name), CW - 50, 8.5, true), W - M, M + 2.5, { size: 8.5, bold: true, color: C.text, align: 'right' });
+      pg.text(PM.pdf.fit(raw(p.id + ' · ' + PM.pname(p)), CW - 50, 8.5, true), W - M, M + 2.5, { size: 8.5, bold: true, color: C.text, align: 'right' });
       pg.text(PM.pdf.fit(raw((chapterNo ? chapterNo + '  ' : '') + chapterTitle), CW - 50, 7.5), W - M, M + 6.8, { size: 7.5, color: C.muted, align: 'right' });
       pg.line(M, M + 10, W - M, M + 10, { stroke: '#c9ced8', lw: 0.35 });
       y = M + 17;
@@ -15822,7 +15961,7 @@ Onderdelen:
       else if (co.name) pg.text(co.name, M, M + 9, { size: 16, bold: true, color: C.text });
       y = 70;
       pg.text(T('Project summary'), M, y, { size: 12, bold: true, color: C.accent }); y += 11;
-      PM.pdf.wrap(raw(p.name), CW, 22, true).forEach(ln => { pg.text(ln, M, y, { size: 22, bold: true, color: C.text }); y += 9.5; });
+      PM.pdf.wrap(raw(PM.pname(p)), CW, 22, true).forEach(ln => { pg.text(ln, M, y, { size: 22, bold: true, color: C.text }); y += 9.5; });
       y += 2;
       pg.text(raw(p.id + (p.client ? '  ·  ' + p.client : '')), M, y, { size: 12, color: C.muted }); y += 6;
       if (p.address) { String(p.address).split(/\n+/).forEach(ln => { pg.text(raw(ln), M, y, { size: 10, color: C.muted }); y += 4.8; }); }
@@ -15847,7 +15986,7 @@ Onderdelen:
       if (has('project.details')) {
         heading(T('Project details'));
         const mgr = p.manager ? PM.store.find('people', p.manager) : null;
-        keyValues([[T('Project number'), p.id], [T('Object'), p.name], [T('Client'), p.client], [T('Project address'), p.address ? String(p.address).split(/\n+/).join(', ') : ''],
+        keyValues([[T('Project number'), p.id], [T('Project name'), p.title || ''], [T('Object'), p.name], [T('Client'), p.client], [T('Project address'), p.address ? String(p.address).split(/\n+/).join(', ') : ''],
           [T('Status'), T(p.status || 'active')], [T('Project manager'), mgr ? mgr.name : p.manager], [T('Start'), U.fmtDate(p.start)], [T('End'), U.fmtDate(p.end)],
           finance ? [T('Offer price'), U.num(p.budget_costs) ? money(p.budget_costs) : ''] : null,
           p.description ? [T('Description'), p.description] : null]);
@@ -16206,6 +16345,169 @@ Onderdelen:
 })();
 
   </script>
+  <script>/* js/modules/map.js */
+/* PM Tool — modules/map.js
+ * Advanced → Map: projects (by their project address) and companies (clients, suppliers, partners…)
+ * on an OpenStreetMap map. No account or key needed.
+ *   - Map: Leaflet (loaded from cdnjs when the tab is opened) with OpenStreetMap tiles.
+ *   - Addresses are looked up once with OpenStreetMap Nominatim (one per second, as its rules ask)
+ *     and the position is stored with the record (key "geo" in project.md / settings/companies.md),
+ *     together with the address it belongs to: when the address changes it is looked up again.
+ *   - A marker that is in the wrong place can be dragged; the new position is kept.
+ * With a project chosen at the top only that project is shown; with "All projects" every project.
+ */
+(function () {
+  const U = PM.util, h = U.h;
+  const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+  const TYPES = [['client', 'Clients', '#1f9d55'], ['supplier', 'Suppliers', '#d9822b'], ['partner', 'Partners', '#8e5bd9'], ['other', 'Other companies', '#5b6b8c']];
+  const st = { layers: { projects: true, client: false, supplier: false, partner: false, other: false }, completed: false };
+  try { const s = JSON.parse(PM.portfolio.local.get('pm.map.layers') || 'null'); if (s) Object.assign(st.layers, s.layers || {}), st.completed = !!s.completed; } catch (e) { /* ignore */ }
+  const remember = () => { try { PM.portfolio.local.set('pm.map.layers', JSON.stringify(st)); } catch (e) { /* ignore */ } };
+
+  // where the position is kept (hidden from the edit forms)
+  ['projects', 'companies'].forEach(n => { const d = PM.collection(n); if (d && !d.fields.some(f => f.key === 'geo')) d.fields.push({ key: 'geo', label: 'Map position', type: 'string', hidden: true }); });
+
+  const normAddr = a => String(a || '').replace(/\s*\n\s*/g, ', ').replace(/\s+/g, ' ').trim();
+  const keyOf = a => normAddr(a).toLowerCase();
+  /* geo = "lat,lng|address it belongs to" ("|manual" when you moved the marker); "none|address" = not found */
+  function geoOf(rec) {
+    const addr = rec.address;
+    if (!normAddr(addr)) return { state: 'noaddr' };
+    const g = String(rec.geo || ''), parts = g.split('|');
+    if (!g || (parts[1] || '').toLowerCase() !== keyOf(addr)) return { state: 'todo' };
+    if (parts[0] === 'none') return { state: 'notfound' };
+    const ll = parts[0].split(',').map(Number);
+    return ll.length === 2 && ll.every(isFinite) ? { state: 'ok', lat: ll[0], lng: ll[1], manual: parts[2] === 'manual' } : { state: 'todo' };
+  }
+
+  let leafletP = null;
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve(window.L);
+    if (leafletP) return leafletP;
+    leafletP = new Promise((res, rej) => {
+      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.min.css'; document.head.appendChild(css);
+      const s = document.createElement('script'); s.src = LEAFLET + 'leaflet.min.js';
+      s.onload = () => res(window.L); s.onerror = () => { leafletP = null; rej(new Error('The map could not be loaded (no internet connection?)')); };
+      document.head.appendChild(s);
+    });
+    return leafletP;
+  }
+
+  /* ---------- looking up addresses (Nominatim, one per second) ---------- */
+  let busy = false;
+  async function geocode(addr) {
+    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=0&q=' + encodeURIComponent(normAddr(addr));
+    const r = await fetch(url, { headers: { 'Accept-Language': U.locale === 'nl' ? 'nl' : 'en' } });
+    if (!r.ok) throw new Error('Address search answered ' + r.status);
+    const j = await r.json();
+    return j && j[0] ? { lat: +j[0].lat, lng: +j[0].lon } : null;
+  }
+  async function lookupAll(items, onProgress) {
+    if (busy) return;
+    busy = true;
+    let n = 0;
+    try {
+      for (const it of items) {
+        onProgress(++n, items.length);
+        let pos = null;
+        try { pos = await geocode(it.rec.address); } catch (e) { PM.ui.toast(e.message, 'warn'); break; }
+        const fresh = it.coll === 'projects' ? PM.store.project(it.rec.id) : PM.store.find('companies', it.rec.id);
+        if (fresh) PM.store.update(it.coll, fresh._key, { geo: (pos ? pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6) : 'none') + '|' + normAddr(it.rec.address) });
+        await new Promise(r => setTimeout(r, 1100));
+      }
+    } finally { busy = false; }
+  }
+
+  /* ---------- the tab ---------- */
+  function collect(ctx) {
+    const out = [];
+    if (st.layers.projects) {
+      const ps = ctx.project ? [ctx.project] : PM.store.projects().filter(p => p.status !== 'archived' && (st.completed || p.status !== 'completed') && PM.stage.matches(p));
+      ps.forEach(p => out.push({ coll: 'projects', rec: p, kind: 'project', color: p.color || '#2f6fed',
+        title: [p.name, p.client, p.title].filter(Boolean).join(' – ') || p.id, sub: p.id + ' · ' + (p.status || ''), href: '#/dashboard?project=' + p.id }));
+    }
+    PM.store.list('companies').forEach(c => {
+      const t = TYPES.find(x => x[0] === (c.type || 'client')) || TYPES[3];
+      if (!st.layers[t[0]]) return;
+      if (ctx.project && ctx.project.company !== c.id) return;     // one project: only its own company
+      out.push({ coll: 'companies', rec: c, kind: t[0], color: t[2], title: c.name || c.id, sub: t[1].replace(/s$/, '').replace(/ie$/, 'y'), href: '#/contacts?company=' + c.id });
+    });
+    return out;
+  }
+
+  function render(el, ctx) {
+    const items = collect(ctx);
+    const withGeo = items.map(it => Object.assign(it, { g: geoOf(it.rec) }));
+    const todo = withGeo.filter(it => it.g.state === 'todo');
+    const shown = withGeo.filter(it => it.g.state === 'ok');
+    const notFound = withGeo.filter(it => it.g.state === 'notfound'), noAddr = withGeo.filter(it => it.g.state === 'noaddr');
+
+    el.appendChild(h('div', { class: 'page-head' },
+      h('div', null, h('h1', null, 'Map'), h('p', { class: 'muted' }, h('span', { translate: ctx.project ? 'no' : null }, ctx.project ? PM.pname(ctx.project) : 'All projects'), h('span', null, ' · ' + shown.length + ' on the map'))),
+      h('span', { class: 'spacer' }), ctx.project ? null : PM.stage.control({ onChange: () => setTimeout(() => ctx.rerender(), 0) })));
+    const cb = (k, label, color) => {
+      const i = h('input', { type: 'checkbox', checked: st.layers[k] || null, 'data-layer': k });
+      i.addEventListener('change', () => { st.layers[k] = i.checked; remember(); ctx.rerender(); });
+      return h('label', { class: 'check map-layer' }, i, h('i', { class: 'map-dot', style: { background: color } }), ' ' + label);
+    };
+    const comp = h('input', { type: 'checkbox', checked: st.completed || null });
+    comp.addEventListener('change', () => { st.completed = comp.checked; remember(); ctx.rerender(); });
+    const prog = h('span', { class: 'small muted', 'aria-live': 'polite' });
+    el.appendChild(h('div', { class: 'toolbar wrap map-bar' },
+      cb('projects', ctx.project ? 'This project' : 'Projects', '#2f6fed'),
+      TYPES.map(([k, label, color]) => cb(k, label, color)),
+      ctx.project ? null : h('label', { class: 'check small' }, comp, ' incl. completed projects'),
+      h('span', { class: 'spacer' }), prog));
+
+    const box = h('div', { class: 'map-box', id: 'map-box' });
+    el.appendChild(box);
+    const info = h('div', { class: 'map-info small' });
+    el.appendChild(info);
+    const issues = [];
+    if (todo.length) issues.push(h('p', null, todo.length + ' address(es) are being looked up…'));
+    if (notFound.length) issues.push(h('div', null, h('b', null, 'Address not found: '), notFound.map((it, i) => [i ? ', ' : '', h('a', { href: it.href, translate: 'no' }, it.title)]),
+      h('span', { class: 'muted' }, ' — check the address (street + number, postcode, town), or drag a marker there by hand after correcting it.')));
+    if (noAddr.length) issues.push(h('div', { class: 'muted' }, h('b', null, 'No address: '), noAddr.slice(0, 30).map((it, i) => [i ? ', ' : '', h('a', { href: it.href, translate: 'no' }, it.title)]), noAddr.length > 30 ? ' …' : ''));
+    issues.push(h('p', { class: 'muted' }, 'Positions come from OpenStreetMap and are kept with the project or company. A marker in the wrong place can be dragged to the right spot.'));
+    issues.forEach(x => info.appendChild(x));
+
+    loadLeaflet().then(L => {
+      if (!box.isConnected) return;
+      const map = L.map(box, { scrollWheelZoom: true });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+      const pts = [];
+      shown.forEach(it => {
+        const icon = L.divIcon({ className: 'map-pin-wrap', html: '<span class="map-pin ' + (it.kind === 'project' ? 'p' : 'c') + '" style="--c:' + it.color + '"></span>', iconSize: [22, 22], iconAnchor: [11, 22], popupAnchor: [0, -20] });
+        const m = L.marker([it.g.lat, it.g.lng], { icon, draggable: true, title: it.title }).addTo(map);
+        const pop = document.createElement('div');
+        pop.className = 'map-pop';
+        pop.setAttribute('translate', 'no');
+        pop.append(h('b', null, it.title), h('div', { class: 'muted' }, it.sub), h('div', null, normAddr(it.rec.address)), h('a', { href: it.href }, it.coll === 'projects' ? PM.i18n.t('Open project') : PM.i18n.t('Open company')));
+        m.bindPopup(pop);
+        m.on('dragend', () => {
+          const ll = m.getLatLng();
+          const fresh = it.coll === 'projects' ? PM.store.project(it.rec.id) : PM.store.find('companies', it.rec.id);
+          if (fresh) PM.store.update(it.coll, fresh._key, { geo: ll.lat.toFixed(6) + ',' + ll.lng.toFixed(6) + '|' + normAddr(fresh.address) + '|manual' });
+          PM.ui.toast(PM.i18n.t('Position saved.'), 'ok');
+        });
+        pts.push([it.g.lat, it.g.lng]);
+      });
+      if (pts.length > 1) map.fitBounds(pts, { padding: [40, 40], maxZoom: 14 });
+      else if (pts.length === 1) map.setView(pts[0], 14);
+      else map.setView([52.1, 5.2], 7);           // the Netherlands
+      setTimeout(() => map.invalidateSize(), 50);
+    }).catch(e => { box.appendChild(h('div', { class: 'error-box' }, e.message)); });
+
+    if (todo.length && !busy) {
+      lookupAll(todo, (n, of) => { prog.textContent = PM.i18n.t('Looking up addresses: ') + n + ' / ' + of; })
+        .then(() => { prog.textContent = ''; if (PM.app.route.module === 'reports') ctx.rerender(); });
+    }
+  }
+
+  PM.advanced.register({ id: 'map', title: 'Map', order: 60, description: 'Projects and companies on a map.', render });
+})();
+
+  </script>
   <script>/* js/modules/contacts.js */
 /* PM Tool — modules/contacts.js
  * Contacts: the companies you work with (clients, suppliers…) and their people, per portfolio.
@@ -16326,7 +16628,7 @@ Onderdelen:
     const projects = projectsOf(c.id).sort((a, b) => a.id.localeCompare(b.id));
     const free = PM.store.projects().filter(p => p.company !== c.id && p.status !== 'archived');
     const linkSel = h('select', { id: 'ct-link', 'aria-label': 'Link a project' }, h('option', { value: '' }, 'Link a project…'),
-      free.map(p => h('option', { value: p.id }, p.id + ' · ' + p.name + (p.client ? ' · ' + p.client : ''))));
+      free.map(p => h('option', { value: p.id }, p.id + ' · ' + PM.pname(p) + (p.client ? ' · ' + p.client : ''))));
     linkSel.addEventListener('change', () => { const p = PM.store.project(linkSel.value); if (!p) return; PM.store.update('projects', p._key, { company: c.id }); PM.ui.toast(p.id + ' linked to ' + c.name + '.', 'ok'); ctx.rerender(); });
     el.append(
       h('div', { class: 'card' },
@@ -16348,7 +16650,7 @@ Onderdelen:
       h('div', { class: 'card' }, h('h3', null, 'Projects'),
         projects.length ? h('ul', { class: 'line-list ct-projects' }, projects.map(p => h('li', null,
           h('i', { class: 'pf-dot', style: { background: p.color || '#2f6fed' } }),
-          h('a', { class: 'grow', href: '#/dashboard?project=' + p.id }, h('b', null, p.id), ' · ' + p.name),
+          h('a', { class: 'grow', href: '#/dashboard?project=' + p.id }, h('b', null, p.id), ' · ' + PM.pname(p)),
           h('span', { class: 'pill small st-' + p.status }, p.status),
           p.contact && PM.store.find('contacts', p.contact) ? h('span', { class: 'small muted' }, PM.store.find('contacts', p.contact).name) : null,
           h('button', { class: 'icon-btn', title: 'Unlink from this company', 'aria-label': 'Unlink ' + p.id, onclick: () => { PM.store.update('projects', p._key, { company: '', contact: '' }); ctx.rerender(); } }, '✕'))))
@@ -16381,6 +16683,183 @@ Onderdelen:
     companyOf: p => (p && p.company ? PM.store.find('companies', p.company) : null),
     contactOf: p => (p && p.contact ? PM.store.find('contacts', p.contact) : null)
   };
+})();
+
+  </script>
+  <script>/* js/modules/sales.js */
+/* PM Tool — modules/sales.js
+ * Sales follow-up for quotes, in the spirit of an opportunity in a CRM:
+ *   - per quote: sales phase, chance of order (%), expected order date, quote sent, next follow-up + next step,
+ *     competitor and (when lost) the reason. Stored as extra keys in the project's project.md.
+ *   - activities: calls, mails, visits and meetings per project (activities.md), each with a note; logging one
+ *     can set the next follow-up at the same time.
+ *   - pipeline: Dashboard with "Quotes" selected shows all open quotes with value, chance, weighted value and
+ *     the next follow-up (overdue in red).
+ * Follow-ups are dates you set yourself; nothing is created automatically.
+ */
+(function () {
+  const U = PM.util, h = U.h;
+  const PHASES = ['lead', 'qualified', 'quote sent', 'negotiation', 'verbal yes'];
+  const PHASE_CHANCE = { lead: 10, qualified: 25, 'quote sent': 50, negotiation: 70, 'verbal yes': 90 };
+  const TYPES = ['call', 'mail', 'visit', 'meeting', 'note'];
+  const ICON = { call: '☎', mail: '✉', visit: '⌂', meeting: '◎', note: '✎' };
+
+  // sales fields on a project (edited on the project dashboard, not in ✎ Edit project)
+  (function () {
+    const def = PM.collection('projects');
+    if (!def || def.fields.some(f => f.key === 'q_chance')) return;
+    def.fields.push(
+      { key: 'q_phase', label: 'Sales phase', type: 'enum', options: PHASES, group: 'sales' },
+      { key: 'q_chance', label: 'Chance of order (%)', type: 'number', group: 'sales' },
+      { key: 'q_close', label: 'Expected order date', type: 'date', group: 'sales' },
+      { key: 'q_sent', label: 'Quote sent', type: 'date', group: 'sales' },
+      { key: 'q_followup', label: 'Next follow-up', type: 'date', group: 'sales' },
+      { key: 'q_next', label: 'Next step', type: 'string', group: 'sales' },
+      { key: 'q_competitor', label: 'Competitor', type: 'string', group: 'sales' },
+      { key: 'q_lost_reason', label: 'Reason lost', type: 'string', group: 'sales' });
+  })();
+
+  PM.defineCollection({
+    name: 'activities', label: 'Activities', scope: 'project', file: 'activities.md',
+    heading: 'Activities', idPrefix: 'A-',
+    intro: 'Sales activities on this project (calls, mails, visits, meetings), newest at the bottom.',
+    fields: [
+      { key: 'id', label: 'ID', type: 'id', width: 80 },
+      { key: 'date', label: 'Date', type: 'date', width: 130, required: true },
+      { key: 'type', label: 'Type', type: 'enum', options: TYPES, default: 'call', width: 110 },
+      { key: 'contact', label: 'Contact person', type: 'ref', ref: 'contacts', width: 170 },
+      { key: 'by', label: 'By', type: 'ref', ref: 'people', width: 140 },
+      { key: 'note', label: 'Note', type: 'text', multiline: true, rows: 3 }
+    ],
+    title: r => (r.type || 'activity') + ' ' + (r.date || '')
+  });
+
+  const today = () => U.todayISO();
+  const chanceOf = p => (p.q_chance === '' || p.q_chance == null ? (PHASE_CHANCE[p.q_phase] != null ? PHASE_CHANCE[p.q_phase] : null) : U.num(p.q_chance));
+  const valueOf = p => U.num(p.budget_costs);
+  const overdue = p => p.q_followup && p.q_followup <= today();
+
+  function field(p, key, opts) {
+    const f = PM.collection('projects').fields.find(x => x.key === key);
+    const inp = PM.ui.input(f, p[key], { record: p, collection: 'projects', focusKey: 'projects|' + p._key + '|' + key, onCommit: v => {
+      const patch = { [key]: v };
+      // a phase brings its usual chance, unless you typed your own
+      if (key === 'q_phase' && PHASE_CHANCE[v] != null && (p.q_chance === '' || p.q_chance == null || Object.values(PHASE_CHANCE).includes(U.num(p.q_chance)))) patch.q_chance = PHASE_CHANCE[v];
+      PM.store.update('projects', p._key, patch);
+    } });
+    if (inp.id === '') inp.id = 'sl-' + key;
+    return h('label', { class: 'form-row' + (opts && opts.wide ? ' wide' : '') + (opts && opts.cls ? ' ' + opts.cls : '') }, h('span', null, f.label), inp);
+  }
+
+  /* ---------- on the project dashboard ---------- */
+  function projectCards(el, p, ctx) {
+    if (!PM.stage.isQuote(p)) return;
+    const ch = chanceOf(p), val = valueOf(p);
+    const acts = PM.store.list('activities', { project: p.id }).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || b.id.localeCompare(a.id));
+    const due = overdue(p);
+    el.appendChild(h('div', { class: 'two-col sales-cols' },
+      PM.ui.section('Sales', h('div', null,
+        h('div', { class: 'sales-stats' },
+          h('div', null, h('span', { class: 'muted small' }, 'Quote value'), h('b', null, val ? U.fmtMoney(val) : '—'), val ? null : h('a', { href: 'javascript:void 0', class: 'small', onclick: () => PM.app.editProjectDialog(p.id) }, ' set offer price')),
+          h('div', null, h('span', { class: 'muted small' }, 'Chance'), h('b', null, ch == null ? '—' : U.fmtNum(ch) + '%')),
+          h('div', null, h('span', { class: 'muted small' }, 'Weighted'), h('b', null, val && ch != null ? U.fmtMoney(val * ch / 100) : '—')),
+          h('div', { class: due ? 'bad-text' : '' }, h('span', { class: 'muted small' }, 'Next follow-up'), h('b', null, p.q_followup ? U.fmtDate(p.q_followup) + (due ? ' !' : '') : '—'))),
+        h('div', { class: 'form-grid sales-grid' },
+          field(p, 'q_phase'), field(p, 'q_chance'), field(p, 'q_close'), field(p, 'q_sent'),
+          field(p, 'q_followup', { cls: due ? 'overdue' : '' }), field(p, 'q_next', { wide: true }), field(p, 'q_competitor'),
+          p.status === 'lost' ? field(p, 'q_lost_reason', { wide: true }) : null))),
+      PM.ui.section('Follow-ups and contact moments', h('div', null,
+        h('div', { class: 'btn-row' }, h('button', { class: 'btn primary small', id: 'sl-log', onclick: () => logDialog(p) }, '+ Log a call, mail or visit')),
+        acts.length ? h('ul', { class: 'line-list sales-acts' }, acts.map(a => {
+          const cp = a.contact ? PM.store.find('contacts', a.contact) : null, by = a.by ? PM.store.find('people', a.by) : null;
+          return h('li', null, h('span', { class: 'sales-ic', 'aria-hidden': 'true' }, ICON[a.type] || '•'),
+            h('div', { class: 'grow' }, h('div', { class: 'small muted' }, U.fmtDate(a.date), ' · ', h('span', null, a.type || ''), [cp ? cp.name : '', by ? by.name : ''].filter(Boolean).map(x => ' · ' + x).join('')),
+              h('div', { class: 'sales-note', translate: 'no' }, a.note || '')),
+            h('button', { class: 'icon-btn', title: 'Edit', 'aria-label': 'Edit ' + a.id, onclick: () => logDialog(p, a) }, '✎'));
+        })) : h('p', { class: 'muted small' }, 'Nothing logged yet.')))));
+  }
+
+  /* log (or edit) a contact moment; optionally set the next follow-up */
+  function logDialog(p, rec) {
+    const v = Object.assign({ date: today(), type: 'call', contact: p.contact || '', note: '' }, rec || {});
+    const typeSeg = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'Type' });
+    const drawType = () => { typeSeg.innerHTML = ''; TYPES.forEach(t => typeSeg.appendChild(h('button', { type: 'button', role: 'radio', 'aria-checked': String(v.type === t), class: v.type === t ? 'on' : '', onclick: () => { v.type = t; drawType(); } }, (ICON[t] || '') + ' ' + t))); };
+    drawType();
+    const date = h('input', { type: 'date', id: 'sl-date', value: v.date });
+    const contacts = PM.store.list('contacts').filter(c => !p.company || c.company === p.company || c.id === v.contact);
+    const contact = h('select', { id: 'sl-contact' }, h('option', { value: '' }, '—'), contacts.map(c => h('option', { value: c.id, selected: c.id === v.contact || null }, c.name)));
+    const note = h('textarea', { id: 'sl-note', rows: 5 }); note.value = v.note || '';
+    const fu = h('input', { type: 'date', id: 'sl-fu', value: rec ? '' : (p.q_followup && p.q_followup > today() ? p.q_followup : '') });
+    const quick = [[2, '+2 days'], [7, '+1 week'], [14, '+2 weeks'], [30, '+1 month']].map(([d, t]) => h('button', { type: 'button', class: 'btn ghost small', onclick: () => { fu.value = U.addDays(today(), d); } }, t));
+    const next = h('input', { type: 'text', id: 'sl-next', value: rec ? '' : (p.q_next || ''), placeholder: 'e.g. call back about the revised price' });
+    PM.ui.dialog({
+      title: rec ? 'Edit ' + rec.id : 'Log a contact moment · ' + PM.pname(p), className: 'sales-dlg',
+      content: h('div', null, typeSeg,
+        h('div', { class: 'form-grid' },
+          h('label', { class: 'form-row', for: 'sl-date' }, h('span', null, 'Date'), date),
+          h('label', { class: 'form-row', for: 'sl-contact' }, h('span', null, 'Contact person'), contact),
+          h('label', { class: 'form-row wide', for: 'sl-note' }, h('span', null, 'Note'), note)),
+        rec ? null : h('div', { class: 'sales-next' }, h('b', { class: 'small' }, 'Next follow-up'),
+          h('div', { class: 'btn-row' }, fu, quick),
+          h('label', { class: 'form-row wide', for: 'sl-next' }, h('span', null, 'Next step'), next))),
+      footLeft: rec ? h('button', { class: 'btn ghost danger-text', onclick: e => { if (!confirm('Delete ' + rec.id + '?')) return; PM.store.remove('activities', rec._key); e.target.closest('dialog').close(); e.target.closest('dialog').remove(); } }, 'Delete') : null,
+      actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, onClick: () => {
+        const data = { date: date.value || today(), type: v.type, contact: contact.value, note: note.value.trim() };
+        if (rec) PM.store.update('activities', rec._key, data);
+        else {
+          const me = PM.portfolio.local.get('pm.surveyor') || '';
+          PM.store.insert('activities', Object.assign({ by: PM.store.find('people', me) ? me : '' }, data), p.id);
+          const patch = { q_followup: fu.value || '', q_next: next.value.trim() };
+          if (v.type === 'mail' && !p.q_sent && /quote|offer|offerte/i.test(data.note)) patch.q_sent = data.date;
+          PM.store.update('projects', p._key, patch);
+        }
+        PM.ui.toast('Saved.', 'ok');
+      } }]
+    });
+    setTimeout(() => note.focus(), 50);
+  }
+
+  /* ---------- pipeline (Dashboard, Quotes) ---------- */
+  function pipeline(el, ctx) {
+    const qs = PM.store.projects().filter(p => p.status === 'quote');
+    if (!qs.length) return;
+    const st = pipeline.st = pipeline.st || { sort: 'followup' };
+    const key = { followup: p => p.q_followup || '9999', close: p => p.q_close || '9999', value: p => -valueOf(p), weighted: p => -(valueOf(p) * (chanceOf(p) || 0)), chance: p => -(chanceOf(p) || 0) }[st.sort];
+    qs.sort((a, b) => { const x = key(a), y = key(b); return typeof x === 'number' ? x - y : String(x).localeCompare(String(y)); });
+    const total = U.sum(qs, valueOf), weighted = U.sum(qs, p => valueOf(p) * (chanceOf(p) || 0) / 100);
+    const dueN = qs.filter(overdue).length;
+    const th = (k, t, cls) => h('th', { class: (cls || '') + (st.sort === k ? ' sorted' : ''), style: { cursor: 'pointer' }, onclick: () => { st.sort = k; ctx.rerender(); } }, t, st.sort === k ? ' ▲' : '');
+    el.appendChild(PM.ui.section('Quote pipeline', h('div', null,
+      h('div', { class: 'stats' },
+        PM.ui.stat('Open quotes', String(qs.length)),
+        PM.ui.stat('Pipeline value', U.fmtMoney(total)),
+        PM.ui.stat('Weighted value', U.fmtMoney(weighted), 'value × chance of order'),
+        PM.ui.stat('Follow-ups due', String(dueN), dueN ? 'today or earlier' : 'none due', dueN ? 'bad' : '')),
+      h('div', { class: 'tbl-scroll' }, h('table', { class: 'data sales-pipe' },
+        h('thead', null, h('tr', null, h('th', null, 'Quote'), h('th', null, 'Phase'), th('value', 'Value', 'right'), th('chance', 'Chance', 'right'), th('weighted', 'Weighted', 'right'), th('close', 'Expected order'), th('followup', 'Next follow-up'), h('th', null, 'Next step'))),
+        h('tbody', null, qs.map(p => { const ch = chanceOf(p), due = overdue(p);
+          return h('tr', { class: due ? 'due' : null },
+            h('td', null, h('a', { href: '#/dashboard?project=' + p.id, translate: 'no' }, [p.name, p.client, p.title].filter(Boolean).join(' – '))),
+            h('td', null, p.q_phase || ''), h('td', { class: 'right nowrap' }, valueOf(p) ? U.fmtMoney(valueOf(p)) : '—'),
+            h('td', { class: 'right' }, ch == null ? '—' : U.fmtNum(ch) + '%'), h('td', { class: 'right nowrap' }, valueOf(p) && ch != null ? U.fmtMoney(valueOf(p) * ch / 100) : '—'),
+            h('td', { class: 'nowrap' }, p.q_close ? U.fmtDate(p.q_close) : ''),
+            h('td', { class: 'nowrap' + (due ? ' bad-text' : '') }, p.q_followup ? U.fmtDate(p.q_followup) : '', due ? ' !' : ''),
+            h('td', { translate: 'no' }, p.q_next || ''));
+        })))))));
+  }
+
+  /* when a quote is lost: ask why (optional) */
+  function lostDialog(p) {
+    const r = h('input', { type: 'text', id: 'sl-lost', placeholder: 'e.g. price, delivery time, competitor chosen' });
+    const c = h('input', { type: 'text', id: 'sl-comp', value: p.q_competitor || '' });
+    PM.ui.dialog({ title: 'Quote lost · ' + PM.pname(p), content: h('div', { class: 'form-grid' },
+        h('label', { class: 'form-row wide', for: 'sl-lost' }, h('span', null, 'Reason lost (optional)'), r),
+        h('label', { class: 'form-row wide', for: 'sl-comp' }, h('span', null, 'Competitor (optional)'), c)),
+      actions: [{ label: 'Cancel' }, { label: 'Mark as lost', danger: true, onClick: () => { PM.store.update('projects', p._key, { status: 'lost', q_lost_reason: r.value.trim(), q_competitor: c.value.trim(), q_followup: '' }); PM.ui.toast(p.id + ' marked as lost.', 'ok'); } }] });
+    setTimeout(() => r.focus(), 50);
+  }
+
+  PM.sales = { projectCards, pipeline, lostDialog, logDialog, chanceOf, PHASES, PHASE_CHANCE };
 })();
 
   </script>
@@ -16429,7 +16908,7 @@ Onderdelen:
       });
     });
     box.appendChild(PM.ui.section('Import / export', h('div', null,
-      h('p', { class: 'muted small' }, 'CSV works per collection and uses the project selected in the top bar (' + (ctx.project ? ctx.project.name : 'none — exports all projects, imports need a "project" column') + '). JSON contains everything.'),
+      h('p', { class: 'muted small' }, 'CSV works per collection and uses the project selected in the top bar (' + (ctx.project ? PM.pname(ctx.project) : 'none — exports all projects, imports need a "project" column') + '). JSON contains everything.'),
       h('label', { class: 'form-row inline' }, h('span', null, 'Collection'), collSel),
       h('div', { class: 'btn-row' }, exportBtns),
       h('div', { class: 'btn-row' }, importBtns))));
