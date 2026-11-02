@@ -1075,6 +1075,7 @@ textarea { font: inherit; }
 .pl-gap-t { fill: var(--accent); font-weight: 600; paint-order: stroke; stroke: var(--surface); pointer-events: none; }
 .pl-dim line { stroke: var(--text); }
 .pl-dim-t { fill: var(--text); paint-order: stroke; stroke: var(--surface); pointer-events: none; }
+.sv-na-toggle { display: inline-flex; align-items: center; gap: 4px; margin: 6px 0 2px; }
 
 </style>
 </head>
@@ -3052,6 +3053,8 @@ PM.i18n.add('nl', {
   '‹ All companies': '‹ Alle bedrijven', 'No projects linked yet.': 'Nog geen projecten gekoppeld.', 'Link a project…': 'Project koppelen…', 'Link a project': 'Project koppelen',
   'Unlink from this company': 'Loskoppelen van dit bedrijf', '+ New project for this company': '+ Nieuw project voor dit bedrijf',
   ' · this portfolio only': ' · alleen dit portfolio',
+  ' Hide questions answered N/A (on screen and in the PDF), unless “Show N/A questions” is switched on in the filled-in form': ' Vragen met antwoord NVT verbergen (op het scherm en in de PDF), tenzij “NVT-vragen tonen” aan staat in het ingevulde formulier',
+  'Show N/A questions': 'NVT-vragen tonen',
   'All projects · amounts in EUR, excl. VAT': 'Alle projecten · bedragen in EUR, excl. btw'
 });
 (function () {
@@ -6162,7 +6165,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-02.1';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-02.2';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -9130,6 +9133,8 @@ function commentsSection(p, ctx) {
  * Front matter "layout: report" prints the form as a report (numbered chapters, paragraphs),
  *   "header: key; key" = lines top right, "footer: Made by: {made_by} · rev. {revision}".
  *   A section flagged [nopdf] is not printed (e.g. report data used in the header).
+ * Front matter "na: hide" hides questions answered N/A (on screen and in the PDF) until "Show N/A questions" is
+ *   switched on for that filled-in form (stored as the answer show_na = yes).
  * Options for every type: +optional (not counted in progress) · +nolabel · +nopdf (not printed) ·
  *   show=<key>=<value> (only shown when that answer is given) · show=<key>~<text> (answer contains text)
  *
@@ -9291,6 +9296,16 @@ PM.surveys = (function () {
     });
     return values;
   }
+
+  /* N/A answers: "N/A" / "NVT" / "n.v.t." / "not applicable" (any type), or N/A on a check item without remark or photos */
+  const NA_RE = /^(n\/?a|nvt|n\.v\.t\.?|not applicable|niet van toepassing)$/i;
+  function isNA(f, values) {
+    const v = values[f.key];
+    if (f.type === 'check') return v === 'na' && !values[f.key + '_note'] && !(values[f.key + '_ph'] || []).length;
+    return typeof v === 'string' && NA_RE.test(v.trim());
+  }
+  /* true when N/A questions are to be hidden in this filled-in form */
+  const hidesNA = (t, values) => !!(t && t.hideNA) && String((values || {}).show_na || '') !== 'yes';
 
   /* rows of a "rtable" question: one per repeated section that has the first column's question.
    * -> { head: [field…], rows: [[field…]…] } (fields are the expanded ones, so their keys carry __n) */
@@ -9526,7 +9541,7 @@ PM.surveys = (function () {
       id: String(d.id || '').trim(), name: d.name || d.id, short: d.short || d.name || d.id, lang: d.lang || 'en',
       description: d.description || '', signatures: d.signatures ? String(d.signatures).split(';').map(x => x.trim()).filter(Boolean) : [],
       retired: /^(yes|true|ja)$/i.test(String(d.retired || '').trim()),
-      report: String(d.layout || '').trim() === 'report', header: d.header ? String(d.header).split(';').map(x => x.trim()).filter(Boolean) : [], footer: d.footer || '',
+      report: String(d.layout || '').trim() === 'report', hideNA: /^hide$/i.test(String(d.na || '').trim()), header: d.header ? String(d.header).split(';').map(x => x.trim()).filter(Boolean) : [], footer: d.footer || '',
       diagram: { motor: d.motor || 'MOTOR' }, intro: head.replace(/^\s*#[^\n]*\n?/, '').trim(), sections, source: source || 'data', text
     };
   }
@@ -9538,7 +9553,8 @@ PM.surveys = (function () {
     if (t.retired) meta.retired = 'yes';
     if (t.header && t.header.length) meta.header = t.header.join('; ');
     if (t.footer) meta.footer = t.footer;
-    let out = PM.md.stringifyFrontmatter(meta, ['id', 'name', 'short', 'lang', 'description', 'retired', 'layout', 'header', 'footer', 'signatures', 'motor']);
+    if (t.hideNA) meta.na = 'hide';
+    let out = PM.md.stringifyFrontmatter(meta, ['id', 'name', 'short', 'lang', 'description', 'retired', 'layout', 'na', 'header', 'footer', 'signatures', 'motor']);
     out += '\n# ' + t.name + '\n\n' + (t.intro || 'Form definition. Edit it in the app (Settings → Forms) or here. Columns: key (do not change once used), question, type, options, unit, hint.') + '\n';
     t.sections.forEach(sec => {
       const flags = [sec.diagram ? 'diagram' : '', sec.repeat ? 'repeat=' + sec.repeat : '', sec.nopdf ? 'nopdf' : ''].filter(Boolean).join('; ');
@@ -9758,7 +9774,7 @@ PM.surveys = (function () {
   }
   const PUMPSET_RATIO = 500 / 1000;                     // width / height incl. letters
 
-  return { applyRepeatDefaults, register, registerBuiltin, get, list, fieldsOf, expand, isVisible, resolveKey, keysOf, flatFields, compile, isAnswered, visibleFields, progress, deviations, photoCount, photoPath, marksFor, pumpCheck, pumpRows,
+  return { isNA, hidesNA, applyRepeatDefaults, register, registerBuiltin, get, list, fieldsOf, expand, isVisible, resolveKey, keysOf, flatFields, compile, isAnswered, visibleFields, progress, deviations, photoCount, photoPath, marksFor, pumpCheck, pumpRows,
     drawPumpset, PUMPSET_RATIO, codec, parseForm, serializeForm, saveForm, deleteForm, resetForm, loadFromBackend, lang, PIPE, MARKS, FORMS_DIR,
     footprint,
     /* pump-set drawing options for a record: an electric set shows E-MOTOR */
@@ -11605,7 +11621,8 @@ PM.surveyPdf = (function () {
     let chapter = 0;
     for (const sec of S.expand(t, v)) {
       if (sec.sec.nopdf) continue;
-      const fs = sec.fields.filter(f => S.isVisible(f, v) && !f.nopdf && !usedKeys.has(f.key) && (R || f.type !== 'photos') && !(R && f.optional && f.type !== 'calc' && f.type !== 'rtable' && !S.isAnswered(f, v)));
+      const hideNA = S.hidesNA(t, v);
+      const fs = sec.fields.filter(f => S.isVisible(f, v) && !f.nopdf && !(hideNA && S.isNA(f, v)) && !usedKeys.has(f.key) && (R || f.type !== 'photos') && !(R && f.optional && f.type !== 'calc' && f.type !== 'rtable' && !S.isAnswered(f, v)));
       if (!fs.length) continue;
       if (R) {
         ensure(20);
@@ -11962,6 +11979,7 @@ PM.surveyPdf = (function () {
     const saveNow = () => PM.store.update('surveys', rec._key, { values: v });
     const checks = [];          // [{field, el}] — answered markers
     const rows = [];            // [{field, el}] — for show/hide
+    const touched = new Set();  // answered N/A in this session: stays visible until the form is opened again
     const repeatKeys = new Set(t.sections.filter(s => s.repeat).map(s => s.repeat));
     let diagramDraws = [];
     const liveUpdates = [];     // calc results and text previews, refreshed on every change
@@ -11973,12 +11991,15 @@ PM.surveyPdf = (function () {
       progEl.textContent = pr.done + ' / ' + pr.total + ' ' + T.filled;
       progMeter.firstChild.style.width = (pr.total ? pr.done / pr.total * 100 : 0) + '%';
       checks.forEach(c => { const ok = S.isAnswered(c.field, v); c.el.classList.toggle('on', ok); });
-      rows.forEach(r => { r.el.hidden = !S.isVisible(r.field, v); });
+      const hideNA = S.hidesNA(t, v);
+      rows.forEach(r => { r.el.hidden = !S.isVisible(r.field, v) || (hideNA && !touched.has(r.field.key) && S.isNA(r.field, v)); });
+      if (naBox) { const n = S.visibleFields(rec).filter(f => S.isNA(f, v)).length; naBox.querySelector('.na-n').textContent = n ? ' (' + n + ')' : ''; }
       diagramDraws.forEach(fn => fn());
       liveUpdates.forEach(fn => fn());
     }
     const rerenderSoon = U.debounce(() => { saveNow(); ctx.rerender(); }, 500);
     const set = (key, val, now) => {
+      touched.add(key);
       if (val === '' || val == null || (Array.isArray(val) && !val.length)) delete v[key]; else v[key] = val;
       if ((key === 'surveyor' || key === 'tester' || key === 'inspector') && val) { lastSurveyor = val; try { PM.portfolio.local.set('pm.surveyor', val); } catch (e) { /* ignore */ } }
       refresh();
@@ -12005,12 +12026,20 @@ PM.surveyPdf = (function () {
 
     const secs = S.expand(t, v);
     const p = PM.store.project(rec.project);
+    // forms with "na: hide": questions answered N/A are hidden until this is switched on (also in the PDF)
+    let naBox = null;
+    if (t.hideNA) {
+      const cb = h('input', { type: 'checkbox', id: 'sv-show-na', checked: v.show_na === 'yes' || null });
+      cb.addEventListener('change', () => { set('show_na', cb.checked ? 'yes' : '', true); });
+      naBox = h('label', { class: 'check small sv-na-toggle', for: 'sv-show-na' }, cb, ' ' + (t.lang === 'nl' ? 'NVT-vragen tonen' : 'Show N/A questions'), h('span', { class: 'na-n muted' }));
+    }
     el.appendChild(h('div', { class: 'sv-head' },
       h('a', { class: 'back-link', href: '#/surveys?project=' + rec.project }, '‹ Forms'),
       h('div', { class: 'sv-title-row' },
         h('div', { class: 'grow' }, h('h1', { translate: 'no' }, t.name), h('p', { class: 'muted' }, rec.id + ' · ' + (p ? p.name : rec.project))),
         h('div', { class: 'sv-actions' }, statusSel, pdfBtn, delBtn)),
       h('div', { class: 'sv-progress' }, progMeter, progEl),
+      naBox,
       h('nav', { class: 'sv-nav', 'aria-label': 'Sections', translate: t.lang === 'nl' ? null : 'no' }, secs.map(sec => h('a', { href: '#', onclick: e => { e.preventDefault(); const tgt = document.getElementById('sv-sec-' + sec.id); if (tgt) tgt.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, sec.title)))));
 
     // sections
@@ -12059,7 +12088,7 @@ PM.surveyPdf = (function () {
       const ctl = control(f, id);
       const row = h('div', { class: 'sv-row svr-' + f.type + (f.hideLabel ? ' no-label' : '') }, f.hideLabel ? null : label, ctl,
         f.hint && f.type !== 'estimate' ? h('p', { class: 'small muted sv-hint' }, f.hint) : null);
-      if (f.show) rows.push({ field: f, el: row });
+      rows.push({ field: f, el: row });
       return row;
     }
 
@@ -12620,7 +12649,7 @@ PM.formsEditor = (function () {
   }
 
   function clone(t) {
-    return { id: t.id, name: t.name, short: t.short, lang: t.lang || 'en', description: t.description || '', signatures: (t.signatures || []).slice(), diagram: Object.assign({}, t.diagram), intro: t.intro || '', retired: !!t.retired, report: !!t.report, header: (t.header || []).slice(), footer: t.footer || '',
+    return { id: t.id, name: t.name, short: t.short, lang: t.lang || 'en', description: t.description || '', signatures: (t.signatures || []).slice(), diagram: Object.assign({}, t.diagram), intro: t.intro || '', retired: !!t.retired, report: !!t.report, hideNA: !!t.hideNA, header: (t.header || []).slice(), footer: t.footer || '',
       sections: t.sections.map(s => ({ id: s.id, title: s.title, note: s.note || '', repeat: s.repeat || '', diagram: !!s.diagram, nopdf: !!s.nopdf,
         fields: s.fields.map(f => ({ key: f.key, label: f.label, type: f.type, opt: f.opt != null ? f.opt : '', unit: f.unit || '', hint: f.hint || '' })) })) };
   }
@@ -12684,7 +12713,9 @@ PM.formsEditor = (function () {
         h('label', { class: 'form-row', for: 'fe-short' }, h('span', null, 'Short name (badge)'), inp(t, 'short', { id: 'fe-short' })),
         h('label', { class: 'form-row', for: 'fe-lang' }, h('span', null, 'Language of buttons and PDF'), lang),
         h('label', { class: 'form-row wide', for: 'fe-desc' }, h('span', null, 'Description'), inp(t, 'description', { id: 'fe-desc' })),
-        h('label', { class: 'form-row wide', for: 'fe-sig' }, h('span', null, 'Signature boxes in the PDF (separate with ;)'), sig)));
+        h('label', { class: 'form-row wide', for: 'fe-sig' }, h('span', null, 'Signature boxes in the PDF (separate with ;)'), sig),
+        (() => { const cb = h('input', { type: 'checkbox', id: 'fe-hidena', checked: t.hideNA || null }); cb.addEventListener('change', () => { t.hideNA = cb.checked; });
+          return h('label', { class: 'check wide', for: 'fe-hidena' }, cb, ' Hide questions answered N/A (on screen and in the PDF), unless “Show N/A questions” is switched on in the filled-in form'); })()));
 
       t.sections.forEach((sec, si) => {
         const numberKeys = [];
