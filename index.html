@@ -6162,7 +6162,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-10-28.2';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-02.1';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -13912,6 +13912,160 @@ The prices this configurator uses, with example values. When you save the config
 | coating Hot-dip galvanised | Coating | Hot-dip galvanised (subcontractor), per kg steel | kg | 0.85 |
 | drawing | Engineering | Drawing and work preparation | pcs | 150.00 |
 | packing | Logistics | Packing and loading | pcs | 45.00 |
+` },
+  { id: 'firepack', name: 'Firepack pump set (duty point, pump type, electric / diesel, skid or Europack)', text: `---
+id: firepack
+name: Firepack pump set
+subject: Pump set
+description: Fire pump set (Firepack) from duty point, pump type, driver and build: pump, electric motor or diesel engine, controller, skid or Europack, pipework, options and factory test. Rules and prices are an estimating model with example values — replace them with WB's own.
+---
+# Firepack pump set
+
+Fill in the duty point (flow and pressure), the pump type, the driver and the build. The driver power is worked out from the duty point with a margin for the overload point (150% flow); check it against the pump curve before quoting. All prices come from Costs → Price list.
+
+## Parameters
+
+| key | label | type | options | unit | default | show |
+| --- | --- | --- | --- | --- | --- | --- |
+| flow | Rated flow | number | | m³/h | 150 | |
+| pressure | Rated pressure | number | | bar | 8 | |
+| standard | Standard | choice | NFPA 20; FM; NFPA 20 + FM; EN 12845; VdS / CEA | | NFPA 20 | |
+| pump_type | Pump type | choice | End suction; Split case; Vertical turbine; Multistage | | End suction | |
+| driver | Driver | choice | Electric; Diesel | | Diesel | |
+| build | Build | choice | Standard skid; Custom skid; Europack | | Standard skid | |
+| custom_hours | Extra engineering for the custom skid | number | | h | 16 | build = "Custom skid" |
+| fuel_tank | Fuel tank | yesno | | | yes | driver = "Diesel" |
+| tank_on_skid | Fuel tank on the skid (base tank) | yesno | | | no | driver = "Diesel" and fuel_tank |
+| jockey | Jockey pump | yesno | | | yes | |
+| flow_meter | Flow meter / test loop | yesno | | | yes | |
+| fat | Factory acceptance test (FAT) | yesno | | | yes | |
+| witnessed | FAT witnessed by client / FM | yesno | | | no | fat |
+
+## Table: pumps
+
+Efficiency at the duty point (estimate), the range a pump type is normally used for, and the workshop hours to build a set (electric / diesel).
+
+| type | eff | q_min | q_max | p_max | hours_Electric | hours_Diesel |
+| --- | --- | --- | --- | --- | --- | --- |
+| End suction | 0.72 | 25 | 500 | 14 | 40 | 60 |
+| Split case | 0.80 | 150 | 1500 | 16 | 56 | 80 |
+| Vertical turbine | 0.75 | 50 | 1200 | 20 | 64 | 88 |
+| Multistage | 0.68 | 10 | 150 | 25 | 36 | 54 |
+
+## Table: standards
+
+Factor on pump, driver and controller for listed / approved components.
+
+| standard | factor | note |
+| --- | --- | --- |
+| NFPA 20 | 1.10 | UL listed components |
+| FM | 1.15 | FM approved components |
+| NFPA 20 + FM | 1.18 | UL listed and FM approved |
+| EN 12845 | 1.00 | |
+| VdS / CEA | 1.05 | VdS / CEA approved components |
+
+## Values
+
+| key | label | value | unit |
+| --- | --- | --- | --- |
+| overload | Power margin for the overload point (150% flow) | 1.25 | × |
+| fuel_l_kw | Fuel per kW engine power (NFPA 20: 5.07 l/kW + 10%) | 5.58 | l/kW |
+| engineering_std | Engineering and documentation, standard set | 12 | h |
+
+## Calculations
+
+Keys that start with _ are worked out but not shown.
+
+| key | label | formula | unit | decimals |
+| --- | --- | --- | --- | --- |
+| _eff | | lookup("pumps", "eff", pump_type) | | 2 |
+| _factor | | lookup("standards", "factor", standard) | | 2 |
+| _diesel | | driver = "Diesel" | | 0 |
+| _europack | | build = "Europack" | | 0 |
+| hyd_kw | Hydraulic power | flow * pressure / 36 | kW | 1 |
+| shaft_kw | Shaft power at the duty point | hyd_kw / _eff | kW | 1 |
+| driver_kw | Driver power (with overload margin) | ceil(shaft_kw * overload) | kW | 0 |
+| dn_suction | Suction pipe, indicative inner Ø (2 m/s) | round(sqrt(4 * flow / 3600 / (3.1416 * 2)) * 1000, 0) | mm | 0 |
+| dn_discharge | Discharge pipe, indicative inner Ø (3 m/s) | round(sqrt(4 * flow / 3600 / (3.1416 * 3)) * 1000, 0) | mm | 0 |
+| tank_l | Fuel tank volume | if(_diesel and fuel_tank, ceil(driver_kw * fuel_l_kw / 100) * 100, 0) | l | 0 |
+| range_check | Range check pump type | if(flow < lookup("pumps", "q_min", pump_type) or flow > lookup("pumps", "q_max", pump_type) or pressure > lookup("pumps", "p_max", pump_type), "outside the usual range — check", "OK") | | 0 |
+| build_hours | Workshop hours | lookup("pumps", "hours_" + driver, pump_type) + if(build = "Custom skid", 16, 0) + if(_europack, 24, 0) + if(tank_on_skid, 6, 0) | h | 0 |
+| eng_hours | Engineering hours | engineering_std + if(build = "Custom skid", custom_hours, 0) + if(_europack, 8, 0) | h | 0 |
+
+## Cost lines
+
+| subject | description | qty | unit | price | show |
+| --- | --- | --- | --- | --- | --- |
+| Pump | Fire pump {pump_type}, {flow} m³/h at {pressure} bar ({standard}) | 1 | pcs | (price("pump " + pump_type) + flow * price("pump " + pump_type + " per m3/h")) * _factor | |
+| Driver | Electric motor {driver_kw} kW | 1 | pcs | (price("e-motor base") + driver_kw * price("e-motor per kW")) * _factor | driver = "Electric" |
+| Driver | Diesel engine {driver_kw} kW, incl. cooling, batteries and silencer | 1 | pcs | (price("diesel engine base") + driver_kw * price("diesel engine per kW")) * _factor | _diesel |
+| Controller | Fire pump controller ({driver}) | 1 | pcs | price("controller " + driver) * _factor | |
+| Build | Standard base frame (skid) | 1 | pcs | price("skid standard " + driver) | build = "Standard skid" |
+| Build | Custom skid | 1 | pcs | price("skid custom " + driver) | build = "Custom skid" |
+| Build | Europack | 1 | pcs | price("europack " + driver) | _europack |
+| Pipework | Suction and discharge pipework with valves on the set | 1 | pcs | price("pipework base") + flow * price("pipework per m3/h") | |
+| Diesel | Fuel tank {tank_l} l | tank_l | l | price("fuel tank per l") | _diesel and fuel_tank |
+| Diesel | Fuel tank base, fittings and level switch | 1 | pcs | price("fuel tank base") | _diesel and fuel_tank |
+| Options | Jockey pump with controller | 1 | pcs | price("jockey pump") | jockey |
+| Options | Flow meter / test loop | 1 | pcs | price("flow meter") | flow_meter |
+| Labour | Assembly and wiring | build_hours | h | price("workshop hour") | |
+| Engineering | Engineering, drawings and documentation | eng_hours | h | price("engineering hour") | |
+| Test | Factory acceptance test | 1 | pcs | price("fat") | fat |
+| Test | Witnessed FAT (extra day) | 1 | pcs | price("fat witnessed") | fat and witnessed |
+| Logistics | Packing and loading | 1 | pcs | price("packing pump set") | |
+
+## Summary
+
+| label | value |
+| --- | --- |
+| Duty point | {flow} m³/h at {pressure} bar |
+| Standard | {standard} |
+| Pump | {pump_type} |
+| Driver | =driver + " " + driver_kw + " kW" |
+| Build | {build} |
+| Fuel tank | =if(tank_l > 0, tank_l + " l" + if(tank_on_skid, " (base tank on the skid)", ""), "") |
+| Jockey pump | =if(jockey, "yes", "") |
+| Flow meter / test loop | =if(flow_meter, "yes", "") |
+| Factory test | =if(fat, if(witnessed, "witnessed FAT", "FAT"), "") |
+| Pump range | {range_check} |
+
+## Prices
+
+Example prices (EUR, cost price, excl. VAT) to get started — not WB's real prices. They are added to Costs → Price list when you save; change them there.
+
+| code | category | description | unit | price |
+| --- | --- | --- | --- | --- |
+| pump End suction | Pumps | End suction fire pump, base price | pcs | 4500 |
+| pump End suction per m3/h | Pumps | End suction, per m³/h rated flow | m³/h | 14 |
+| pump Split case | Pumps | Split case fire pump, base price | pcs | 9500 |
+| pump Split case per m3/h | Pumps | Split case, per m³/h rated flow | m³/h | 12 |
+| pump Vertical turbine | Pumps | Vertical turbine fire pump, base price | pcs | 12000 |
+| pump Vertical turbine per m3/h | Pumps | Vertical turbine, per m³/h rated flow | m³/h | 16 |
+| pump Multistage | Pumps | Multistage fire pump, base price | pcs | 3800 |
+| pump Multistage per m3/h | Pumps | Multistage, per m³/h rated flow | m³/h | 30 |
+| e-motor base | Drivers | Electric motor, base price | pcs | 900 |
+| e-motor per kW | Drivers | Electric motor, per kW | kW | 85 |
+| diesel engine base | Drivers | Diesel engine with cooling, batteries and silencer, base price | pcs | 14000 |
+| diesel engine per kW | Drivers | Diesel engine, per kW | kW | 160 |
+| controller Electric | Controllers | Fire pump controller, electric | pcs | 6500 |
+| controller Diesel | Controllers | Fire pump controller, diesel | pcs | 7500 |
+| skid standard Electric | Build | Standard base frame, electric set | pcs | 1800 |
+| skid standard Diesel | Build | Standard base frame, diesel set | pcs | 2600 |
+| skid custom Electric | Build | Custom skid, electric set (material + fabrication) | pcs | 3800 |
+| skid custom Diesel | Build | Custom skid, diesel set (material + fabrication) | pcs | 5200 |
+| europack Electric | Build | Europack build, electric set | pcs | 4500 |
+| europack Diesel | Build | Europack build, diesel set | pcs | 6000 |
+| pipework base | Pipework | Pipework with valves on the set, base | pcs | 2500 |
+| pipework per m3/h | Pipework | Pipework, per m³/h rated flow | m³/h | 9 |
+| fuel tank per l | Diesel | Fuel tank, per litre | l | 2.20 |
+| fuel tank base | Diesel | Fuel tank base, fittings and level switch | pcs | 950 |
+| jockey pump | Options | Jockey pump with controller | pcs | 2400 |
+| flow meter | Options | Flow meter / test loop | pcs | 1900 |
+| workshop hour | Labour | Workshop hour | h | 62.50 |
+| engineering hour | Labour | Engineering hour | h | 85 |
+| fat | Test | Factory acceptance test | pcs | 950 |
+| fat witnessed | Test | Witnessed FAT, extra day | pcs | 750 |
+| packing pump set | Logistics | Packing and loading a pump set | pcs | 250 |
 ` }
 ];
 
