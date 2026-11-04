@@ -3103,6 +3103,8 @@ PM.i18n.add('nl', {
   ' Hide questions answered N/A (on screen and in the PDF), unless “Show N/A questions” is switched on in the filled-in form': ' Vragen met antwoord NVT verbergen (op het scherm en in de PDF), tenzij “NVT-vragen tonen” aan staat in het ingevulde formulier',
   'Show N/A questions': 'NVT-vragen tonen',
   'Show': 'Tonen',
+  'Offerte beknopt (one-pager, Dutch) — price table linked to the configurator': 'Offerte beknopt (één pagina) — prijstabel gekoppeld aan de configurator',
+  'The end date cannot be before the start date; it is now the same as the start date.': 'De einddatum kan niet vóór de begindatum liggen; hij is nu gelijk aan de begindatum.',
   'Map': 'Kaart', 'Clients': 'Klanten', 'Suppliers': 'Leveranciers', 'Partners': 'Partners', 'Other companies': 'Overige bedrijven', 'This project': 'Dit project', 'Projects': 'Projecten',
   ' incl. completed projects': ' incl. afgeronde projecten', 'Open project': 'Project openen', 'Open company': 'Bedrijf openen', 'Position saved.': 'Positie opgeslagen.',
   'Looking up addresses: ': 'Adressen opzoeken: ', 'Address not found: ': 'Adres niet gevonden: ', 'No address: ': 'Geen adres: ',
@@ -3551,6 +3553,20 @@ PM.i18n.add('nl', {
       { key: 'kind', label: 'Kind', type: 'string', default: 'planning' },
       { key: 'options', label: 'Options', type: 'text' }
     ]
+  });
+
+  /* An end date is never before its start date: the date picker does not offer earlier dates, and when it
+   * happens anyway (typing, import, a start date moved later) the end date is set to the start date. */
+  const DATE_PAIRS = { tasks: ['start', 'due'], ptasks: ['start', 'due'], lines: ['start', 'end'], timeoff: ['start', 'end'], projects: ['start', 'end'] };
+  Object.keys(DATE_PAIRS).forEach(n => { const d = PM.collection(n); const f = d && d.fields.find(x => x.key === DATE_PAIRS[n][1]); if (f) f.minFrom = DATE_PAIRS[n][0]; });
+  PM.events.on('change', e => {
+    const pair = e && e.record && DATE_PAIRS[e.collection];
+    if (!pair || (e.action !== 'insert' && e.action !== 'update')) return;
+    const r = e.record, a = r[pair[0]], b = r[pair[1]];
+    if (a && b && String(b) < String(a)) {
+      PM.store.update(e.collection, r._key, { [pair[1]]: a });
+      if (PM.ui && PM.ui.toast) PM.ui.toast(PM.i18n.t('The end date cannot be before the start date; it is now the same as the start date.'), 'warn');
+    }
   });
 
   PM.company = function () {
@@ -5974,6 +5990,7 @@ PM.ui = (function () {
         return el;
       case 'date':
         el = h('input', Object.assign({ type: 'date', value: value || '' }, common));
+        if (field.minFrom && opts.record && opts.record[field.minFrom]) el.min = opts.record[field.minFrom];   // end date: not before the start
         break;
       case 'number': case 'money':
         el = h('input', Object.assign({ type: 'number', step: field.type === 'money' ? '0.01' : 'any', value: value === '' || value == null ? '' : value, class: 'num' }, common));
@@ -6248,7 +6265,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-02.6';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-03.1';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -9114,9 +9131,15 @@ function commentsSection(p, ctx) {
   function taskDialog(rec, isNew) {
     const def = PM.collection('tasks');
     const v = Object.assign({}, rec);
+    const inputs = {};
     const fieldRow = (key, wide) => {
       const f = def.fields.find(x => x.key === key);
-      const inp = PM.ui.input(f, v[key], { record: v, projectId: rec.project, collection: 'tasks', onCommit: val => { v[key] = val; } });
+      const inp = PM.ui.input(f, v[key], { record: v, projectId: rec.project, collection: 'tasks', onCommit: val => {
+        v[key] = val;
+        if (key === 'start' && inputs.due) { inputs.due.min = val || ''; if (val && v.due && v.due < val) { v.due = val; inputs.due.value = val; } }
+        if (key === 'due' && val && v.start && val < v.start) { v.due = v.start; inp.value = v.start; PM.ui.toast(PM.i18n.t('The end date cannot be before the start date; it is now the same as the start date.'), 'warn'); }
+      } });
+      inputs[key] = inp;
       if (inp.tagName === 'INPUT' && inp.type !== 'checkbox') inp.addEventListener('input', () => { v[key] = inp.value; });
       return h('label', { class: 'form-row' + (wide ? ' wide' : '') }, h('span', null, f.label + (f.required ? ' *' : '')), inp);
     };
@@ -10652,6 +10675,61 @@ Kies per positie een opgeslagen ontwerp uit Kosten → Configurator: de prijs vo
 | key | question | type | options | unit | hint |
 | --- | --- | --- | --- | --- | --- |
 | closing | Afsluiting | textarea | +nolabel; rows=4; default=Wij zien uw opdracht graag tegemoet.\\n\\nMet vriendelijke groet,\\n\\n{made_by}\\nULTech | | |
+` },
+  { id: 'quote-kort', name: 'Offerte beknopt (one-pager, Dutch) — price table linked to the configurator', text: `---
+id: quote-kort
+name: Offerte (beknopt)
+short: Offerte kort
+lang: nl
+layout: report
+header: Offerte; {quote_no}; {quote_title}; {client}; Datum: {quote_date}
+footer: Opgesteld door: {made_by}
+signatures: Voor akkoord ULTech; Voor akkoord opdrachtgever
+description: Beknopte offerte op één A4: aanhef, prijstabel (gekoppeld aan de configurator), korte uitvoering en voorwaarden, ondertekening. Maximaal 4 posities.
+---
+# Offerte (beknopt)
+
+Kies per positie een opgeslagen ontwerp uit Kosten → Configurator, of vul een eigen prijs in. De posities zelf komen niet als hoofdstuk in de PDF, alleen in de prijstabel; zet daarom de korte uitvoering in de omschrijving (bijv. "Skid 2000 × 1000 mm, S235, gecoat RAL 3000").
+
+## Gegevens [nopdf]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| quote_no | Offertenummer | text | default=OFF-2026-001 | | |
+| quote_date | Datum | date | default=today | | |
+| quote_title | Onderwerp | text | default=Levering skid | | |
+| client | Klant | text | prefill=client | | |
+| contact | Contactpersoon | text | prefill=contact; +optional | | |
+| made_by | Opgesteld door | text | | | |
+| positions | Aantal posities | number | default=1 | | maximaal 4 voor één pagina |
+| margin | Marge op kostprijs | number | default=25 | % | voor posities met een configurator-ontwerp |
+| discount | Korting | number | +optional | % | |
+
+## Positie {n} [repeat=positions; nopdf]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| pos_title | Omschrijving | text | default=Skid | | kort, met de belangrijkste uitvoering |
+| pos_config | Ontwerp uit de configurator | config | +optional; qty=pos_qty | | prijs = kostprijs × (1 + marge) |
+| pos_qty | Aantal | number | default=1 | st. | |
+| pos_manual | Eigen prijs per stuk | number | +optional | EUR | leeg = configurator + marge |
+| pos_price | Prijs per stuk | calc | formula=if(pos_manual > 0, pos_manual, round(pos_config * (1 + margin / 100))); decimals=0 | EUR | |
+| pos_total | Totaal | calc | formula=pos_qty * pos_price; decimals=0 | EUR | |
+
+## Aanbieding
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| intro | Aanhef | textarea | +nolabel; rows=3; default=Geachte {contact},\\nNaar aanleiding van uw aanvraag bieden wij u vrijblijvend aan: {quote_title}. | | |
+| overview | Prijsoverzicht | rtable | +nolabel; cols=pos_title, pos_qty, pos_price, pos_total; total=total | | |
+| total | Totaalprijs | calc | formula=(pos_total__1 + pos_total__2 + pos_total__3 + pos_total__4) * (1 - discount / 100); decimals=0; +nopdf | EUR | excl. btw, na korting |
+| scope | Uitvoering | textarea | +nolabel; +optional; rows=3; default=Gelast en geconserveerd volgens tekening, ter goedkeuring vóór productie. Inclusief maatcontrole en eindinspectie. | | |
+
+## Voorwaarden
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| terms | Voorwaarden | textarea | +nolabel; rows=5; default=Prijzen in euro, exclusief btw. Levertijd: 4 – 6 weken na opdracht en goedkeuring van de tekening.\\nLevering af werkplaats Dordrecht (EXW). Betaling 30 dagen na factuurdatum. Geldig tot 30 dagen na offertedatum.\\nOp deze offerte zijn onze algemene voorwaarden van toepassing.\\n\\nMet vriendelijke groet, {made_by} – ULTech | | Eén regel per afspraak |
 ` }
 ];
 
@@ -11603,10 +11681,37 @@ PM.surveyPdf = (function () {
       pg.line(M, M + 19, W - M, M + 19, { stroke: '#c9ced8', lw: 0.4 });
       y = M + 26;
     }
+    const imgCache = new Map();
+    async function imgOf(rel, max) {
+      const k = rel + '|' + max;
+      if (!imgCache.has(k)) { let im = null; try { const u = await PM.files.url(S.photoPath(rec, rel)); if (u) im = await PM.pdf.loadImage(u, max); } catch (e) { im = null; } imgCache.set(k, im); }
+      return imgCache.get(k);
+    }
+    /* height of the first row of photos: per = photos per row, cw = width per photo, cap = max height */
+    async function firstRowH(list, per, cw, cap, max) {
+      let hMax = 0;
+      for (const rel of list.slice(0, per)) { const im = await imgOf(rel, max); hMax = Math.max(hMax, im ? Math.min(cw / im.ratio, cap) : 30); }
+      return hMax;
+    }
+    const lineCount = (txt, w, size) => (txt ? PM.pdf.wrap(fill(txt), w, size).length : 1);
+    /* room needed for the first part of a question (so its title / the chapter title stays with it) */
+    async function firstBlock(f) {
+      if (!f) return 8;
+      if (f.type === 'photos' && R) { const list = v[f.key] || []; const per = list.length === 1 ? 1 : 2, cw = (CW - 8 - 4 * (per - 1)) / per; return 6 + await firstRowH(list, per, cw, per === 1 ? 150 : 95, 1600) + 4; }
+      if (f.type === 'plan') return 105 + 14 + 5;
+      if (f.type === 'layout') return 125 + 14 + 5;
+      if (f.type === 'position') return 44 / S.PUMPSET_RATIO + 4;
+      if (f.type === 'pumptest') return 30;
+      if (f.type === 'rtable' || f.type === 'table') return Math.min(60, 6 + 5.4 * 4);
+      if (f.type === 'textarea') return 6 + Math.min(3, lineCount(v[f.key], CW - 8, 9.5)) * 4.6;
+      if (f.type === 'check') return 10;
+      return 8;
+    }
     function newPage() { pg = doc.addPage(); pages.push(pg); header(); }
     function ensure(hNeeded) { if (y + hNeeded > BOTTOM) newPage(); }
-    function sectionTitle(title) {
-      ensure(16);
+    /* a title never ends at the bottom of a page: "need" = room for the first part of what follows */
+    function sectionTitle(title, need) {
+      ensure(9 + Math.max(7, need || 0));
       pg.rect(M, y, CW, 6.6, { fill: C.head, r: 1 });
       pg.text(PM.pdf.fit(title.toUpperCase(), CW - 5, 8, true), M + 2.5, y + 4.6, { size: 8, bold: true, color: C.text });
       y += 9;
@@ -11657,7 +11762,7 @@ PM.surveyPdf = (function () {
     }
     function textBox(f) {
       const lines = v[f.key] ? PM.pdf.wrap(fill(v[f.key]), CW - 6, 9.5) : [];
-      if (!f.hideLabel) { ensure(12); pg.text(f.label, M, y + 3, { size: 8.5, color: C.muted }); y += 5; }
+      if (!f.hideLabel) { ensure(5 + Math.max(10, Math.min(3, lines.length) * 4.6 + 3)); pg.text(f.label, M, y + 3, { size: 8.5, color: C.muted }); y += 5; }
       if (!lines.length) { ensure(8); pg.text(L.none, M + 3, y + 4, { size: 9, color: C.faint }); y += 8; return; }
       ensure(10);
       let segTop = y;
@@ -11753,12 +11858,13 @@ PM.surveyPdf = (function () {
       const hideNA = S.hidesNA(t, v);
       const fs = sec.fields.filter(f => S.isVisible(f, v) && !f.nopdf && !(hideNA && S.isNA(f, v)) && !usedKeys.has(f.key) && (R || f.type !== 'photos') && !(R && f.optional && f.type !== 'calc' && f.type !== 'rtable' && !S.isAnswered(f, v)));
       if (!fs.length) continue;
+      const need = await firstBlock(fs.find(f => f.type === 'position') || fs[0]) + (sec.sec.note ? 8 : 0);
       if (R) {
-        ensure(20);
+        ensure(12.5 + need);
         y += 2;
         pg.text(++chapter + '.  ' + sec.title + (/[.:!?]$/.test(sec.title) ? '' : '.'), M + 8 - 8, y + 4, { size: 12.5, bold: true, color: C.text });
         y += 8.5;
-      } else sectionTitle(sec.title);
+      } else sectionTitle(sec.title, need);
       if (sec.sec.note) { PM.pdf.wrap(sec.sec.note, CW, 7.5).forEach(ln => { ensure(4); pg.text(ln, M, y + 2, { size: 7.5, color: C.muted }); y += 3.6; }); y += 1.5; }
       const positions = fs.filter(f => f.type === 'position');
       if (positions.length) {
@@ -11777,8 +11883,11 @@ PM.surveyPdf = (function () {
         });
         y = Math.max(y, top + dh) + 4;
       }
-      for (const f of fs) {
+      for (const [fi, f] of fs.entries()) {
         if (f.type === 'position') continue;
+        // a short question that belongs to the photos / drawing right after it stays on the same page
+        const nf = fs[fi + 1];
+        if (nf && ((nf.type === 'photos' && R) || nf.type === 'plan' || nf.type === 'layout') && !['photos', 'plan', 'layout', 'rtable', 'table', 'pumptest', 'textarea'].includes(f.type)) ensure(12 + await firstBlock(nf));
         if (f.type === 'rtable') {
           const tb = S.repeatRows(t, v, f);
           if (!tb.rows.length) continue;
@@ -11788,28 +11897,28 @@ PM.surveyPdf = (function () {
           const cellOf = g => { if (!g) return ''; const a = answer(g, v, t); return g.unit && /EUR|€/.test(g.unit) ? a.replace(/\s*EUR$/, '').replace(/^/, '€ ') : a; };
           const body = tb.rows.map(r => r.map(cellOf));
           if (f.total) { const tf = S.fieldsOf(t).find(x => x.key === f.total); if (tf) { const r = tb.head.map(() => ''); r[0] = tf.label; r[n - 1] = cellOf(Object.assign({}, tf, { sfx: '', base: tf.key })); body.push(r); } }
-          if (!f.hideLabel) { ensure(10); pg.text(f.label, M + (R ? 8 : 0), y + 3, { size: 9.5, bold: true, color: C.text }); y += 6; }
+          if (!f.hideLabel) { ensure(Math.min(80, 6 + 5.4 * (body.length + 1) + 3)); pg.text(f.label, M + (R ? 8 : 0), y + 3, { size: 9.5, bold: true, color: C.text }); y += 6; }
           gridTable(tb.head.map(x => x.label), body, widths);
           y += 2;
           continue;
         }
         if (R && f.type === 'textarea') {
-          if (!f.hideLabel) { ensure(10); pg.text(f.label, M + 8, y + 3, { size: 9.5, bold: true, color: C.text }); pg.line(M + 8, y + 3.8, M + 8 + PM.pdf.textWidth(f.label, 9.5, true), y + 3.8, { stroke: C.text, lw: 0.25 }); y += 6; }
+          if (!f.hideLabel) { ensure(6 + Math.min(3, lineCount(v[f.key], CW - 8, 9.5)) * 4.4 + 2); pg.text(f.label, M + 8, y + 3, { size: 9.5, bold: true, color: C.text }); pg.line(M + 8, y + 3.8, M + 8 + PM.pdf.textWidth(f.label, 9.5, true), y + 3.8, { stroke: C.text, lw: 0.25 }); y += 6; }
           if (v[f.key]) paragraph(v[f.key]); else { pg.text(L.none, M + 8, y + 3.8, { size: 9, color: C.faint }); y += 7; }
           continue;
         }
         if (R && f.type === 'photos') {
           const list = v[f.key] || [];
           if (!list.length) continue;
-          ensure(12);
+          const per0 = list.length === 1 ? 1 : 2;
+          ensure(6 + await firstRowH(list, per0, (CW - 8 - 4 * (per0 - 1)) / per0, per0 === 1 ? 150 : 95, 1600) + 4);
           pg.text(f.label, M + 8, y + 3, { size: 9.5, bold: true, color: C.text });
           pg.line(M + 8, y + 3.8, M + 8 + PM.pdf.textWidth(f.label, 9.5, true), y + 3.8, { stroke: C.text, lw: 0.25 });
           y += 6;
           const per = list.length === 1 ? 1 : 2, gap = 4, cw = (CW - 8 - gap * (per - 1)) / per;
           let col = 0, rowH = 0;
           for (const rel of list) {
-            let img = null;
-            try { const u = await PM.files.url(S.photoPath(rec, rel)); if (u) img = await PM.pdf.loadImage(u, 1600); } catch (e) { /* missing */ }
+            const img = await imgOf(rel, 1600);
             const ih = img ? Math.min(cw / img.ratio, per === 1 ? 150 : 95) : 30, iw = img ? ih * img.ratio : cw;
             if (col === 0) ensure(ih + 4);
             const x = M + 8 + col * (cw + gap);
@@ -11891,7 +12000,7 @@ PM.surveyPdf = (function () {
         }
         if (f.type === 'table') {
           if (!S.isAnswered(f, v)) { row(f.label, '', { check: !f.optional }); continue; }
-          ensure(12);
+          ensure(Math.min(80, 6 + 5.4 * ((f.rows || []).length + 1) + 3));
           pg.text(f.label, M, y + 3.4, { size: 9, bold: true, color: C.text }); y += 6;
           const cols = f.cols || [];
           const first = 40, w = (CW - first) / Math.max(1, cols.length);
@@ -11911,16 +12020,16 @@ PM.surveyPdf = (function () {
       if (list && list.length) photoItems.push({ label: (sec.n ? sec.title + ' – ' : '') + f.label, list });
     }));
     if (photoItems.length) {
-      sectionTitle(L.photos);
+      const cwA = (CW - 4 * 2) / 3;
+      sectionTitle(L.photos, 6 + await firstRowH(photoItems[0].list, 3, cwA, 70, 1400) + 4);
       for (const it of photoItems) {
-        ensure(12);
+        ensure(6 + await firstRowH(it.list, 3, cwA, 70, 1400) + 4);
         pg.text(PM.pdf.fit(it.label, CW, 9, true), M, y + 3, { size: 9, bold: true, color: C.text });
         y += 6;
         const per = 3, gap = 4, cw = (CW - gap * (per - 1)) / per;
         let col = 0, rowH = 0;
         for (const rel of it.list) {
-          let img = null;
-          try { const u = await PM.files.url(S.photoPath(rec, rel)); if (u) img = await PM.pdf.loadImage(u, 1400); } catch (e) { /* missing */ }
+          const img = await imgOf(rel, 1400);
           const ih = img ? Math.min(cw / img.ratio, 70) : 30;
           const iw = img ? ih * img.ratio : cw;
           if (col === 0) ensure(ih + 4);
@@ -15879,8 +15988,9 @@ Onderdelen:
       pg.text(PM.pdf.fit(title, CW - 16, 18, true), M + 13, y + 7, { size: 18, bold: true, color: C.text });
       y += 15;
     }
-    function heading(title) {
-      ensure(18);
+    /* a heading never ends at the bottom of a page: "need" = room for the first part of what follows */
+    function heading(title, need) {
+      ensure(10 + Math.max(16, need || 0));
       y += 2;
       pg.text(PM.pdf.fit(title, CW, 11.5, true), M, y + 4, { size: 11.5, bold: true, color: C.text });
       pg.line(M, y + 6.2, M + Math.min(CW, PM.pdf.textWidth(title, 11.5, true) + 2), y + 6.2, { stroke: C.accent, lw: 0.6 });
@@ -16128,8 +16238,8 @@ Onderdelen:
       if (has('structure.photos')) {
         const withPh = items.filter(it => S.photosOf(it).length);
         if (withPh.length) {
-          heading(T('Photos'));
           const per = 3, gap = 4, cw = (CW - gap * (per - 1)) / per, ih = cw * 0.75;
+          heading(T('Photos'), ih + 8);
           let col = 0;
           for (const it of withPh) {
             for (const rel of S.photosOf(it)) {
