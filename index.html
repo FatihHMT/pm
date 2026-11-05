@@ -5922,11 +5922,13 @@ PM.ui = (function () {
       if (!def) return;
       const pid = def.scope === 'project' ? ((rec && rec.project) || projectId) : '';
       const key = name + '|' + pid;
-      let all = cache && cache.get(key);
+      const useCache = cache && !field.refFilter;
+      let all = useCache && cache.get(key);
       if (!all) {
-        const rows = def.scope === 'project' ? PM.store.list(name, r => r.project === pid) : PM.store.list(name);
+        let rows = def.scope === 'project' ? PM.store.list(name, r => r.project === pid) : PM.store.list(name);
+        if (field.refFilter) rows = rows.filter(r => field.refFilter(r, rec || {}) || (rec && rec[field.key] === r.id));   // e.g. contact persons of the chosen company
         all = rows.map(r => ({ value: r.id, label: def.scope === 'project' ? r.id + ' · ' + def.title(r) : def.title(r), inactive: r.active === false }));
-        if (cache) cache.set(key, all);
+        if (useCache) cache.set(key, all);
       }
       all.forEach(o => out.push(o));
     });
@@ -6173,13 +6175,23 @@ PM.ui = (function () {
     const def = PM.collection(collection);
     const values = Object.assign({}, record);
     const keys = opts.fields || def.fields.filter(f => f.type !== 'id').map(f => f.key);
-    const el = h('div', { class: 'form-grid' }, keys.map(k => {
+    const rows = {};
+    const build = k => {
       const f = def.fields.find(x => x.key === k);
       if (!f) return null;
-      const inp = input(f, values[k], { record: values, projectId: opts.projectId, collection, onCommit: v => { values[k] = v; } });
+      const inp = input(f, values[k], { record: values, projectId: opts.projectId, collection, onCommit: v => {
+        values[k] = v;
+        // fields that depend on this one (dependsOn) get their choices again, e.g. contact person after the company
+        def.fields.filter(d => d.dependsOn === k && rows[d.key]).forEach(d => {
+          if (d.refFilter && values[d.key]) { const r = PM.store.find(d.ref, values[d.key]); if (r && !d.refFilter(r, values)) values[d.key] = ''; }
+          const old = rows[d.key]; const nr = build(d.key); old.replaceWith(nr);
+        });
+      } });
       if ((inp.tagName === 'INPUT' && inp.type !== 'checkbox') || inp.tagName === 'TEXTAREA') inp.addEventListener('input', () => { values[k] = inp.value; });
-      return h('label', { class: 'form-row' + (f.type === 'text' || f.multiline ? ' wide' : '') }, h('span', null, f.label + (f.required ? ' *' : '')), inp);
-    }));
+      rows[k] = h('label', { class: 'form-row' + (f.type === 'text' || f.multiline ? ' wide' : '') }, h('span', null, f.label + (f.required ? ' *' : '')), inp);
+      return rows[k];
+    };
+    const el = h('div', { class: 'form-grid' }, keys.map(build));
     return { el, values: () => values, valid: () => keys.every(k => { const f = def.fields.find(x => x.key === k); return !f || !f.required || (values[k] !== '' && values[k] != null); }) };
   }
 
@@ -6265,7 +6277,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-03.1';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-05.1';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -9277,7 +9289,8 @@ function commentsSection(p, ctx) {
  *                                         summary=<key> (button: put the design summary in that text);
  *                                         qty=<key> (fills in the quantity of the design)
  *   rtable                                a table of the answers of a repeated section, e.g. the price overview:
- *                                         cols=pos_title, pos_qty, pos_price, pos_total; total=total
+ *                                         cols=pos_title, pos_qty, pos_price, pos_total; total=total · +left (all columns left-aligned)
+ *   Titles of repeated sections may hold {n} and {key}: "Onderwerp {n}: {top_title}"
  * Text and textarea: default=<text> fills in a starting text (\n = new line). Texts may contain
  *   {key} placeholders; the PDF shows the answer of that question in its place.
  * Front matter "layout: report" prints the form as a report (numbered chapters, paragraphs),
@@ -9552,12 +9565,22 @@ PM.surveys = (function () {
         const n = Math.max(0, Math.min(8, Math.round(U.num(values[sec.repeat]))));
         for (let i = 1; i <= n; i++) {
           const sfx = '__' + i;
-          out.push({ sec, n: i, id: sec.id + sfx, title: /\{n\}/.test(sec.title) ? sec.title.replace(/\{n\}/g, i) : sec.title + ' ' + i,
+          out.push({ sec, n: i, id: sec.id + sfx, title: secTitle(sec.title, i, sfx, values),
             fields: fields.map(f => Object.assign({}, f, { key: f.key + sfx, base: f.key, sfx })) });
         }
       } else out.push({ sec, n: 0, id: sec.id, title: sec.title, fields: fields.map(f => Object.assign({}, f, { base: f.key, sfx: '' })) });
     });
     return out;
+  }
+  /* title of a repeated section: {n} = its number, {key} = an answer in that copy ("Onderwerp {n}: {topic}");
+   * an empty answer leaves out its placeholder and the ": " / " – " before it */
+  function secTitle(title, i, sfx, values) {
+    if (!/\{n\}/.test(title) && !/\{[a-z0-9_]+\}/i.test(title)) return title + ' ' + i;
+    return title.replace(/(\s*[:–-]\s*)?\{([a-z0-9_]+)\}/gi, (all, sep, k) => {
+      if (k === 'n') return (sep || '') + i;
+      const v = values[k + sfx] != null ? values[k + sfx] : values[k];
+      return v == null || String(v).trim() === '' ? '' : (sep || '') + String(v).trim();
+    }).trim();
   }
   function resolveKey(f, key, values) { return f.sfx && (key + f.sfx) in values ? key + f.sfx : (f.sfx && !(key in values) ? key + f.sfx : key); }
   function isVisible(f, values) {
@@ -10599,7 +10622,74 @@ ${H}| result | Result | choice | Compliant; Compliant with remarks; Not complian
 | ph_general | Photos | photos | +optional | | |
 `;
 
-  [opnameAll, opname('diesel'), opname('electro'), prefabSpec, fat, qa, pressureTest, dieselTank].forEach(text => PM.surveys.registerBuiltin(text));
+
+  /* ---------------- Notulen (minutes of a meeting) ---------------- */
+  const notulen = `---
+id: notulen
+name: Notulen
+short: Notulen
+lang: nl
+layout: report
+header: Notulen; {meeting_title}; {client}; {meeting_date}
+footer: Notulist: {notulist} · versie {revision}
+description: Notulen van een overleg: aanwezigen, besproken onderwerpen met besluit en status, actiepunten (wie, wanneer) en open punten. Als nette PDF te delen.
+---
+# Notulen
+
+Vul per onderwerp in wat er besproken is, het besluit en de status. Actiepunten komen samen in één tabel in de PDF.
+
+## Vergadergegevens [nopdf]
+
+${H}| meeting_title | Onderwerp van het overleg | text | default=Projectoverleg | | bijv. Ontwerpoverleg prefab pompkamer |
+| client | Klant | text | prefill=client | | |
+| notulist | Notulist | person | | | |
+| revision | Versie | text | default=1 | | |
+| topics | Aantal onderwerpen | number | default=3 | | maximaal 8 |
+| actions | Aantal actiepunten | number | default=3 | | maximaal 8 |
+
+## Overleg
+
+${H}| meeting_type | Soort overleg | choice | Kick-off; Projectoverleg; Ontwerpoverleg; Bouwvergadering; Opleveroverleg; +other | | |
+| meeting_date | Datum | date | default=today | | |
+| meeting_time | Tijd | text | +optional | | bijv. 10:00 – 11:30 |
+| location | Locatie | choice | Bij de klant; Op kantoor; Online (Teams); +other | | |
+| projectnr | Projectnummer | text | prefill=number; +optional | | |
+
+## Aanwezigen
+
+${H}| present | Aanwezig | textarea | rows=6 | | één persoon per regel: naam – bedrijf – rol |
+| absent | Afwezig / ter kennisname | textarea | +optional; rows=2 | | |
+
+## Doel van het overleg
+
+${H}| purpose | Doel | textarea | +optional; +nolabel; rows=2 | | |
+
+## Onderwerp {n}: {top_title} [repeat=topics]
+
+${H}| top_title | Onderwerp | text | +nopdf | | kort, bijv. Pompkeuze of Stilling tube (komt in de titel) |
+| top_text | Besproken | textarea | rows=6 | | wat er gezegd en afgewogen is, wie wat inbracht |
+| top_decision | Besluit / conclusie | textarea | +optional; rows=2 | | |
+| top_status | Status | choice | Besloten; Open – volgt; Agendapunt kick-off; Ter info; +optional | | |
+
+## Actie {n} [repeat=actions; nopdf]
+
+${H}| act_what | Actie | text | | | |
+| act_who | Wie | text | | | naam of bedrijf |
+| act_due | Gereed op | date | +optional | | |
+| act_status | Status | choice | Open; Gereed | | |
+
+## Actiepunten
+
+${H}| act_overview | Actiepunten | rtable | +nolabel; +left; cols=act_what, act_who, act_due, act_status | | |
+
+## Open punten en vervolg
+
+${H}| open_points | Open punten / voor het volgende overleg | textarea | +optional; +nolabel; rows=4 | | één punt per regel |
+| next_date | Volgend overleg | date | +optional | | |
+| next_note | Soort / plaats volgend overleg | text | +optional | | bijv. kick-off op locatie |
+`;
+
+  [opnameAll, opname('diesel'), opname('electro'), prefabSpec, fat, qa, pressureTest, dieselTank, notulen].forEach(text => PM.surveys.registerBuiltin(text));
 })();
 
   </script>
@@ -11779,23 +11869,31 @@ PM.surveyPdf = (function () {
       lines.forEach(ln => { ensure(5); pg.text(ln, M + (R ? 8 : 0), y + 3.8, { size: size || 9.5, color: C.text }); y += 4.4; });
       y += 2.5;
     }
+    /* table; long texts wrap onto more lines (the row grows) instead of being cut off */
     function gridTable(head, body, widths, opts) {
       opts = opts || {};
-      const rh = 5.4;
-      ensure(rh * (body.length + 1) + 3);
+      const rh = 5.4, lh = 3.6;
+      const left = i => !i || opts.alignLeft;          // text columns left, numbers right
       const xs = []; let x = M; widths.forEach(w => { xs.push(x); x += w; });
-      pg.rect(M, y, CW, rh, { fill: C.head });
-      head.forEach((c, i) => pg.text(PM.pdf.fit(c, widths[i] - 2, 7, true), xs[i] + (i ? widths[i] - 1.2 : 1.2), y + 3.7, { size: 7, bold: true, color: C.muted, align: i ? 'right' : 'left' }));
-      y += rh;
-      body.forEach(r => {
+      const cellLines = (c, i) => (c && typeof c === 'object') ? [''] : (c == null || c === '' ? [''] : PM.pdf.wrap(String(c), widths[i] - 2.4, 8, i === 0));
+      const rows = body.map(r => { const ls = r.map(cellLines); return { r, ls, h: Math.max(rh, Math.max(...ls.map(l => l.length)) * lh + 1.8) }; });
+      const drawHead = () => {
+        pg.rect(M, y, CW, rh, { fill: C.head });
+        head.forEach((c, i) => pg.text(PM.pdf.fit(c, widths[i] - 2, 7, true), xs[i] + (left(i) ? 1.2 : widths[i] - 1.2), y + 3.7, { size: 7, bold: true, color: C.muted, align: left(i) ? 'left' : 'right' }));
+        y += rh;
+      };
+      ensure(Math.min(90, rh + rows.slice(0, 3).reduce((a, x) => a + x.h, 0) + 3));
+      drawHead();
+      rows.forEach(({ r, ls, h: hh }) => {
+        if (y + hh > BOTTOM) { newPage(); drawHead(); }
         r.forEach((c, i) => {
           if (c && typeof c === 'object') {           // status chip
             const w = Math.min(widths[i] - 2, PM.pdf.textWidth(c.text, 7, true) + 4);
             pg.rect(xs[i] + widths[i] - 1.2 - w, y + 0.8, w, 3.9, { fill: c.color, r: 0.8 });
             pg.text(c.text, xs[i] + widths[i] - 1.2 - w / 2, y + 3.6, { size: 7, bold: true, color: '#ffffff', align: 'center' });
-          } else pg.text(PM.pdf.fit(c == null || c === '' ? (i ? '' : '') : String(c), widths[i] - 2.4, 8, i === 0), xs[i] + (i ? widths[i] - 1.2 : 1.2), y + 3.8, { size: 8, bold: i === 0, color: c == null || c === '' ? C.faint : C.text, align: i ? 'right' : 'left' });
+          } else ls[i].forEach((ln, k) => pg.text(ln, xs[i] + (left(i) ? 1.2 : widths[i] - 1.2), y + 3.8 + k * lh, { size: 8, bold: i === 0, color: c == null || c === '' ? C.faint : C.text, align: left(i) ? 'left' : 'right' }));
         });
-        y += rh;
+        y += hh;
         pg.line(M, y, W - M, y, { stroke: C.line, lw: 0.15 });
       });
       y += 2;
@@ -11898,7 +11996,7 @@ PM.surveyPdf = (function () {
           const body = tb.rows.map(r => r.map(cellOf));
           if (f.total) { const tf = S.fieldsOf(t).find(x => x.key === f.total); if (tf) { const r = tb.head.map(() => ''); r[0] = tf.label; r[n - 1] = cellOf(Object.assign({}, tf, { sfx: '', base: tf.key })); body.push(r); } }
           if (!f.hideLabel) { ensure(Math.min(80, 6 + 5.4 * (body.length + 1) + 3)); pg.text(f.label, M + (R ? 8 : 0), y + 3, { size: 9.5, bold: true, color: C.text }); y += 6; }
-          gridTable(tb.head.map(x => x.label), body, widths);
+          gridTable(tb.head.map(x => x.label), body, widths, { alignLeft: !!f.left });
           y += 2;
           continue;
         }
@@ -16675,7 +16773,8 @@ Onderdelen:
     const i = def.fields.findIndex(f => f.key === 'client');
     def.fields.splice(i + 1, 0,
       { key: 'company', label: 'Company (Contacts)', type: 'ref', ref: 'companies' },
-      { key: 'contact', label: 'Contact person', type: 'ref', ref: 'contacts' });
+      { key: 'contact', label: 'Contact person', type: 'ref', ref: 'contacts', dependsOn: 'company',
+        refFilter: (c, p) => !p.company || c.company === p.company });      // only the people of the chosen company
   })();
 
   /* the project's client text follows its company (also when the company is renamed) */
