@@ -254,6 +254,7 @@ table.data td.edit select.pill-select { border-color: transparent; }
 .g-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 button.g-title.link { border: 0; background: none; padding: 0; text-align: left; }
 button.g-title.link:hover { color: var(--accent); }
+.g-rename { flex: 1; min-width: 0; font: inherit; font-weight: 600; padding: 2px 6px; border: 1px solid var(--accent); border-radius: 4px; }
 .caret { border: 0; background: none; width: 18px; padding: 0; color: var(--muted); }
 .open-link { white-space: nowrap; }
 .g-scales { position: relative; }
@@ -1150,6 +1151,22 @@ textarea { font: inherit; }
 .svp-dot.done { background: #1f9d55; }
 .sv-plan p { margin: 6px 0 0; }
 .sv-planline { margin-top: 4px; }
+.svp-no { margin-right: 2px; }
+.svp-m { display: block; font-size: 11px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; }
+.sv-plan-opts { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+.sv-plan-opts .check { margin: 0; }
+.sv-grid .sv-grid-t { width: 100%; }
+.sv-grid .sv-grid-t td { padding: 3px 4px; }
+.sv-grid .sv-grid-t input { width: 100%; min-width: 90px; }
+.sv-grid .act { width: 32px; text-align: center; }
+.sv-grid > .btn { margin-top: 6px; }
+.sv-sign-list { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 4px 0 2px; }
+@media (max-width: 640px) {
+  .sv-grid .sv-grid-t thead { display: none; }
+  .sv-grid .sv-grid-t tr { display: grid; grid-template-columns: 1fr 1fr 32px; border-bottom: 1px solid var(--border); padding: 4px 0; }
+  .sv-grid .sv-grid-t td { border: 0; }
+  .sv-grid .sv-grid-t td.act { grid-row: 1; grid-column: 3; }
+}
 .linked-forms { margin: 8px 0; }
 .exp-flags { display: inline-flex; gap: 2px; }
 .exp-flag { min-width: 0; font-weight: 600; font-size: 10px; padding: 3px 4px; text-decoration: line-through; }
@@ -3199,6 +3216,16 @@ PM.i18n.add('nl', {
   P(/^The form “(.+)” no longer exists\. Restore it in Settings → Forms \(the answers are kept\), or delete this filled-in form\.$/, (m, x) => 'Het formulier “' + x + '” bestaat niet meer. Zet het terug in Instellingen → Formulieren (de antwoorden blijven bewaard), of verwijder dit ingevulde formulier.');
   P(/^In the PDF: ([\s\S]*)$/, (m, x) => 'In de PDF: ' + x);
   P(/^(.+) linked to (.+)\.$/, (m, a, b) => a + ' gekoppeld aan ' + b + '.');
+  PM.i18n.add('nl', {
+    'Click to rename this phase': 'Klik om de fase te hernoemen', 'Phase name': 'Fasenaam', 'Phase renamed.': 'Fase hernoemd.',
+    'Table with rows you add (e.g. people)': 'Tabel met zelf toe te voegen regels (bijv. personen)', 'Project planning (chart)': 'Projectplanning (grafiek)',
+    'Link to a planning line': 'Koppeling met een planningsregel', 'Fixed text': 'Vaste tekst',
+    'Table with rows you add': 'Tabel met zelf toe te voegen regels', 'Planning / planning line': 'Planning / planningsregel',
+    'cols=Naam, Rol, Telefoon, E-mail — add and remove rows in the form; the PDF shows the filled-in rows': 'cols=Naam, Rol, Telefoon, E-mail — regels toevoegen en verwijderen in het formulier; de PDF toont de ingevulde regels',
+    'Planning: the chart of the project planning (view options per form). Planning line: who=<key> fills in that question with the line’s “Who” (still editable)': 'Planning: de grafiek van de projectplanning (weergave-opties per formulier). Planningsregel: who=<key> vult die vraag in met “Wie” van de regel (blijft aan te passen)',
+    'suggest=<key>: suggestions from the answers of that question (e.g. the party names)': 'suggest=<key>: suggesties uit de antwoorden op die vraag (bijv. de namen van de partijen)',
+    'Repeat a section (at most 30 times) by choosing a number question under “Repeat per”. Use {n} in the title for the number. defaults=A, B, C gives copy 1, 2, 3 its own starting answer; prefill only fills in copy 1.': 'Herhaal een hoofdstuk (maximaal 30 keer) door onder “Herhalen per” een getalvraag te kiezen. Gebruik {n} in de titel voor het nummer. defaults=A, B, C geeft kopie 1, 2, 3 een eigen beginantwoord; prefill vult alleen kopie 1 in.'
+  });
 })();
 
   </script>
@@ -6320,7 +6347,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-06.1';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-06.2';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -7312,7 +7339,7 @@ function commentsSection(p, ctx) {
   }
   const respOn = () => PM.portfolio.local.get('pm.plan.resp') === '1';
   const setRespOn = v => PM.portfolio.local.set('pm.plan.resp', v ? '1' : '0');
-  PM.planResp = { key: respKey, color: respColor, name: respName, on: respOn, set: setRespOn, inExport, tasksInExport, isOn };
+  PM.planResp = { COLORS: RESP_COLORS, key: respKey, color: respColor, name: respName, on: respOn, set: setRespOn, inExport, tasksInExport, isOn };
 
   const state = { zoom: 'week', collapsed: {}, expandedProjects: {}, view: 'timeline', filter: 'all', mode: 'projects', push: false, undo: null, order: 'id' };
   try { state.order = PM.portfolio.local.get('pm.planning.order') === 'milestone' ? 'milestone' : 'id'; } catch (e) { /* ignore */ }
@@ -7469,6 +7496,24 @@ function commentsSection(p, ctx) {
     keys.forEach(k => order.push(...groups.get(k)));
     PM.store.reorder('lines', order);
   }
+  /* rename a phase in place: every line of that phase gets the new name */
+  function renamePhase(pid, oldName, btn) {
+    const inp = h('input', { type: 'text', class: 'g-rename', value: oldName, 'aria-label': 'Phase name' });
+    let done = false;
+    const finish = save => {
+      if (done) return; done = true;
+      const v = inp.value.trim();
+      if (save && v && v !== oldName) {
+        PM.store.list('lines', { project: pid }).filter(l => (l.group || '') === oldName).forEach(l => PM.store.update('lines', l._key, { group: v }));
+        PM.ui.toast(PM.i18n.t('Phase renamed.'), 'ok');
+      } else if (inp.isConnected) inp.replaceWith(btn);
+    };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') finish(false); });
+    inp.addEventListener('blur', () => finish(true));
+    inp.addEventListener('click', e => e.stopPropagation());
+    btn.replaceWith(inp);
+    inp.focus(); inp.select();
+  }
   const moveBtns = (upTitle, downTitle, canUp, canDown, onUp, onDown) => h('span', { class: 'g-move' },
     h('button', { type: 'button', class: 'icon-btn', title: upTitle, 'aria-label': upTitle, disabled: !canUp || null, onclick: e => { e.stopPropagation(); onUp(); } }, '▲'),
     h('button', { type: 'button', class: 'icon-btn', title: downTitle, 'aria-label': downTitle, disabled: !canDown || null, onclick: e => { e.stopPropagation(); onDown(); } }, '▼'));
@@ -7550,9 +7595,10 @@ function commentsSection(p, ctx) {
   }
 
   function addLine(pid) {
-    const lines = PM.store.list('lines', { project: pid });
+    const lines = displayOrder(pid);
     const last = lines[lines.length - 1];
-    const start = U.todayISO();
+    // a new line starts the day after the line above it ends (today when there is none)
+    const start = last && (last.end || last.start) ? U.addDays(last.end || last.start, 1) : U.todayISO();
     const rec = PM.store.insert('lines', { title: '', group: last ? last.group : '', start, end: U.addDays(start, 6), progress: 0 }, pid);
     openLineDialog(rec, true);
   }
@@ -7651,7 +7697,9 @@ function commentsSection(p, ctx) {
         const linked = r.lines.filter(l => lineState(l).linked).length;
         const label = h('div', { class: 'g-label group', style: { '--pc': r.color || '#2f6fed' } },
           h('button', { class: 'caret', 'aria-expanded': String(open), 'aria-label': (open ? 'Collapse ' : 'Expand ') + r.title, onclick: toggle }, open ? '▾' : '▸'),
-          h('span', { class: 'g-title', onclick: toggle }, r.title),
+          r.type === 'group' && ctx.project
+            ? h('button', { type: 'button', class: 'g-title link', title: 'Click to rename this phase', onclick: e => { e.stopPropagation(); renamePhase(ctx.projectId, r.title, e.currentTarget); } }, r.title)
+            : h('span', { class: 'g-title', onclick: toggle }, r.title),
           r.type === 'project' ? (() => {
             const nx = milestonesOf(r.lines).next;
             return nx ? h('span', { class: 'next-ms small nowrap', title: 'Next milestone: ' + (nx.title || nx.id) + ' · ' + U.fmtDate(nx.start) }, '◆ ' + U.fmtDate(nx.start).replace(/ \d{4}$/, ''))
@@ -8382,8 +8430,10 @@ function commentsSection(p, ctx) {
     let last = {};
     try { last = JSON.parse(PM.portfolio.local.get(LS) || '{}'); } catch (e) { /* ignore */ }
     let presetId = last.preset || 'customer';
-    let o = presetOptions(presetId);
-    if (PM.planResp && PM.planResp.on()) o.responsible = true;     // follows the planning screen
+    let o = presetOptions(presetId === '_custom' ? 'customer' : presetId);
+    // the last export's settings are remembered (per device), so the ticks don't have to be set again
+    if (last.options && typeof last.options === 'object') Object.assign(o, last.options);
+    else if (PM.planResp && PM.planResp.on()) o.responsible = true;     // first time: follows the planning screen
     const meta = { docNo: (project && project.pdf_docno) || '', revision: (project && project.pdf_revision) || '', preparedBy: last.preparedBy || '' };
     Object.assign(o, meta);
     if (!project) o.scope = 'all';
@@ -8531,7 +8581,11 @@ function commentsSection(p, ctx) {
         const blob = await render(o, projectId);
         const name = U.slugify((o.scope === 'all' ? 'planning-all-projects' : (project.id + '-' + PM.pname(project))) + (o.revision ? '-rev-' + o.revision : '')) + '.pdf';
         if (project && o.scope !== 'all' && (project.pdf_docno !== meta.docNo || project.pdf_revision !== meta.revision)) PM.store.update('projects', project._key, { pdf_docno: meta.docNo, pdf_revision: meta.revision });
-        try { PM.portfolio.local.set(LS, JSON.stringify({ preset: presetId === '_custom' ? 'customer' : presetId, preparedBy: meta.preparedBy })); } catch (e) { /* ignore */ }
+        try {
+          const keep = JSON.parse(JSON.stringify(o));
+          ['docNo', 'revision', 'preparedBy', 'from', 'to', 'scope'].forEach(k => delete keep[k]);
+          PM.portfolio.local.set(LS, JSON.stringify({ preset: presetId, preparedBy: meta.preparedBy, options: keep }));
+        } catch (e) { /* ignore */ }
         const how = await PM.pdf.deliver(blob, name);
         if (how !== 'cancelled') PM.ui.toast('PDF ready: ' + name, 'ok');
       } catch (e) { console.error(e); PM.ui.toast('Could not create the PDF: ' + e.message, 'error'); }
@@ -9390,6 +9444,10 @@ function commentsSection(p, ctx) {
  *   planning                              the project planning as a chart: lines with "In export" on, and their
  *                                         tasks as sub-rows where "Tasks in export" is on (set in Planning)
  *   planline                              link to one planning line of the project; shows its dates (follows the planning)
+ *   grid                                  a table you fill in yourself, with rows added as needed:
+ *                                         cols=Naam, Rol, Telefoon, E-mail (stored one row per line, cells split by " | ")
+ *   planline options: who=<key> (choosing a line fills in that question with the line's "Who"; still editable)
+ *   text options: suggest=<key> (suggestions from the answers of that question, also in repeated sections)
  *   info                                  a fixed text: the hint column, shown and printed as a paragraph under
  *                                         the question (its heading; +nolabel leaves the heading out)
  *   Titles of repeated sections may hold {n} and {key}: "Onderwerp {n}: {top_title}"
@@ -9451,6 +9509,7 @@ PM.surveys = (function () {
     if (c.default === 'today') c.default = 'today';
     if (c.type === 'calc') { c.optional = true; c.decimals = c.decimals != null ? +c.decimals : 1; }
     if (c.type === 'rtable' || c.type === 'info' || c.type === 'planning') c.optional = true;
+    if (c.type === 'grid' && !(c.cols && c.cols.length)) c.cols = ['Naam', 'Rol'];
     if (c.type === 'layout' || c.type === 'plan') {
       c.items = String(c.items || '').split(',').map(x => x.trim()).filter(Boolean).map(x => {
         const i = x.indexOf(':');
@@ -9591,13 +9650,20 @@ PM.surveys = (function () {
 
   /* defaults of repeated sections: a section copy that has no answers yet gets the defaults of its
    * questions (keys with __n). Called when a form is made and when the number of copies changes. */
-  function applyRepeatDefaults(t, values) {
+  /* starting answers of new copies of a repeated section: default=…, or defaults=<copy 1>, <copy 2>, …
+   * (one per copy; the last one is used for the copies after it, an empty one for none);
+   * prefill=… only fills in the first copy (e.g. party 1 = the client of the project) */
+  function applyRepeatDefaults(t, values, project) {
     expand(t, values).forEach(sec => {
       if (!sec.n) return;
       if (sec.fields.some(f => Object.keys(values).some(k => k === f.key || k.startsWith(f.key + '_')))) return;
       sec.fields.forEach(f => {
-        if (f.type === 'calc' || f.type === 'rtable' || f.default == null || f.default === '') return;
-        values[f.key] = f.default === 'today' ? U.todayISO() : String(f.default).replace(/\\n/g, '\n');
+        if (f.type === 'calc' || f.type === 'rtable') return;
+        let d = f.default;
+        if (f.defaults != null) { const list = String(f.defaults).split(','); d = list[Math.min(sec.n, list.length) - 1].trim(); }
+        if (sec.n === 1 && f.prefill && project) { const pv = f.prefill(project); if (pv) d = pv; }
+        if (d == null || d === '') return;
+        values[f.key] = d === 'today' ? U.todayISO() : String(d).replace(/\\n/g, '\n');
       });
     });
     return values;
@@ -9615,10 +9681,50 @@ PM.surveys = (function () {
 
   /* ---------- the planning in a form (types planning and planline) ---------- */
   function planLine(pid, id) { return id ? PM.store.find('lines', String(id), pid || ctxProject) : null; }
-  function planLineText(l) {
+  /* the lines in the order of the planning screen (phase by phase) */
+  function planOrder(pid) {
+    const out = [];
+    U.groupBy(PM.store.list('lines', { project: pid }), l => l.group || '').forEach(ls => out.push(...ls));
+    return out;
+  }
+  /* sequence number of a line: its place among the exported lines (as in the planning chart of the form) */
+  function planNo(pid, id) {
+    if (!id) return 0;
+    const R = PM.planResp;
+    const ls = planOrder(pid || ctxProject).filter(l => l.start && (!R || R.inExport(l)));
+    const i = ls.findIndex(l => l.id === id);
+    return i < 0 ? 0 : i + 1;
+  }
+  function planLineText(l, withNo) {
     if (!l) return '';
     const e = l.end && l.end >= l.start ? l.end : l.start;
-    return (l.title || l.id) + (l.start ? ' (' + U.fmtDate(l.start) + (e && e !== l.start ? ' – ' + U.fmtDate(e) : '') + ')' : '');
+    const no = withNo === false ? 0 : planNo(l.project, l.id);
+    return (no ? no + '. ' : '') + (l.title || l.id) + (l.start ? ' (' + U.fmtDate(l.start) + (e && e !== l.start ? ' – ' + U.fmtDate(e) : '') + ')' : '');
+  }
+  /* "who" of a planning line: the Who column, or the person */
+  function planWho(l) {
+    if (!l) return '';
+    if (l.who) return String(l.who).trim();
+    const p = l.person ? PM.store.find('people', l.person) : null;
+    return p ? p.name : '';
+  }
+  /* view options of a planning chart in a form (stored per filled-in form as "<key>_view") */
+  const PLAN_VIEW = ['nr', 'who', 'start', 'end', 'days', 'resp', 'phases', 'ms', 'today', 'legend'];
+  const PLAN_VIEW_DEFAULT = ['nr', 'who', 'start', 'end', 'resp', 'phases', 'ms', 'today', 'legend'];
+  function planView(values, key) {
+    const raw = values && values[(key || 'planning') + '_view'];
+    if (raw == null || raw === '') return new Set(PLAN_VIEW_DEFAULT);
+    return new Set(String(raw).split(/[;,]/).map(x => x.trim()).filter(x => PLAN_VIEW.includes(x)));
+  }
+  /* who does a planning line in this form: the "who" of a section linked to it, else the line's own Who */
+  function formWho(t, values, line) {
+    let out = '';
+    expand(t, values).forEach(sec => sec.fields.forEach(f => {
+      if (out || f.type !== 'planline' || !f.who || values[f.key] !== line.id) return;
+      const k = f.who + (f.sfx || '');
+      if (values[k]) out = String(values[k]).trim();
+    }));
+    return out || planWho(line);
   }
   /* rows for the planning chart, with the export choices made in Planning */
   function planRows(pid) {
@@ -9633,11 +9739,38 @@ PM.surveys = (function () {
         const e = l.end && l.end >= l.start ? l.end : l.start;
         span(l.start, e);
         const rk = R && R.on() ? R.key(l) : '';
-        rows.push({ type: 'line', line: l, start: l.start, end: e, color: (p && p.color) || '#2f6fed', resp: rk ? R.color(rk) : '', respName: rk ? R.name(rk) : '' });
+        rows.push({ type: 'line', line: l, no: rows.filter(r => r.type === 'line').length + 1, start: l.start, end: e, color: (p && p.color) || '#2f6fed', resp: rk ? R.color(rk) : '', respName: rk ? R.name(rk) : '' });
         if (R && R.tasksInExport(l)) calc.lineTasks(pid, l.id).forEach(t => { if (t.due) span(t.due, t.due); rows.push({ type: 'task', task: t, line: l }); });
       });
     });
     return { rows, from, to, hidden: PM.store.list('lines', { project: pid }).filter(l => R && !R.inExport(l)).length };
+  }
+  /* planRows for one filled-in form: "who" from the form, colours per who (when "resp" is on) */
+  function formPlanRows(pid, t, values, key) {
+    const P = planRows(pid), view = planView(values, key);
+    const cols = (PM.planResp && PM.planResp.COLORS) || ['#e8590c', '#2b8a3e', '#1971c2', '#ae3ec9', '#c92a2a', '#0b7285'];
+    const whos = [];
+    P.rows.forEach(r => {
+      if (r.type !== 'line') return;
+      r.who = formWho(t, values, r.line);
+      const k = r.who.toLowerCase();
+      if (k && !whos.includes(k)) whos.push(k);
+      r.resp = view.has('resp') && k ? cols[whos.indexOf(k) % cols.length] : '';
+      r.respName = r.who;
+    });
+    if (!view.has('phases')) P.rows = P.rows.filter(r => r.type !== 'group');
+    if (!view.has('ms')) P.rows = P.rows.filter(r => !(r.type === 'line' && r.line.milestone));
+    P.view = view;
+    return P;
+  }
+  /* grid answers: one row per line, cells split by " | " */
+  function gridRows(raw) {
+    if (raw == null || raw === '') return [];
+    return String(raw).split(/\r?\n/).map(ln => ln.split(/\s*\|\s*/).map(c => c.trim()));
+  }
+  function gridText(rows) {
+    return rows.map(r => r.map(c => String(c == null ? '' : c).replace(/\|/g, '/').replace(/\s*\n\s*/g, ' ').trim()))
+      .filter(r => r.some(Boolean)).map(r => r.join(' | ')).join('\n');
   }
   /* answers in forms that point at a planning line: [{ rec, template, title }] */
   function linkedTo(pid, lineId) {
@@ -9733,6 +9866,7 @@ PM.surveys = (function () {
   const fieldsOf = t => (t ? t.sections.reduce((a, s) => a.concat(s.fields.map(compile)), []) : []);
 
   /* ---------- sections with repeats, as they appear for one record ---------- */
+  const MAX_REPEAT = 30;
   function expand(t, values) {
     values = values || {};
     const out = [];
@@ -9740,7 +9874,7 @@ PM.surveys = (function () {
       const fields = sec.fields.map(compile);
       if (sec.repeat) {
         if (sec.when && !whenTrue(sec.when, values)) return;
-        const n = Math.max(0, Math.min(8, Math.round(U.num(values[sec.repeat]))));
+        const n = Math.max(0, Math.min(MAX_REPEAT, Math.round(U.num(values[sec.repeat]))));
         for (let i = 1; i <= n; i++) {
           const sfx = '__' + i;
           out.push({ sec, n: i, id: sec.id + sfx, title: secTitle(sec.title, i, sfx, values),
@@ -9830,6 +9964,7 @@ PM.surveys = (function () {
       case 'pumptest': return [1, 2, 3].every(i => has(values[f.key + '_r' + i + '_discharge']));
       case 'table': return Object.keys(values).some(k => k.startsWith(f.key + '_r') && has(values[k]));
       case 'calc': case 'rtable': case 'info': case 'planning': return true;
+      case 'grid': return gridRows(values[f.key]).some(r => r.some(has));
       default: return has(values[f.key]);
     }
   }
@@ -9939,7 +10074,7 @@ PM.surveys = (function () {
 
   /* Hashes of earlier versions of the built-in forms. A form file in your data that is still
    * exactly such an earlier version (you never changed it) is replaced by the new built-in version. */
-  const PREVIOUS = { opname: ['6xwyj9'], 'prefab-spec': ['19zyxa6'], diesel: ['1euxw4q'], electro: ['12t8sjg'] };
+  const PREVIOUS = { opname: ['6xwyj9'], 'prefab-spec': ['19zyxa6'], diesel: ['1euxw4q'], electro: ['12t8sjg'], werkplan: ['1yx6yyg'] };
   function hashText(s) { let h = 5381; s = String(s || '').trim(); for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); }
 
   /* Load forms from the data source; copy built-ins there the first time so they can be edited. */
@@ -10141,7 +10276,7 @@ PM.surveys = (function () {
     footprint,
     /* pump-set drawing options for a record: an electric set shows E-MOTOR */
     diagramFor: (t, values) => Object.assign({}, t.diagram, values && /elek|elec/i.test(String(values.set_type || '')) ? { motor: 'E-MOTOR' } : {}),
-    evalFormula, calcValue, calcCheck, useProject, configInfo, repeatRows, planLine, planLineText, planRows, linkedTo, parseLayout, serializeLayout, wallOf, describePos, WALLS, fillText, hashText,
+    evalFormula, calcValue, calcCheck, useProject, configInfo, repeatRows, planLine, planLineText, planNo, planOrder, planWho, planView, PLAN_VIEW, PLAN_VIEW_DEFAULT, formWho, formPlanRows, gridRows, gridText, MAX_REPEAT, planRows, linkedTo, parseLayout, serializeLayout, wallOf, describePos, WALLS, fillText, hashText,
     isBuiltin: id => builtins[id] != null };
 })();
 
@@ -10887,11 +11022,11 @@ layout: report
 header: Werkplan; {wp_title}; {client}; Datum: {wp_date}
 footer: Opgesteld door: {made_by} · revisie {revision}
 signatures: Opgesteld (uitvoerder); Akkoord opdrachtgever
-description: Werkplan voor de uitvoering: partijen, opdracht, locatie, toegangseisen, de planning (uit Planning), de werkzaamheden met materieel, materiaal en risico's (gekoppeld aan planningsregels), veiligheid, kwaliteit en communicatie.
+description: Werkplan voor de uitvoering: partijen met hun rol en personen, opdracht, locatie, toegangseisen, de planning (uit Planning), de werkzaamheden met materieel, materiaal en risico's (gekoppeld aan planningsregels), veiligheid, kwaliteit en communicatie.
 ---
 # Werkplan
 
-Het werkplan beschrijft wie wat doet, waar, wanneer en hoe. De planning komt uit Planning: daar kies je per regel of hij in de export komt en of de taken als subregels meekomen. Koppel elke werkzaamheid aan een planningsregel, dan lopen de datums vanzelf mee.
+Het werkplan beschrijft wie wat doet, waar, wanneer en hoe. De planning komt uit Planning: daar kies je per regel of hij in de export komt (PDF) en of de taken als subregels meekomen (T); hoe de planning eruitziet kies je hier. Koppel elke werkzaamheid aan een planningsregel: de datums lopen dan mee, het volgnummer staat erbij en “Uitgevoerd door” wordt ingevuld met de “Wie” van die regel (aan te passen).
 
 ## Gegevens [nopdf]
 
@@ -10901,17 +11036,18 @@ ${H}| wp_title | Titel | text | default=Werkplan uitvoering | | bijv. Vervanging
 | made_by | Opgesteld door | person | | | |
 | revision | Revisie | text | default=0 | | verhoog bij elke uitgegeven wijziging |
 | wp_status | Status | choice | Concept; Ter goedkeuring; Definitief | | |
-| wz_count | Aantal werkzaamheden | number | default=3 | | maximaal 8; elke werkzaamheid krijgt een eigen hoofdstuk |
+| party_count | Aantal partijen | number | default=2 | | opdrachtgever, uitvoerder, onderaannemers, leveranciers…; elke partij krijgt een eigen paragraaf (maximaal 30) |
+| wz_count | Aantal werkzaamheden | number | default=3 | | elke werkzaamheid krijgt een eigen hoofdstuk (maximaal 30) |
 
-## Partijen
+## Partij {n}: {party_name} [repeat=party_count]
 
-${H}| client_name | Opdrachtgever | text | prefill=client | | de partij die de opdracht geeft |
-| client_contact | Contactpersoon opdrachtgever | text | prefill=contact; +optional | | naam en telefoonnummer |
-| contractor | Uitvoerder (aannemer) | text | | | de partij die het werk uitvoert en verantwoordelijk is voor de uitvoering |
-| site_lead | Uitvoerder op locatie | text | +optional | | aanspreekpunt op de bouwplaats, met telefoonnummer |
-| project_lead | Projectleider | person | +optional | | |
-| subcontractors | Onderaannemers | textarea | +optional; rows=4 | | één per regel: bedrijf – werkzaamheden – contactpersoon / telefoon |
-| other_parties | Overige betrokkenen | textarea | +optional; rows=3 | | bijv. gebruiker of beheerder, installateur, constructeur, inspectie-instelling of verzekeraar, beveiliging |
+${H}| party_name | Partij | text | prefill=client | | naam van het bedrijf of de afdeling |
+| party_role | Rol | choice | Opdrachtgever; Hoofdaannemer; Uitvoerder; Onderaannemer; Leverancier; Adviseur; Gebruiker / beheerder; Inspectie-instelling; +other; defaults=Opdrachtgever, Uitvoerder, Onderaannemer | | de rol van deze partij in het werk |
+| party_contact | Contactpersoon | text | +optional | | het aanspreekpunt van deze partij |
+| party_phone | Telefoon | tel | +optional | | |
+| party_email | E-mail | email | +optional | | |
+| party_scope | Verantwoordelijk voor | textarea | +optional; rows=2 | | de werkzaamheden of leveringen van deze partij |
+| party_people | Personen | grid | +optional; cols=Naam, Rol, Telefoon, E-mail | | iedereen van deze partij die bij het werk betrokken is, bijv. projectleider, uitvoerder op locatie, monteurs, veiligheidskundige |
 
 ## Opdracht
 
@@ -10936,14 +11072,15 @@ ${H}| access | Eisen voor toegang | multi | VCA (basis of VOL); Veiligheidsinstr
 
 ## Planning
 
-${H}| planning | Planning | planning | +nolabel | | komt uit Planning: regels met “In export”, taken als subregels waar dat per regel aan staat |
+${H}| planning | Planning | planning | +nolabel | | regels met “PDF” aan in Planning, taken als subregels waar “T” aan staat; de weergave (kolommen, kleur per partij…) kies je hier |
 | plan_notes | Toelichting op de planning | textarea | +optional; rows=3 | | kritieke punten en afhankelijkheden: leveringen, vergunningen, buitengebruikstelling, werk buiten werktijd |
 
 ## Werkzaamheid {n}: {wz_title} [repeat=wz_count]
 
 ${H}| wz_title | Werkzaamheid | text | +nopdf | | korte naam, bijv. Demontage oude pompset (komt in de titel) |
-| wz_line | Planningsregel | planline | +optional | | koppel aan een regel uit de planning; de datums komen dan uit de planning |
-| wz_who | Uitgevoerd door | text | | | eigen ploeg of onderaannemer, met aantal personen |
+| wz_line | Planningsregel | planline | +optional; who=wz_who | | koppel aan een regel uit de planning: de datums en het volgnummer komen uit de planning |
+| wz_who | Uitgevoerd door | text | suggest=party_name | | de partij; wordt ingevuld met “Wie” van de planningsregel en is aan te passen |
+| wz_crew | Bezetting | text | +optional | | bijv. 2 monteurs en 1 lasser |
 | wz_how | Werkwijze | textarea | rows=5 | | de stappen in volgorde, en de raakvlakken met andere partijen |
 | wz_equipment | Materieel | textarea | +optional; rows=2 | | bijv. kraan of hoogwerker, heftruck, steiger, lasapparatuur, persproefpomp, aggregaat |
 | wz_material | Materiaal | textarea | +optional; rows=2 | | wat wordt geleverd en door wie; aanvoer en opslag |
@@ -10951,7 +11088,7 @@ ${H}| wz_title | Werkzaamheid | text | +nopdf | | korte naam, bijv. Demontage ou
 
 ## Overzicht uitvoering
 
-${H}| wz_overview | Overzicht | rtable | +nolabel; +left; cols=wz_title, wz_who, wz_line | | |
+${H}| wz_overview | Overzicht | rtable | +nolabel; +left; cols=wz_line, wz_title, wz_who | | |
 
 ## Veiligheid, gezondheid en milieu
 
@@ -10968,7 +11105,7 @@ ${H}| tests | Keuringen en testen | multi | Drukproef; Spoelen; Inbedrijfstellin
 ## Communicatie
 
 ${H}| meetings | Overleg en rapportage | textarea | +optional; rows=3 | | bijv. startwerkoverleg, dagstart, bouwvergadering, weekrapport: wie, wanneer, hoe |
-| contacts | Contactlijst | textarea | +optional; rows=4 | | één per regel: naam – functie – bedrijf – telefoon |
+| contacts | Overige contacten | textarea | +optional; rows=3 | | aanvullend op de partijen, één per regel: naam – functie – bedrijf – telefoon |
 
 ## Opmerkingen
 
@@ -12094,6 +12231,7 @@ PM.surveyPdf = (function () {
       case 'info': return f.hint || '';
       case 'planline': { const l = S.planLine('', v[f.key]); return l ? S.planLineText(l) : (has(v[f.key]) ? String(v[f.key]) + ' (removed from the planning)' : ''); }
       case 'planning': return '';
+      case 'grid': return S.gridRows(v[f.key]).filter(r => r.some(has)).map(r => r.filter(has).join(' – ')).join('\n');
       case 'layout': { const n = S.parseLayout(v[f.key]).length; return n ? n + ' item(s) placed' : ''; }
       case 'plan': { const p = PM.plan.parse(v[f.key]); return p.rooms.length + p.items.length ? p.rooms.length + ' room(s), ' + p.items.length + ' item(s)' : ''; }
       case 'textarea': case 'text': return has(v[f.key]) ? S.fillText(v[f.key], t, v) : '';
@@ -12326,11 +12464,12 @@ PM.surveyPdf = (function () {
       opts = opts || {};
       const rh = 5.4, lh = 3.6;
       const left = i => !i || opts.alignLeft;          // text columns left, numbers right
-      const xs = []; let x = M; widths.forEach(w => { xs.push(x); x += w; });
+      const X0 = opts.x || M, TW = W - M - X0;
+      const xs = []; let x = X0; widths.forEach(w => { xs.push(x); x += w; });
       const cellLines = (c, i) => (c && typeof c === 'object') ? [''] : (c == null || c === '' ? [''] : PM.pdf.wrap(String(c), widths[i] - 2.4, 8, i === 0));
       const rows = body.map(r => { const ls = r.map(cellLines); return { r, ls, h: Math.max(rh, Math.max(...ls.map(l => l.length)) * lh + 1.8) }; });
       const drawHead = () => {
-        pg.rect(M, y, CW, rh, { fill: C.head });
+        pg.rect(X0, y, TW, rh, { fill: C.head });
         head.forEach((c, i) => pg.text(PM.pdf.fit(c, widths[i] - 2, 7, true), xs[i] + (left(i) ? 1.2 : widths[i] - 1.2), y + 3.7, { size: 7, bold: true, color: C.muted, align: left(i) ? 'left' : 'right' }));
         y += rh;
       };
@@ -12346,20 +12485,25 @@ PM.surveyPdf = (function () {
           } else ls[i].forEach((ln, k) => pg.text(ln, xs[i] + (left(i) ? 1.2 : widths[i] - 1.2), y + 3.8 + k * lh, { size: 8, bold: i === 0, color: c == null || c === '' ? C.faint : C.text, align: left(i) ? 'left' : 'right' }));
         });
         y += hh;
-        pg.line(M, y, W - M, y, { stroke: C.line, lw: 0.15 });
+        pg.line(X0, y, W - M, y, { stroke: C.line, lw: 0.15 });
       });
       y += 2;
     }
 
     /* the project planning as a compact chart (lines "In export", tasks where "Tasks in export" is on) */
     function drawPlanChart(f) {
-      const P = S.planRows(rec.project), U = PM.util;
+      const P = S.formPlanRows(rec.project, t, v, f.key), U = PM.util, view = P.view, nl = t.lang === 'nl';
       const x0 = M + (R ? 8 : 0), W2 = CW - (R ? 8 : 0);
       if (!P.rows.length) { ensure(8); pg.text(t.lang === 'nl' ? 'Geen planningsregels in de export (Planning → regels met “In export”).' : 'No planning lines in the export (Planning → lines with “In export”).', x0, y + 3, { size: 8.5, color: C.muted }); y += 7; return; }
       const mon = d => U.addDays(d, -((U.parseDate(d).getUTCDay() + 6) % 7));
       const from = mon(P.from), to = U.addDays(mon(P.to), 6);
       const days = U.daysBetween(from, to) + 1;
-      const lw = 58, tlX = x0 + lw, tlW = W2 - lw, dayW = tlW / days;
+      // columns left of the bars, as chosen in the form (Nr is part of the activity column)
+      const xcols = [['who', nl ? 'Wie' : 'Who', 27], ['start', 'Start', 14], ['end', nl ? 'Eind' : 'End', 14], ['days', nl ? 'Dgn' : 'Days', 9]].filter(c => view.has(c[0]));
+      const lw = xcols.length > 2 ? 50 : 58, colsW = xcols.reduce((a, c) => a + c[2], 0);
+      const tlX = x0 + lw + colsW, tlW = W2 - lw - colsW, dayW = tlW / days;
+      const colX = []; { let cx = x0 + lw; xcols.forEach(c => { colX.push(cx); cx += c[2]; }); }
+      const short = d => U.fmtDate(d).replace(/ \d{4}$/, '');
       const X = d => tlX + U.daysBetween(from, d) * dayW;
       const rh = 5.2, th = 4.4, hh = 6;
       const weeks = days <= 112;
@@ -12372,15 +12516,20 @@ PM.surveyPdf = (function () {
         for (; d <= to; ) { const dt = U.parseDate(d); ticks.push({ d, label: U.MONTHS[dt.getUTCMonth()] + (dt.getUTCMonth() === 0 || !ticks.length ? ' ' + dt.getUTCFullYear() : '') }); d = U.iso(new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1))); } }
       const head = () => {
         pg.rect(x0, y, W2, hh, { fill: C.head });
-        pg.text(t.lang === 'nl' ? 'Activiteit' : 'Activity', x0 + 1.2, y + 4.1, { size: 7, bold: true, color: C.muted });
-        ticks.forEach(k => { const tx = X(k.d); if (tx < tlX + tlW - 3) pg.text(k.label, tx + 0.8, y + 4.1, { size: 6.3, color: C.muted }); });
+        pg.text((view.has('nr') ? (nl ? 'Nr. ' : 'No. ') : '') + (nl ? 'Activiteit' : 'Activity'), x0 + 1.2, y + 4.1, { size: 7, bold: true, color: C.muted });
+        xcols.forEach((c, i) => pg.text(c[1], colX[i] + 1, y + 4.1, { size: 7, bold: true, color: C.muted }));
+        // labels only as often as they fit (every 2nd, 3rd… week on a narrow timeline)
+        const gapMm = ticks.length > 1 ? X(ticks[1].d) - X(ticks[0].d) : tlW;
+        const need = Math.max(...ticks.map(k => PM.pdf.textWidth(k.label, 6.3))) + 1.6;
+        const every = Math.max(1, Math.ceil(need / Math.max(0.1, gapMm)));
+        ticks.forEach((k, i) => { const tx = X(k.d); if (i % every === 0 && tx + need < tlX + tlW + 1) pg.text(k.label, tx + 0.8, y + 4.1, { size: 6.3, color: C.muted }); });
         y += hh;
       };
       if (!f.hideLabel) { ensure(6 + hh + rh * 3); pg.text(f.label, x0, y + 3, { size: 9.5, bold: true, color: C.text }); y += 6; }
       else ensure(hh + rh * 3);
       head();
       const top = [y];
-      const grid = (yTop, yBot) => { ticks.forEach(k => { const tx = X(k.d); if (tx > tlX) pg.line(tx, yTop, tx, yBot, { stroke: C.line, lw: 0.12 }); }); pg.line(tlX, yTop, tlX, yBot, { stroke: C.line, lw: 0.25 }); };
+      const grid = (yTop, yBot) => { colX.forEach(cx => pg.line(cx, yTop, cx, yBot, { stroke: C.line, lw: 0.12 })); ticks.forEach(k => { const tx = X(k.d); if (tx > tlX) pg.line(tx, yTop, tx, yBot, { stroke: C.line, lw: 0.12 }); }); pg.line(tlX, yTop, tlX, yBot, { stroke: C.line, lw: 0.25 }); };
       const today = U.todayISO();
       let segTop = y;
       P.rows.forEach(r => {
@@ -12392,7 +12541,13 @@ PM.surveyPdf = (function () {
           pg.text(PM.pdf.fit(r.title, lw - 2, 7.5, true), x0 + 1.2, base, { size: 7.5, bold: true, color: C.text });
         } else if (r.type === 'line') {
           const l = r.line;
-          pg.text(PM.pdf.fit(l.title || l.id, lw - 2.4, 7.5), x0 + 1.2, base, { size: 7.5, color: C.text });
+          if (view.has('nr')) pg.text(r.no + '.', x0 + 1.2, base, { size: 7.5, bold: true, color: C.text });
+          const tx0 = x0 + 1.2 + (view.has('nr') ? 6 : 0);
+          pg.text(PM.pdf.fit(l.title || l.id, lw - (tx0 - x0) - 1.2, 7.5), tx0, base, { size: 7.5, color: C.text });
+          xcols.forEach((c, i) => {
+            const val = c[0] === 'who' ? r.who || '' : c[0] === 'start' ? short(r.start) : c[0] === 'end' ? short(r.end) : String(U.daysBetween(r.start, r.end) + 1);
+            if (val) pg.text(PM.pdf.fit(val, c[2] - 1.6, 6.8), colX[i] + 1, base, { size: 6.8, color: C.text });
+          });
           const bx = X(r.start), bw = Math.max(0.8, (U.daysBetween(r.start, r.end) + 1) * dayW), bh = rh * 0.6, by = y + (rh - bh) / 2;
           if (l.milestone) { const mx = bx + dayW / 2, ms = 1.6; pg.poly([[mx, by + bh / 2 - ms], [mx + ms, by + bh / 2], [mx, by + bh / 2 + ms], [mx - ms, by + bh / 2]], { fill: r.color }); if (r.resp) pg.circle(mx, by + bh / 2, ms + 0.7, { stroke: r.resp, lw: 0.6 }); }
           else {
@@ -12408,13 +12563,14 @@ PM.surveyPdf = (function () {
         pg.line(x0, y, x0 + W2, y, { stroke: C.line, lw: 0.1 });
       });
       grid(segTop, y);
-      if (today >= from && today <= to) { const tx = X(today) + dayW / 2; pg.line(tx, segTop, tx, y, { stroke: '#d14343', lw: 0.3, dash: [1, 0.7] }); }
+      if (view.has('today') && today >= from && today <= to) { const tx = X(today) + dayW / 2; pg.line(tx, segTop, tx, y, { stroke: '#d14343', lw: 0.3, dash: [1, 0.7] }); }
       // legend: responsible persons
       const rs = []; P.rows.forEach(r => { if (r.resp && !rs.some(x => x.c === r.resp && x.n === r.respName)) rs.push({ c: r.resp, n: r.respName }); });
       y += 2;
-      if (rs.length) {
+      if (rs.length && view.has('legend')) {
         ensure(5); let lx = x0;
-        pg.text(t.lang === 'nl' ? 'Verantwoordelijk:' : 'Responsible:', lx, y + 2.6, { size: 6.5, color: C.muted }); lx += PM.pdf.textWidth(t.lang === 'nl' ? 'Verantwoordelijk:' : 'Responsible:', 6.5) + 3;
+        const lt = nl ? 'Uitgevoerd door:' : 'Carried out by:';
+        pg.text(lt, lx, y + 2.6, { size: 6.5, color: C.muted }); lx += PM.pdf.textWidth(lt, 6.5) + 3;
         rs.forEach(x => { if (lx > x0 + W2 - 25) return; pg.rect(lx, y + 0.6, 5, 2.6, { stroke: x.c, lw: 0.7, r: 0.5 }); lx += 6.5; const nm = PM.pdf.raw(x.n); pg.text(nm, lx, y + 2.6, { size: 6.5, color: C.text }); lx += PM.pdf.textWidth(nm, 6.5) + 5; });
         y += 5;
       }
@@ -12515,6 +12671,17 @@ PM.surveyPdf = (function () {
           ensure(infoH <= 80 ? infoH : 20);                 // a short text stays in one piece
           if (!f.hideLabel) { pg.text(f.label, M + (R ? 8 : 0), y + 3, { size: 9.5, bold: true, color: C.text }); y += 5.5; }
           infoLines.forEach(ln => { ensure(4.6); pg.text(ln, M + (R ? 8 : 0), y + 3, { size: 9, color: C.text }); y += 4.4; });
+          y += 2;
+          continue;
+        }
+        if (f.type === 'grid') {
+          const cols = f.cols || [];
+          const body = S.gridRows(v[f.key]).filter(r => r.some(x => x)).map(r => cols.map((c, j) => r[j] || ''));
+          if (!body.length) continue;
+          const gx = R ? 8 : 0, n = cols.length, gw = CW - gx;
+          const widths = cols.map((c, j) => (/mail/i.test(c) ? gw * 0.3 : /naam|name/i.test(c) && j === 0 ? gw * 0.27 : 0)).map((w, j, a) => w || (gw - a.reduce((x, y) => x + y, 0)) / a.filter(z => !z).length);
+          if (!f.hideLabel) { ensure(Math.min(60, 6 + 5.4 * (body.length + 1) + 3)); pg.text(f.label, M + gx, y + 3, { size: 9.5, bold: true, color: C.text }); y += 6; }
+          gridTable(cols, body, widths, { alignLeft: true, x: M + gx });
           y += 2;
           continue;
         }
@@ -12677,11 +12844,13 @@ PM.surveyPdf = (function () {
     }
 
     // ---- signatures (to sign by pen) ----
-    if (t.signatures && t.signatures.length) {
+    const offSig = new Set(String(v.sign_off || '').split(/[;,]/).map(x => x.trim()).filter(Boolean));
+    const sigs = (t.signatures || []).filter((x, i) => !offSig.has(String(i + 1)));
+    if (sigs.length) {
       const bh = 34, gap = 6, per = 2, bw = (CW - gap) / per;
       ensure(10 + bh);
       sectionTitle(L.signatures);
-      t.signatures.forEach((label, i) => {
+      sigs.forEach((label, i) => {
         if (i % per === 0 && i) { y += bh + gap; ensure(bh); }
         const x = M + (i % per) * (bw + gap);
         pg.rect(x, y, bw, bh, { stroke: '#c9ced8', lw: 0.35, r: 1.5 });
@@ -12821,13 +12990,15 @@ PM.surveyPdf = (function () {
     const t = S.get(templateId);
     const p = PM.store.project(pid);
     const values = {};
+    const inRepeat = new Set(); (t ? t.sections : []).forEach(sec => { if (sec.repeat) sec.fields.forEach(f => inRepeat.add(f.key)); });
     S.fieldsOf(t).forEach(f => {
+      if (inRepeat.has(f.key)) return;                          // filled in per copy (applyRepeatDefaults)
       if (f.default === 'today') values[f.key] = U.todayISO();
       else if (f.default != null && f.default !== '' && f.type !== 'calc') values[f.key] = String(f.default).replace(/\\n/g, '\n');
       if (f.prefill) { const v = f.prefill(p); if (v) values[f.key] = v; }
       if (f.type === 'person' && lastSurveyor && PM.store.find('people', lastSurveyor)) values[f.key] = lastSurveyor;
     });
-    S.applyRepeatDefaults(t, values);
+    S.applyRepeatDefaults(t, values, p);
     return PM.store.insert('surveys', { template: templateId, status: 'draft', values }, pid);
   }
 
@@ -12874,7 +13045,7 @@ PM.surveyPdf = (function () {
       if (val === '' || val == null || (Array.isArray(val) && !val.length)) delete v[key]; else v[key] = val;
       if ((key === 'surveyor' || key === 'tester' || key === 'inspector') && val) { lastSurveyor = val; try { PM.portfolio.local.set('pm.surveyor', val); } catch (e) { /* ignore */ } }
       refresh();
-      if (repeatKeys.has(key)) { S.applyRepeatDefaults(t, v); rerenderSoon(); }          // number of repeated sections changed
+      if (repeatKeys.has(key)) { S.applyRepeatDefaults(t, v, PM.store.project(rec.project)); rerenderSoon(); }          // number of repeated sections changed
       if (now) saveNow(); else save();
     };
 
@@ -12946,9 +13117,106 @@ PM.surveyPdf = (function () {
       const rs = t.sections.find(s => s.repeat);
       el.appendChild(h('p', { class: 'muted small sv-note' }, '“' + rs.title.replace(/\{n\}/g, '').trim() + '” sections appear when you fill in the number above.'));
     }
+    // signatures: each one can be left out of the PDF for this form (stored as "sign_off": numbers of the ones left out)
+    if (t.signatures && t.signatures.length) {
+      const nl = t.lang === 'nl';
+      const off = () => new Set(String(v.sign_off || '').split(/[;,]/).map(x => x.trim()).filter(Boolean));
+      el.appendChild(h('section', { class: 'card sv-section sv-sign', id: 'sv-sec-sign', lang: t.lang || null },
+        h('div', { class: 'card-head' }, h('h2', null, nl ? 'Ondertekening' : 'Signatures')),
+        h('p', { class: 'small muted sv-note' }, nl ? 'Vinkje uit = geen handtekeningvak in de PDF voor deze partij.' : 'Untick to leave that signature box out of the PDF.'),
+        h('div', { class: 'sv-sign-list' }, t.signatures.map((label, i) => {
+          const cb = h('input', { type: 'checkbox', checked: !off().has(String(i + 1)) || null, 'data-sign': String(i + 1) });
+          cb.addEventListener('change', () => { const o = off(); if (cb.checked) o.delete(String(i + 1)); else o.add(String(i + 1)); set('sign_off', [...o].sort().join('; '), true); });
+          return h('label', { class: 'check' }, cb, ' ' + label);
+        }))));
+    }
     const pdf2 = h('button', { class: 'btn', onclick: e => makePdf(e.currentTarget) }, 'PDF');
     el.appendChild(h('div', { class: 'sv-bottom' }, h('a', { class: 'btn ghost', href: '#/surveys?project=' + rec.project }, '‹ Back to forms'), h('span', { class: 'spacer' }), pdf2));
     refresh();
+
+    /* ----- grid: rows you add yourself (e.g. the people of a party) ----- */
+    function gridField(f, id) {
+      const box = h('div', { class: 'sv-grid', id });
+      const cols = f.cols || ['Naam', 'Rol'];
+      let rows = S.gridRows(v[f.key]);
+      const types = cols.map(c => /mail/i.test(c) ? 'email' : /tel|phone|nummer|mobiel/i.test(c) ? 'tel' : 'text');
+      const store = () => set(f.key, S.gridText(rows), true);
+      const draw = () => {
+        box.innerHTML = '';
+        if (!rows.length) rows = [cols.map(() => '')];
+        const tbl = h('table', { class: 'data sv-grid-t' },
+          h('thead', null, h('tr', null, cols.map(c => h('th', null, c)), h('th', { class: 'act' }))),
+          h('tbody', null, rows.map((r, i) => h('tr', null,
+            cols.map((c, j) => {
+              const inp = h('input', { type: types[j], value: r[j] || '', placeholder: c, 'aria-label': c + ' ' + (i + 1), autocomplete: 'off' });
+              inp.addEventListener('input', () => { rows[i][j] = inp.value; set(f.key, S.gridText(rows)); });
+              inp.addEventListener('change', () => { rows[i][j] = inp.value; store(); });
+              return h('td', { 'data-label': c }, inp);
+            }),
+            h('td', { class: 'act' }, h('button', { type: 'button', class: 'icon-btn', title: t.lang === 'nl' ? 'Regel verwijderen' : 'Remove row', 'aria-label': t.lang === 'nl' ? 'Regel verwijderen' : 'Remove row',
+              onclick: () => { rows.splice(i, 1); store(); draw(); } }, '×'))))));
+        box.append(h('div', { class: 'tbl-scroll' }, tbl),
+          h('button', { type: 'button', class: 'btn ghost small', onclick: () => { rows.push(cols.map(() => '')); draw(); const ins = box.querySelectorAll('tbody tr:last-child input'); if (ins[0]) ins[0].focus(); } },
+            t.lang === 'nl' ? '+ Regel' : '+ Row'));
+      };
+      draw();
+      return box;
+    }
+
+    /* ----- planning chart with view options (per filled-in form) ----- */
+    function planningField(f, id) {
+      const nl = t.lang === 'nl';
+      const box = h('div', { class: 'sv-plan', id });
+      const OPT = { nr: nl ? 'Volgnummer' : 'Number', who: nl ? 'Wie' : 'Who', start: 'Start', end: nl ? 'Eind' : 'End', days: nl ? 'Dagen' : 'Days',
+        resp: nl ? 'Kleur per partij' : 'Colour per party', phases: nl ? 'Fasen' : 'Phases', ms: nl ? 'Mijlpalen' : 'Milestones', today: nl ? 'Vandaag' : 'Today', legend: nl ? 'Legenda' : 'Legend' };
+      const opts = h('div', { class: 'sv-plan-opts', role: 'group', 'aria-label': nl ? 'Weergave van de planning' : 'Planning view' });
+      const chart = h('div', { class: 'sv-plan-chart' });
+      const drawOpts = () => {
+        const view = S.planView(v, f.key);
+        opts.innerHTML = '';
+        opts.appendChild(h('span', { class: 'small muted' }, nl ? 'In de PDF: ' : 'In the PDF: '));
+        S.PLAN_VIEW.forEach(k => {
+          const cb = h('input', { type: 'checkbox', checked: view.has(k) || null, 'data-view': k });
+          cb.addEventListener('change', () => {
+            const cur = S.planView(v, f.key);
+            if (cb.checked) cur.add(k); else cur.delete(k);
+            set(f.key + '_view', S.PLAN_VIEW.filter(x => cur.has(x)).join('; ') || 'none', true);
+            drawChart();
+          });
+          opts.appendChild(h('label', { class: 'check small' }, cb, ' ' + OPT[k]));
+        });
+      };
+      const drawChart = () => {
+        chart.innerHTML = '';
+        const P = S.formPlanRows(rec.project, t, v, f.key), view = P.view;
+        if (!P.rows.length) { chart.appendChild(h('p', { class: 'small muted' }, nl ? 'Geen planningsregels in de export. Maak de planning in Planning; regels met “PDF” aan komen hier.' : 'No planning lines in the export yet. Lines with “PDF” on in Planning appear here.')); return; }
+        const from = P.from, days = U.daysBetween(P.from, P.to) + 1;
+        const pct = d => (U.daysBetween(from, d) / days * 100);
+        const meta = r => [view.has('who') && r.who ? r.who : '', view.has('start') ? U.fmtDate(r.start).replace(/ \d{4}$/, '') : '', view.has('end') && r.end !== r.start ? U.fmtDate(r.end).replace(/ \d{4}$/, '') : '',
+          view.has('days') ? (U.daysBetween(r.start, r.end) + 1) + (nl ? ' d' : ' d') : ''].filter(Boolean).join(' · ');
+        P.rows.forEach(r => {
+          if (r.type === 'group') { chart.appendChild(h('div', { class: 'svp-row group' }, h('span', { class: 'svp-l', translate: 'no' }, r.title), h('span', { class: 'svp-t' }))); return; }
+          if (r.type === 'task') {
+            chart.appendChild(h('div', { class: 'svp-row task' }, h('span', { class: 'svp-l', translate: 'no' }, '· ' + (r.task.title || r.task.id)),
+              h('span', { class: 'svp-t' }, r.task.due ? h('i', { class: 'svp-dot' + (r.task.status === 'done' ? ' done' : ''), style: { left: pct(r.task.due) + '%' } }) : null)));
+            return;
+          }
+          const l = r.line, m = meta(r);
+          chart.appendChild(h('div', { class: 'svp-row' },
+            h('span', { class: 'svp-l', translate: 'no', title: S.planLineText(l) }, view.has('nr') ? h('b', { class: 'svp-no' }, r.no + '.') : null, ' ' + (l.title || l.id), m ? h('span', { class: 'svp-m muted' }, m) : null),
+            h('span', { class: 'svp-t' }, h('i', { class: 'svp-bar' + (l.milestone ? ' ms' : ''), title: S.planLineText(l) + (r.who ? ' · ' + r.who : ''),
+              style: { left: pct(r.start) + '%', width: Math.max(0.8, (U.daysBetween(r.start, r.end) + 1) / days * 100) + '%', '--pc': r.color, '--rc': r.resp || 'transparent' } }))));
+        });
+        chart.appendChild(h('p', { class: 'small muted' }, U.fmtDate(P.from) + ' – ' + U.fmtDate(P.to) + ' · ',
+          nl ? 'welke regels erin staan kies je in Planning (PDF / T per regel); “Wie” komt uit de gekoppelde werkzaamheid of de planningsregel' : 'which lines are in it is chosen in Planning (PDF / T per line); “Who” comes from the linked section or the planning line',
+          P.hidden ? ' · ' + P.hidden + (nl ? ' regel(s) niet in de export' : ' line(s) not in the export') : '', ' · ',
+          h('a', { href: '#/planning?project=' + rec.project }, nl ? 'Planning openen' : 'Open planning')));
+      };
+      liveUpdates.push(drawChart);
+      drawOpts(); drawChart();
+      box.append(opts, chart);
+      return box;
+    }
 
     /* ----- field renderers ----- */
     function fieldRow(f) {
@@ -13034,34 +13302,19 @@ PM.surveyPdf = (function () {
             info.append([pers ? pers.name : '', l.who || '', PM.planResp && !PM.planResp.inExport(l) ? (t.lang === 'nl' ? 'niet in de export' : 'not in the export') : ''].filter(Boolean).join(' · '), ' ',
               h('a', { href: '#/planning?project=' + rec.project }, t.lang === 'nl' ? 'Planning openen' : 'Open planning'));
           };
-          sel.addEventListener('change', () => { set(f.key, sel.value, true); draw(); });
+          sel.addEventListener('change', () => {
+            set(f.key, sel.value, true); draw();
+            // who=<key>: the line's "Who" goes into that question (it stays editable)
+            const l = S.planLine(rec.project, sel.value);
+            if (f.who && l) {
+              const wk = f.who + (f.sfx || ''), w = S.planWho(l);
+              if (w) { set(wk, w, true); const inp = document.getElementById('sv-' + wk); if (inp) inp.value = w; }
+            }
+          });
           draw();
           return h('div', null, sel, info);
         }
-        case 'planning': {
-          const box = h('div', { class: 'sv-plan', id });
-          const P = S.planRows(rec.project);
-          if (!P.rows.length) { box.appendChild(h('p', { class: 'small muted' }, t.lang === 'nl' ? 'Geen planningsregels in de export. Maak de planning in Planning; regels met “In export” komen hier.' : 'No planning lines in the export yet. Lines with “In export” in Planning appear here.')); return box; }
-          const from = P.from, days = U.daysBetween(P.from, P.to) + 1;
-          const pct = d => (U.daysBetween(from, d) / days * 100);
-          P.rows.forEach(r => {
-            if (r.type === 'group') { box.appendChild(h('div', { class: 'svp-row group' }, h('span', { class: 'svp-l', translate: 'no' }, r.title), h('span', { class: 'svp-t' }))); return; }
-            if (r.type === 'task') {
-              box.appendChild(h('div', { class: 'svp-row task' }, h('span', { class: 'svp-l', translate: 'no' }, '· ' + (r.task.title || r.task.id)),
-                h('span', { class: 'svp-t' }, r.task.due ? h('i', { class: 'svp-dot' + (r.task.status === 'done' ? ' done' : ''), style: { left: pct(r.task.due) + '%' } }) : null)));
-              return;
-            }
-            const l = r.line;
-            box.appendChild(h('div', { class: 'svp-row' }, h('span', { class: 'svp-l', translate: 'no', title: S.planLineText(l) }, l.title || l.id),
-              h('span', { class: 'svp-t' }, h('i', { class: 'svp-bar' + (l.milestone ? ' ms' : ''), title: S.planLineText(l) + (r.respName ? ' · ' + r.respName : ''),
-                style: { left: pct(r.start) + '%', width: Math.max(0.8, (U.daysBetween(r.start, r.end) + 1) / days * 100) + '%', '--pc': r.color, '--rc': r.resp || 'transparent' } }))));
-          });
-          box.appendChild(h('p', { class: 'small muted' }, U.fmtDate(P.from) + ' – ' + U.fmtDate(P.to) + ' · ',
-            t.lang === 'nl' ? 'wat er in staat kies je in Planning (vinkjes per regel)' : 'choose what is in it in Planning (per line)',
-            P.hidden ? ' · ' + P.hidden + (t.lang === 'nl' ? ' regel(s) niet in de export' : ' line(s) not in the export') : '', ' · ',
-            h('a', { href: '#/planning?project=' + rec.project }, t.lang === 'nl' ? 'Planning openen' : 'Open planning')));
-          return box;
-        }
+        case 'planning': return planningField(f, id);
         case 'info': return h('p', { class: 'sv-info' }, S.fillText(f.hint || '', t, v, (ff, vv) => PM.surveyPdf.answer(ff, vv, t)));
         case 'rtable': {
           const box = h('div', { class: 'tbl-scroll sv-rtable', id });
@@ -13088,7 +13341,24 @@ PM.surveyPdf = (function () {
         case 'date': return textInput(f.key, { type: 'date', id });
         case 'tel': return textInput(f.key, { type: 'tel', id, autocomplete: 'off' });
         case 'email': return textInput(f.key, { type: 'email', id, autocomplete: 'off', autocapitalize: 'off' });
-        case 'text': return textInput(f.key, { type: 'text', id });
+        case 'text': {
+          if (!f.suggest) return textInput(f.key, { type: 'text', id });
+          // suggest=<key>: the answers of that question (all copies of a repeated section) as suggestions
+          const dl = h('datalist', { id: id + '_dl' });
+          const fill = () => {
+            const seen = new Set();
+            Object.keys(v).filter(k => k === f.suggest || k.startsWith(f.suggest + '__')).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+              .forEach(k => { const x = String(v[k] || '').trim(); if (x && !seen.has(x)) { seen.add(x); } });
+            PM.store.list('lines', { project: rec.project }).forEach(l => { const w = S.planWho(l); if (w) seen.add(w); });
+            dl.innerHTML = '';
+            seen.forEach(x => dl.appendChild(h('option', { value: x })));
+          };
+          const inp = textInput(f.key, { type: 'text', id, list: id + '_dl', autocomplete: 'off' });
+          inp.addEventListener('focus', fill);
+          fill();
+          return h('div', null, inp, dl);
+        }
+        case 'grid': return gridField(f, id);
         case 'number': {
           return h('div', { class: 'sv-num' },
             f.approx || f.prefix ? h('span', { class: 'affix' }, (f.approx ? '±' : '') + (f.prefix ? ' ' + f.prefix : '')) : null,
@@ -13496,7 +13766,8 @@ PM.formsEditor = (function () {
     ['check', 'Check (OK / Not OK / N/A)'], ['date', 'Date'], ['tel', 'Phone'], ['email', 'Email'], ['person', 'Person (our team)'],
     ['pipesize', 'Pipe size (DN / ANSI)'], ['pumptest', 'Pump test table'], ['table', 'Table'], ['estimate', 'Days × men'], ['position', 'Position on drawing'], ['photos', 'Photos'],
     ['multi', 'Multiple choice (tick several)'], ['calc', 'Calculation'], ['layout', 'Layout drawing (top view)'], ['plan', 'Site plan (rooms, route, objects)'],
-    ['config', 'Configurator design (linked price)'], ['rtable', 'Overview table of repeated sections']
+    ['config', 'Configurator design (linked price)'], ['rtable', 'Overview table of repeated sections'], ['grid', 'Table with rows you add (e.g. people)'],
+    ['planning', 'Project planning (chart)'], ['planline', 'Link to a planning line'], ['info', 'Fixed text']
   ];
   const HELP = [
     ['All types', '+optional (not counted in progress) · show=key=Value (only shown when that answer is given) · show=key~text (answer contains text) · +nolabel'],
@@ -13515,7 +13786,10 @@ PM.formsEditor = (function () {
     ['Layout drawing', 'length=<key>; width=<key> (e.g. outside_l, outside_w) · items=door:Door, louvre_h:Louvre high, *ap:Panel (* = can stand inside)'],
     ['Configurator design', 'Pick a saved design of the project (Costs → Configurator). In a calculation its key is the cost price per piece, worked out with today’s price list — e.g. formula=round(pos_config * (1 + margin / 100)). summary=pos_desc (button to copy the design summary into that text) · qty=pos_qty'],
     ['Overview table', 'cols=pos_title, pos_qty, pos_price, pos_total (keys of questions in a repeated section) · total=total — one row per repeated section, e.g. the price overview of a quote'],
-    ['Sections', 'Repeat a section a number of times by choosing a number question under “Repeat per”. Use {n} in the title for the number.']
+    ['Table with rows you add', 'cols=Naam, Rol, Telefoon, E-mail — add and remove rows in the form; the PDF shows the filled-in rows'],
+    ['Planning / planning line', 'Planning: the chart of the project planning (view options per form). Planning line: who=<key> fills in that question with the line’s “Who” (still editable)'],
+    ['Text', 'suggest=<key>: suggestions from the answers of that question (e.g. the party names)'],
+    ['Sections', 'Repeat a section (at most 30 times) by choosing a number question under “Repeat per”. Use {n} in the title for the number. defaults=A, B, C gives copy 1, 2, 3 its own starting answer; prefill only fills in copy 1.']
   ];
 
   function badge(t) {
