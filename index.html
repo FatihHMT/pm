@@ -1123,6 +1123,37 @@ textarea { font: inherit; }
 .settings-ver { margin-top: 2px; }
 /* phones: tabs wrap onto a second line instead of hiding off-screen */
 @media (max-width: 760px) { .tabs { flex-wrap: wrap; overflow-x: visible; } .tabs button { padding: 8px 10px; } }
+.sv-info { margin: 2px 0 6px; line-height: 1.45; }
+
+/* planning: responsible outline, export flag */
+.bar.resp { outline: 2.5px solid var(--rc); outline-offset: 1px; }
+.bar.milestone.resp { outline-offset: 2px; }
+.bar.noexport { opacity: .55; }
+.exp-flag { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 4px; font-size: 11px; line-height: 1; padding: 3px 4px; min-width: 24px; cursor: pointer; }
+.exp-flag.on { color: var(--accent, #2f6fed); border-color: color-mix(in srgb, var(--accent, #2f6fed) 45%, transparent); }
+.resp-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: 0 0 8px; }
+.resp-chip { display: inline-flex; align-items: center; gap: 5px; }
+.resp-chip::before { content: ''; width: 16px; height: 9px; border-radius: 3px; border: 2.5px solid var(--rc); background: var(--surface); }
+
+/* forms: planning chart and linked planning line */
+.sv-plan { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; background: var(--surface); }
+.svp-row { display: grid; grid-template-columns: minmax(110px, 34%) 1fr; align-items: center; min-height: 22px; border-bottom: 1px solid var(--border); }
+.svp-row:last-of-type { border-bottom: 0; }
+.svp-row.group .svp-l { font-weight: 600; }
+.svp-row.task { min-height: 18px; }
+.svp-row.task .svp-l { padding-left: 12px; color: var(--muted); font-size: 12px; }
+.svp-l { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 6px; }
+.svp-t { position: relative; height: 14px; }
+.svp-bar { position: absolute; top: 2px; height: 10px; border-radius: 3px; background: var(--pc); outline: 2px solid var(--rc); outline-offset: 1px; }
+.svp-bar.ms { width: 10px !important; transform: rotate(45deg); border-radius: 2px; }
+.svp-dot { position: absolute; top: 3px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #8a93a6; }
+.svp-dot.done { background: #1f9d55; }
+.sv-plan p { margin: 6px 0 0; }
+.sv-planline { margin-top: 4px; }
+.linked-forms { margin: 8px 0; }
+.exp-flags { display: inline-flex; gap: 2px; }
+.exp-flag { min-width: 0; font-weight: 600; font-size: 10px; padding: 3px 4px; text-decoration: line-through; }
+.exp-flag.on { text-decoration: none; }
 
 </style>
 </head>
@@ -3103,6 +3134,16 @@ PM.i18n.add('nl', {
   ' Hide questions answered N/A (on screen and in the PDF), unless “Show N/A questions” is switched on in the filled-in form': ' Vragen met antwoord NVT verbergen (op het scherm en in de PDF), tenzij “NVT-vragen tonen” aan staat in het ingevulde formulier',
   'Show N/A questions': 'NVT-vragen tonen',
   'Show': 'Tonen',
+  'In export': 'In export', 'Tasks in export': 'Taken in export', 'Responsible': 'Verantwoordelijke', 'Responsible: ': 'Verantwoordelijk: ',
+  'Coloured outline around each bar for the person responsible (Person, else Who)': 'Gekleurde rand om elke balk voor de verantwoordelijke (Persoon, anders Wie)',
+  'no Person or Who filled in on the lines yet': 'nog geen Persoon of Wie ingevuld bij de regels',
+  'In export — click to leave this line out of PDFs and the work plan': 'In export — klik om deze regel weg te laten uit PDF’s en het werkplan',
+  'Not in export — click to include it': 'Niet in export — klik om hem mee te nemen',
+  'Responsible (coloured outline)': 'Verantwoordelijke (gekleurde rand)', 'Only lines “In export” (+ their tasks)': 'Alleen regels “In export” (+ hun taken)',
+  'In forms: ': 'In formulieren: ',
+  'Linked tasks are exported as sub-rows — click to leave them out': 'Gekoppelde taken komen als subregels in de export — klik om ze weg te laten',
+  'Click to export the linked tasks as sub-rows': 'Klik om de gekoppelde taken als subregels mee te exporteren',
+  'Pompberekening (Dutch) — end suction, split case, multistage, vertical; electric or diesel': 'Pompberekening — end suction, split case, multistage, verticaal; E-motor of diesel',
   'Offerte beknopt (one-pager, Dutch) — price table linked to the configurator': 'Offerte beknopt (één pagina) — prijstabel gekoppeld aan de configurator',
   'The end date cannot be before the start date; it is now the same as the start date.': 'De einddatum kan niet vóór de begindatum liggen; hij is nu gelijk aan de begindatum.',
   'Map': 'Kaart', 'Clients': 'Klanten', 'Suppliers': 'Leveranciers', 'Partners': 'Partners', 'Other companies': 'Overige bedrijven', 'This project': 'Dit project', 'Projects': 'Projecten',
@@ -3318,7 +3359,9 @@ PM.i18n.add('nl', {
       { key: 'progress', label: 'Progress %', type: 'number', width: 90, default: 0 },
       { key: 'milestone', label: 'Milestone', type: 'bool', width: 80, default: false },
       { key: 'person', label: 'Person', type: 'ref', ref: 'people', width: 150 },
-      { key: 'who', label: 'Who (dept. / supplier)', type: 'string', width: 160, suggest: true }
+      { key: 'who', label: 'Who (dept. / supplier)', type: 'string', width: 160, suggest: true },
+      { key: 'export', label: 'In export', type: 'bool', width: 90, default: true },
+      { key: 'export_tasks', label: 'Tasks in export', type: 'bool', width: 110, default: false }
     ],
     title: r => r.title || r.id
   });
@@ -6277,7 +6320,7 @@ PM.ui = (function () {
  * Application shell: sidebar, top bar, routing, data-source handling, boot.
  * Routes look like  #/planning?project=P-001
  */
-PM.version = '2026-11-05.1';   // shown at the bottom of the sidebar: tells you which index.html is running
+PM.version = '2026-11-06.1';   // shown at the bottom of the sidebar: tells you which index.html is running
 PM.app = (function () {
   const U = PM.util, h = U.h;
   let route = { module: 'dashboard', params: {} };
@@ -7246,6 +7289,31 @@ function commentsSection(p, ctx) {
 (function () {
   const U = PM.util, h = U.h;
   const ZOOM = { day: { px: 30, label: 'Days' }, week: { px: 12, label: 'Weeks' }, month: { px: 4, label: 'Months' } };
+  /* ---------- export flags and the person responsible per line ----------
+   * "In export" (default on) and "Tasks in export" (default off) are kept per line in planning.md.
+   * The responsible person (Person, else Who) can be shown as a coloured outline around the bar;
+   * colours are picked automatically and are the same on screen, in the planning PDF and in forms. */
+  const isOn = (v, def) => (v === undefined || v === null || v === '' ? def : v === true || /^(true|yes|ja|1)$/i.test(String(v)));
+  const inExport = l => isOn(l.export, true);
+  const tasksInExport = l => isOn(l.export_tasks, false);
+  const RESP_COLORS = ['#e8590c', '#2b8a3e', '#1971c2', '#ae3ec9', '#c92a2a', '#0b7285', '#f08c00', '#5f3dc4', '#a61e4d', '#5c940d', '#364fc7', '#495057'];
+  const respKey = l => (l.person ? 'p:' + l.person : (l.who ? 'w:' + String(l.who).trim().toLowerCase() : ''));
+  function respKeys() {
+    const keys = PM.store.list('people').map(p => 'p:' + p.id);
+    const whos = [...new Set(PM.store.list('lines').filter(l => !l.person && l.who).map(l => 'w:' + String(l.who).trim().toLowerCase()))].sort();
+    return keys.concat(whos);
+  }
+  function respColor(key) { if (!key) return ''; const i = respKeys().indexOf(key); return RESP_COLORS[(i < 0 ? 0 : i) % RESP_COLORS.length]; }
+  function respName(key) {
+    if (!key) return '';
+    if (key.startsWith('p:')) { const p = PM.store.find('people', key.slice(2)); return p ? p.name : key.slice(2); }
+    const l = PM.store.list('lines').find(x => !x.person && x.who && 'w:' + String(x.who).trim().toLowerCase() === key);
+    return l ? l.who : key.slice(2);
+  }
+  const respOn = () => PM.portfolio.local.get('pm.plan.resp') === '1';
+  const setRespOn = v => PM.portfolio.local.set('pm.plan.resp', v ? '1' : '0');
+  PM.planResp = { key: respKey, color: respColor, name: respName, on: respOn, set: setRespOn, inExport, tasksInExport, isOn };
+
   const state = { zoom: 'week', collapsed: {}, expandedProjects: {}, view: 'timeline', filter: 'all', mode: 'projects', push: false, undo: null, order: 'id' };
   try { state.order = PM.portfolio.local.get('pm.planning.order') === 'milestone' ? 'milestone' : 'id'; } catch (e) { /* ignore */ }
 
@@ -7415,6 +7483,10 @@ function commentsSection(p, ctx) {
       if (startInp.value && (!endInp.value || endInp.value < startInp.value)) { endInp.value = startInp.value; endInp.dispatchEvent(new Event('change')); }
     });
     const taskBox = h('div', { class: 'linked-tasks' });
+    // forms (e.g. the work plan) that refer to this line
+    const formLinks = PM.surveys && PM.surveys.linkedTo ? PM.surveys.linkedTo(pid, line.id) : [];
+    const formBox = formLinks.length ? h('div', { class: 'linked-forms small' }, h('b', null, 'In forms: '),
+      formLinks.map((x, i) => [i ? ' · ' : '', h('a', { href: '#/surveys?project=' + pid + '&survey=' + x.rec.id, onclick: () => { const d = taskBox.closest('dialog'); if (d) d.close(); } }, x.template.short + ' ' + x.rec.id + ': ', h('span', { translate: 'no' }, x.title))])) : null;
 
     function refresh() {
       taskBox.innerHTML = '';
@@ -7450,7 +7522,7 @@ function commentsSection(p, ctx) {
 
     const dlg = PM.ui.dialog({
       title: isNew ? 'New planning line' : line.id + ' · ' + (line.title || 'Planning line'), wide: true,
-      content: h('div', null, f.el, taskBox),
+      content: h('div', null, f.el, formBox, taskBox),
       footLeft: h('div', { class: 'btn-row' },
         isNew ? null : h('button', { class: 'btn danger', onclick: () => {
           if (confirm('Delete planning line ' + line.id + '? Linked tasks stay, but are unlinked.')) { PM.store.remove('lines', line._key); dlg.close(); }
@@ -7612,16 +7684,22 @@ function commentsSection(p, ctx) {
         h('span', { class: 'dot ' + (ls.linked ? 'linked' : '') + (ls.complete ? ' done' : ''), style: ls.linked ? { '--pc': proj.color || '#2f6fed' } : null }),
         h('button', { class: 'g-title link', translate: 'no', onclick: () => openLineDialog(l), title: 'Edit ' + l.id }, l.title || l.id),
         h('span', { class: 'muted small nowrap' }, ls.linked ? ls.done + '/' + ls.tasks.length + ' ✓' : ''),
+        ctx.project ? h('span', { class: 'exp-flags' },
+          h('button', { type: 'button', class: 'exp-flag' + (inExport(l) ? ' on' : ''), title: inExport(l) ? 'In export — click to leave this line out of PDFs and the work plan' : 'Not in export — click to include it', 'aria-pressed': String(inExport(l)),
+            onclick: () => PM.store.update('lines', l._key, { export: !inExport(l) }) }, 'PDF'),
+          inExport(l) ? h('button', { type: 'button', class: 'exp-flag' + (tasksInExport(l) ? ' on' : ''), title: tasksInExport(l) ? 'Linked tasks are exported as sub-rows — click to leave them out' : 'Click to export the linked tasks as sub-rows', 'aria-pressed': String(tasksInExport(l)),
+            onclick: () => PM.store.update('lines', l._key, { export_tasks: !tasksInExport(l) }) }, 'T') : null) : null,
         ctx.project ? moveBtns('Move up', 'Move down', canMoveLine(l, -1), canMoveLine(l, 1), () => moveLine(l, -1), () => moveLine(l, 1)) : null);
       const track = h('div', { class: 'g-track', style: trackStyle });
       if (l.start) {
         const lEnd = l.end && l.end >= l.start ? l.end : l.start;
         const left = x(l.start), width = Math.max(px, (U.daysBetween(l.start, lEnd) + 1) * px);
-        const cls = 'bar' + (ls.linked ? ' linked' : ' unlinked') + (ls.complete ? ' complete' : '') + (l.milestone ? ' milestone' : '');
+        const rk = respOn() ? respKey(l) : '';
+        const cls = 'bar' + (ls.linked ? ' linked' : ' unlinked') + (ls.complete ? ' complete' : '') + (l.milestone ? ' milestone' : '') + (rk ? ' resp' : '') + (inExport(l) ? '' : ' noexport');
         const text = (l.title || l.id) + (ls.linked ? '  (' + ls.done + '/' + ls.tasks.length + ')' : '');
         const bar = h('div', {
           class: cls, tabindex: 0, role: 'button',
-          style: { left: (l.milestone ? left + px / 2 - 9 : left) + 'px', width: (l.milestone ? 18 : width) + 'px', '--pc': proj.color || '#2f6fed' },
+          style: { left: (l.milestone ? left + px / 2 - 9 : left) + 'px', width: (l.milestone ? 18 : width) + 'px', '--pc': proj.color || '#2f6fed', '--rc': rk ? respColor(rk) : null },
           title: l.id + ' · ' + (l.title || '') + '\n' + U.fmtDate(l.start) + ' – ' + U.fmtDate(lEnd) + '\n' + (ls.linked ? ls.tasks.length + ' linked task(s), ' + ls.done + ' done' : 'No linked tasks') + '\nProgress ' + U.num(l.progress) + '%',
           'aria-label': 'Planning line ' + (l.title || l.id) + ', ' + U.fmtDate(l.start) + ' to ' + U.fmtDate(lEnd)
         },
@@ -7802,6 +7880,8 @@ function commentsSection(p, ctx) {
         state.view === 'timeline' || !ctx.project ? zoomBtns : null,
         state.view === 'timeline' || !ctx.project ? h('button', { class: 'btn ghost small', onclick: () => state.scrollToday && state.scrollToday() }, 'Today') : null,
         filter,
+        (() => { const cb = h('input', { type: 'checkbox', id: 'plan-resp', checked: respOn() || null }); cb.addEventListener('change', () => { setRespOn(cb.checked); ctx.rerender(); });
+          return h('label', { class: 'check small', for: 'plan-resp', title: 'Coloured outline around each bar for the person responsible (Person, else Who)' }, cb, ' Responsible'); })(),
         !ctx.project ? PM.stage.control({ small: true }) : null,
         orderSel,
         pushBox,
@@ -7811,6 +7891,11 @@ function commentsSection(p, ctx) {
         h('button', { class: 'btn small', onclick: () => PM.planningPdf.open(ctx.projectId) }, 'Export PDF'),
         ctx.project ? h('button', { class: 'btn primary small', onclick: () => addLine(ctx.projectId) }, '+ Planning line') : null));
 
+      if (respOn()) {
+        const used = [...new Set(PM.store.list('lines', ctx.project ? { project: ctx.projectId } : undefined).filter(l => ctx.project || PM.stage.matches(PM.store.project(l.project))).map(respKey).filter(Boolean))];
+        el.appendChild(h('div', { class: 'resp-legend small' }, h('span', { class: 'muted' }, 'Responsible: '),
+          used.length ? used.map(k => h('span', { class: 'resp-chip', style: { '--rc': respColor(k) }, translate: 'no' }, respName(k))) : h('span', { class: 'muted' }, 'no Person or Who filled in on the lines yet')));
+      }
       if (ctx.project && state.view === 'table') {
         taskIndex = null;
         el.appendChild(PM.ui.dataTable({
@@ -7852,7 +7937,9 @@ function commentsSection(p, ctx) {
     groupPhases: true, milestones: true, today: true, legend: true, weekends: true,
     colors: 'project',                             // project | status | mono
     paper: 'A4', orientation: 'landscape', fit: 'page',
-    showDescription: true, showLogo: true, summary: false, label: '', title: 'Project planning', size: 'normal'
+    showDescription: true, showLogo: true, summary: false, label: '', title: 'Project planning', size: 'normal',
+    responsible: false,                            // coloured outline per responsible person
+    exportFlags: true                              // follow "In export" / "Tasks in export" of each line
   };
   const PRESETS = [
     { id: 'customer', name: 'Customer', description: 'Clean overview for the client: phases, bars, milestones and dates. No costs, hours, people or internal notes.',
@@ -7906,7 +7993,8 @@ function commentsSection(p, ctx) {
     }
 
     const sections = projects.map(p => {
-      let lines = PM.store.list('lines', { project: p.id }).filter(l => l.start);
+      const R = PM.planResp;
+      let lines = PM.store.list('lines', { project: p.id }).filter(l => l.start && (o.exportFlags === false || !R || R.inExport(l)));
       if (o.phases && o.phases.length && o.scope !== 'all') lines = lines.filter(l => o.phases.includes(l.group || ''));
       const state = l => {
         const tasks = calc.lineTasks(p.id, l.id);
@@ -7925,7 +8013,7 @@ function commentsSection(p, ctx) {
         ls.forEach(l => {
           const hc = hoursByLine.get(p.id + '/' + l.id) || { h: 0, c: 0 };
           rows.push({ type: 'line', line: l, hours: hc.h, cost: hc.c + (costByLine.get(p.id + '/' + l.id) || 0) });
-          if (o.tasks !== 'none') l._s.tasks.filter(t => o.lines !== 'open' || t.status !== 'done').forEach(t => rows.push({ type: 'task', task: t, line: l }));
+          if (o.tasks !== 'none' || (o.exportFlags !== false && R && R.tasksInExport(l))) l._s.tasks.filter(t => o.lines !== 'open' || t.status !== 'done').forEach(t => rows.push({ type: 'task', task: t, line: l }));
         });
       });
       const s = o.summary ? calc.summary({ project: p.id }) : null;
@@ -8204,6 +8292,8 @@ function commentsSection(p, ctx) {
           else if (st.complete) { fill = C.ok; prog = shade(C.ok, -0.22); }
           else { fill = color; prog = shade(color, -0.28); }
           pg.rect(x0, by, Math.max(0.6, x1 - x0), bh, { fill, stroke, lw: 0.25, dash, r: 0.6 });
+          const rk = o.responsible && PM.planResp ? PM.planResp.key(l) : '';
+          if (rk) pg.rect(x0 - 0.45, by - 0.45, Math.max(0.6, x1 - x0) + 0.9, bh + 0.9, { stroke: PM.planResp.color(rk), lw: 0.75, r: 0.8 });
           const pr = Math.min(100, U.num(l.progress)) / 100;
           if (pr > 0 && pr < 1 && !st.complete) pg.rect(x0, by + bh * 0.7, (x1 - x0) * pr, bh * 0.3, { fill: prog });
           const label = l.title;
@@ -8249,6 +8339,10 @@ function commentsSection(p, ctx) {
       if (o.milestones) item((x, yy) => pg.poly([[x + 2.5, yy - 0.2], [x + 4, yy + 1.3], [x + 2.5, yy + 2.8], [x + 1, yy + 1.3]], { fill: mono ? '#222' : shade(color, -0.2) }), 'Milestone');
       if (o.tasks !== 'none') item((x, yy) => pg.circle(x + 2.5, yy + 1.3, 1, { fill: '#8a93a6' }), 'Task due');
       if (o.today) item((x, yy) => pg.line(x + 2.5, yy - 0.5, x + 2.5, yy + 3, { stroke: C.today, lw: 0.35, dash: [0.8, 0.5] }), 'Today');
+      if (o.responsible && PM.planResp) {
+        const keys = [...new Set(info.rows.filter(r => r.type === 'line').map(r => PM.planResp.key(r.line)).filter(Boolean))];
+        keys.forEach(k => { if (lx > M + tableW - 30) return; const nm = PM.pdf.raw(PM.planResp.name(k)); item((x, yy) => pg.rect(x, yy, 5, 2.6, { fill: '#ffffff', stroke: PM.planResp.color(k), lw: 0.75, r: 0.5 }), nm); });
+      }
     }
   }
 
@@ -8289,6 +8383,7 @@ function commentsSection(p, ctx) {
     try { last = JSON.parse(PM.portfolio.local.get(LS) || '{}'); } catch (e) { /* ignore */ }
     let presetId = last.preset || 'customer';
     let o = presetOptions(presetId);
+    if (PM.planResp && PM.planResp.on()) o.responsible = true;     // follows the planning screen
     const meta = { docNo: (project && project.pdf_docno) || '', revision: (project && project.pdf_revision) || '', preparedBy: last.preparedBy || '' };
     Object.assign(o, meta);
     if (!project) o.scope = 'all';
@@ -8396,6 +8491,8 @@ function commentsSection(p, ctx) {
             check('pdf-today', 'Today line', o.today, v => set('today', v)),
             check('pdf-legend', 'Legend', o.legend, v => set('legend', v)),
             check('pdf-weekends', 'Shade weekends', o.weekends, v => set('weekends', v)),
+            check('pdf-resp', 'Responsible (coloured outline)', o.responsible, v => set('responsible', v)),
+            check('pdf-expflags', 'Only lines “In export” (+ their tasks)', o.exportFlags !== false, v => set('exportFlags', v)),
             check('pdf-summary', 'Budget summary (internal)', o.summary, v => { set('summary', v); buildControls(); }))),
         group('Header',
           text('pdf-title', 'Title', o.title, v => set('title', v)),
@@ -9290,7 +9387,14 @@ function commentsSection(p, ctx) {
  *                                         qty=<key> (fills in the quantity of the design)
  *   rtable                                a table of the answers of a repeated section, e.g. the price overview:
  *                                         cols=pos_title, pos_qty, pos_price, pos_total; total=total · +left (all columns left-aligned)
+ *   planning                              the project planning as a chart: lines with "In export" on, and their
+ *                                         tasks as sub-rows where "Tasks in export" is on (set in Planning)
+ *   planline                              link to one planning line of the project; shows its dates (follows the planning)
+ *   info                                  a fixed text: the hint column, shown and printed as a paragraph under
+ *                                         the question (its heading; +nolabel leaves the heading out)
  *   Titles of repeated sections may hold {n} and {key}: "Onderwerp {n}: {top_title}"
+ * when=<formula> on a question, or [when=<formula>] as the last flag of a section: only there when true,
+ *   e.g. when=pump_type = "Split case" and driver = "Dieselmotor"
  * Text and textarea: default=<text> fills in a starting text (\n = new line). Texts may contain
  *   {key} placeholders; the PDF shows the answer of that question in its place.
  * Front matter "layout: report" prints the form as a report (numbered chapters, paragraphs),
@@ -9346,7 +9450,7 @@ PM.surveys = (function () {
     if (c.type === 'yesno' && c.na) c.na = true;
     if (c.default === 'today') c.default = 'today';
     if (c.type === 'calc') { c.optional = true; c.decimals = c.decimals != null ? +c.decimals : 1; }
-    if (c.type === 'rtable') c.optional = true;
+    if (c.type === 'rtable' || c.type === 'info' || c.type === 'planning') c.optional = true;
     if (c.type === 'layout' || c.type === 'plan') {
       c.items = String(c.items || '').split(',').map(x => x.trim()).filter(Boolean).map(x => {
         const i = x.indexOf(':');
@@ -9381,33 +9485,68 @@ PM.surveys = (function () {
   }
 
   /* ---------- calculations ---------- */
+  /* Formulas: + - * / ^ ( ), comparisons < > <= >= = != (also between texts: pump_type = "Split case"),
+   * and / or / not, "text", pi, and functions if(a,b,c) min max round(x[,dec]) ceil floor abs sqrt pow log10 ln.
+   * A choice/text answer is text; empty answers count as 0. */
   function evalFormula(expr, lookup) {
-    const toks = []; const re = /\s*(\d+(?:[.,]\d+)?|[A-Za-z_][A-Za-z0-9_]*|[-+*\/^(),<>])/y;
+    const toks = []; const re = /\s*("[^"]*"|'[^']*'|\d+(?:[.,]\d+)?|[A-Za-z_][A-Za-z0-9_]*|<=|>=|!=|==|[-+*\/^(),<>=])/y;
     let m; re.lastIndex = 0; const src = String(expr || '');
     while (re.lastIndex < src.length && (m = re.exec(src))) toks.push(m[1]);
     let i = 0;
     const peek = () => toks[i], next = () => toks[i++];
-    const FN = { max: Math.max, min: Math.min, round: x => Math.round(x), ceil: Math.ceil, floor: Math.floor, abs: Math.abs, if: (a, b, c) => (a ? b : c) };
+    const num = v => (typeof v === 'number' ? v : (v === '' || v == null ? 0 : (isFinite(+String(v).replace(',', '.')) ? +String(v).replace(',', '.') : 0)));
+    const FN = { max: (...a) => Math.max(...a.map(num)), min: (...a) => Math.min(...a.map(num)), round: (x, d) => { const f = Math.pow(10, num(d) || 0); return Math.round(num(x) * f) / f; },
+      ceil: x => Math.ceil(num(x)), floor: x => Math.floor(num(x)), abs: x => Math.abs(num(x)), sqrt: x => Math.sqrt(Math.max(0, num(x))), pow: (x, y) => Math.pow(num(x), num(y)),
+      log10: x => Math.log10(num(x)), ln: x => Math.log(num(x)) };
+    const truthy = v => (typeof v === 'string' ? v !== '' : !!v && isFinite(v));
     function primary() {
       const t = next();
       if (t == null) return 0;
-      if (t === '(') { const v = cmp(); next(); return v; }
-      if (t === '-') return -primary();
+      if (t === '(') { const v = logic(); next(); return v; }
+      if (t === '-') return -num(primary());
+      if (/^["']/.test(t)) return t.slice(1, -1);
       if (/^\d/.test(t)) return parseFloat(t.replace(',', '.'));
-      if (FN[t.toLowerCase()] && peek() === '(') {
-        next(); const args = [];
-        if (peek() !== ')') { args.push(cmp()); while (peek() === ',') { next(); args.push(cmp()); } }
+      const lt = t.toLowerCase();
+      if (lt === 'not') return truthy(primary()) ? 0 : 1;
+      if (lt === 'pi') return Math.PI;
+      if (lt === 'if' && peek() === '(') {               // lazy: only the chosen branch is worked out
+        next(); const c = logic(); next();
+        const save = i; const a = logic(); let b = 0;
+        if (peek() === ',') { next(); b = logic(); }
         next();
-        return FN[t.toLowerCase()](...args.map(a => isFinite(a) ? a : 0));
+        void save;
+        return truthy(c) ? a : b;
+      }
+      if (FN[lt] && peek() === '(') {
+        next(); const args = [];
+        if (peek() !== ')') { args.push(logic()); while (peek() === ',') { next(); args.push(logic()); } }
+        next();
+        const r = FN[lt](...args);
+        return isFinite(r) ? r : 0;
       }
       const v = lookup(t);
-      return isFinite(v) ? v : 0;
+      return typeof v === 'string' ? v : (isFinite(v) ? v : 0);
     }
-    function power() { let v = primary(); while (peek() === '^') { next(); v = Math.pow(v, primary()); } return v; }
-    function prod() { let v = power(); while (peek() === '*' || peek() === '/') { const o = next(); const r = power(); v = o === '*' ? v * r : (r ? v / r : 0); } return v; }
-    function sum() { let v = prod(); while (peek() === '+' || peek() === '-') { const o = next(); const r = prod(); v = o === '+' ? v + r : v - r; } return v; }
-    function cmp() { let v = sum(); while (peek() === '<' || peek() === '>') { const o = next(); const r = sum(); v = o === '<' ? (v < r ? 1 : 0) : (v > r ? 1 : 0); } return v; }
-    try { return cmp(); } catch (e) { return NaN; }
+    function power() { let v = primary(); while (peek() === '^') { next(); v = Math.pow(num(v), num(primary())); } return v; }
+    function prod() { let v = power(); while (peek() === '*' || peek() === '/') { const o = next(); const r = num(power()); v = o === '*' ? num(v) * r : (r ? num(v) / r : 0); } return v; }
+    function sum() { let v = prod(); while (peek() === '+' || peek() === '-') { const o = next(); const r = num(prod()); v = o === '+' ? num(v) + r : num(v) - r; } return v; }
+    function cmp() {
+      let v = sum();
+      while (['<', '>', '<=', '>=', '=', '==', '!='].includes(peek())) {
+        const o = next(); const r = sum();
+        if (o === '=' || o === '==' || o === '!=') {
+          const eq = (typeof v === 'string' || typeof r === 'string') ? String(v).trim().toLowerCase() === String(r).trim().toLowerCase() : num(v) === num(r);
+          v = (o === '!=' ? !eq : eq) ? 1 : 0;
+        } else { const a = num(v), b = num(r); v = (o === '<' ? a < b : o === '>' ? a > b : o === '<=' ? a <= b : a >= b) ? 1 : 0; }
+      }
+      return v;
+    }
+    function logic() {
+      let v = cmp();
+      while (peek() && /^(and|or)$/i.test(peek())) { const o = next().toLowerCase(); const r = cmp(); v = (o === 'and' ? truthy(v) && truthy(r) : truthy(v) || truthy(r)) ? 1 : 0; }
+      return v;
+    }
+    try { const r = logic(); return typeof r === 'string' ? NaN : r; } catch (e) { return NaN; }
   }
   /* value of a calc question (other calc questions are evaluated too; hidden ones count as 0) */
   function calcValue(t, values, key, depth) {
@@ -9421,7 +9560,9 @@ PM.surveys = (function () {
       if (g && g.type === 'calc') return isVisible(g, values) ? calcValue(t, values, g.key, (depth || 0) + 1) : 0;
       const raw = values[k] != null ? values[k] : values[name];
       if (g && g.type === 'config') { const c = configInfo(raw); return c ? c.total : 0; }
-      return raw == null || raw === '' ? 0 : U.num(String(raw).replace(',', '.'));
+      if (raw == null || raw === '') return g && ['choice', 'text', 'yesno', 'multi'].includes(g.type) ? '' : 0;
+      if (g && ['choice', 'text', 'yesno', 'multi', 'textarea'].includes(g.type) && !/^\s*-?\d+([.,]\d+)?\s*$/.test(String(raw))) return String(raw);   // text answers compare as text
+      return U.num(String(raw).replace(',', '.'));
     };
     const v = evalFormula(f.formula, lookup);
     return isFinite(v) ? v : NaN;
@@ -9471,6 +9612,42 @@ PM.surveys = (function () {
   }
   /* true when N/A questions are to be hidden in this filled-in form */
   const hidesNA = (t, values) => !!(t && t.hideNA) && String((values || {}).show_na || '') !== 'yes';
+
+  /* ---------- the planning in a form (types planning and planline) ---------- */
+  function planLine(pid, id) { return id ? PM.store.find('lines', String(id), pid || ctxProject) : null; }
+  function planLineText(l) {
+    if (!l) return '';
+    const e = l.end && l.end >= l.start ? l.end : l.start;
+    return (l.title || l.id) + (l.start ? ' (' + U.fmtDate(l.start) + (e && e !== l.start ? ' – ' + U.fmtDate(e) : '') + ')' : '');
+  }
+  /* rows for the planning chart, with the export choices made in Planning */
+  function planRows(pid) {
+    const R = PM.planResp, calc = PM.services.calc;
+    const p = PM.store.project(pid);
+    const lines = PM.store.list('lines', { project: pid }).filter(l => l.start && (!R || R.inExport(l)));
+    const rows = []; let from = '', to = '';
+    const span = (a, b) => { if (a && (!from || a < from)) from = a; if (b && (!to || b > to)) to = b; };
+    U.groupBy(lines, l => l.group || '').forEach((ls, g) => {
+      if (g) rows.push({ type: 'group', title: g });
+      ls.forEach(l => {
+        const e = l.end && l.end >= l.start ? l.end : l.start;
+        span(l.start, e);
+        const rk = R && R.on() ? R.key(l) : '';
+        rows.push({ type: 'line', line: l, start: l.start, end: e, color: (p && p.color) || '#2f6fed', resp: rk ? R.color(rk) : '', respName: rk ? R.name(rk) : '' });
+        if (R && R.tasksInExport(l)) calc.lineTasks(pid, l.id).forEach(t => { if (t.due) span(t.due, t.due); rows.push({ type: 'task', task: t, line: l }); });
+      });
+    });
+    return { rows, from, to, hidden: PM.store.list('lines', { project: pid }).filter(l => R && !R.inExport(l)).length };
+  }
+  /* answers in forms that point at a planning line: [{ rec, template, title }] */
+  function linkedTo(pid, lineId) {
+    const out = [];
+    PM.store.list('surveys', { project: pid }).forEach(rec => {
+      const t = get(rec.template); if (!t) return;
+      expand(t, rec.values || {}).forEach(sec => sec.fields.forEach(f => { if (f.type === 'planline' && rec.values[f.key] === lineId) out.push({ rec, template: t, title: sec.title }); }));
+    });
+    return out;
+  }
 
   /* rows of a "rtable" question: one per repeated section that has the first column's question.
    * -> { head: [field…], rows: [[field…]…] } (fields are the expanded ones, so their keys carry __n) */
@@ -9562,13 +9739,14 @@ PM.surveys = (function () {
     (t ? t.sections : []).forEach(sec => {
       const fields = sec.fields.map(compile);
       if (sec.repeat) {
+        if (sec.when && !whenTrue(sec.when, values)) return;
         const n = Math.max(0, Math.min(8, Math.round(U.num(values[sec.repeat]))));
         for (let i = 1; i <= n; i++) {
           const sfx = '__' + i;
           out.push({ sec, n: i, id: sec.id + sfx, title: secTitle(sec.title, i, sfx, values),
             fields: fields.map(f => Object.assign({}, f, { key: f.key + sfx, base: f.key, sfx })) });
         }
-      } else out.push({ sec, n: 0, id: sec.id, title: sec.title, fields: fields.map(f => Object.assign({}, f, { base: f.key, sfx: '' })) });
+      } else if (!sec.when || whenTrue(sec.when, values)) out.push({ sec, n: 0, id: sec.id, title: sec.title, fields: fields.map(f => Object.assign({}, f, { base: f.key, sfx: '' })) });
     });
     return out;
   }
@@ -9583,7 +9761,14 @@ PM.surveys = (function () {
     }).trim();
   }
   function resolveKey(f, key, values) { return f.sfx && (key + f.sfx) in values ? key + f.sfx : (f.sfx && !(key in values) ? key + f.sfx : key); }
+  /* when=<formula>: a question or section is only there when the formula is true, e.g.
+   * when=pump_type = "Split case" or when=driver = "Dieselmotor" and flow > 300 (uses the answers) */
+  function whenTrue(expr, values) {
+    const v = evalFormula(expr, name => { const raw = values[name]; if (raw == null || raw === '') return ''; return /^\s*-?\d+([.,]\d+)?\s*$/.test(String(raw)) ? U.num(String(raw).replace(',', '.')) : String(raw); });
+    return isFinite(v) && !!v;
+  }
   function isVisible(f, values) {
+    if (f.when && !whenTrue(f.when, values)) return false;
     if (!f.show) return true;
     const v = values[resolveKey(f, f.show.key, values)];
     if (f.show.op === '~') return String(v || '').toLowerCase().includes(String(f.show.val).toLowerCase());
@@ -9644,7 +9829,7 @@ PM.surveys = (function () {
       case 'estimate': return has(values[f.key + '_days']) && has(values[f.key + '_men']);
       case 'pumptest': return [1, 2, 3].every(i => has(values[f.key + '_r' + i + '_discharge']));
       case 'table': return Object.keys(values).some(k => k.startsWith(f.key + '_r') && has(values[k]));
-      case 'calc': case 'rtable': return true;
+      case 'calc': case 'rtable': case 'info': case 'planning': return true;
       default: return has(values[f.key]);
     }
   }
@@ -9699,6 +9884,8 @@ PM.surveys = (function () {
       const m = /^(.*?)\s*\[([^\]]*)\]\s*$/.exec(firstLine);
       if (m) { title = m[1].trim(); flags = m[2]; }
       const sec = { id: slug(title.replace(/\{n\}/g, '')), title, fields: [], note: '' };
+      const wm = /(?:^|;)\s*when\s*=\s*(.*)$/.exec(flags);      // when=<formula> (last flag; the formula may hold commas)
+      if (wm) { sec.when = wm[1].trim(); flags = flags.slice(0, wm.index); }
       flags.split(/[;,]/).map(x => x.trim()).filter(Boolean).forEach(fl => {
         if (fl === 'diagram') sec.diagram = true;
         else if (/^repeat\s*=/.test(fl)) sec.repeat = fl.split('=')[1].trim();
@@ -9732,7 +9919,7 @@ PM.surveys = (function () {
     let out = PM.md.stringifyFrontmatter(meta, ['id', 'name', 'short', 'lang', 'description', 'retired', 'layout', 'na', 'header', 'footer', 'signatures', 'motor']);
     out += '\n# ' + t.name + '\n\n' + (t.intro || 'Form definition. Edit it in the app (Settings → Forms) or here. Columns: key (do not change once used), question, type, options, unit, hint.') + '\n';
     t.sections.forEach(sec => {
-      const flags = [sec.diagram ? 'diagram' : '', sec.repeat ? 'repeat=' + sec.repeat : '', sec.nopdf ? 'nopdf' : ''].filter(Boolean).join('; ');
+      const flags = [sec.diagram ? 'diagram' : '', sec.repeat ? 'repeat=' + sec.repeat : '', sec.nopdf ? 'nopdf' : '', sec.when ? 'when=' + sec.when : ''].filter(Boolean).join('; ');   // when= stays last
       out += '\n## ' + sec.title + (flags ? ' [' + flags + ']' : '') + '\n\n';
       if (sec.note) out += sec.note + '\n\n';
       out += PM.md.writeTableDoc({ meta: null, before: '', after: '' }, ['key', 'question', 'type', 'options', 'unit', 'hint'],
@@ -9954,7 +10141,7 @@ PM.surveys = (function () {
     footprint,
     /* pump-set drawing options for a record: an electric set shows E-MOTOR */
     diagramFor: (t, values) => Object.assign({}, t.diagram, values && /elek|elec/i.test(String(values.set_type || '')) ? { motor: 'E-MOTOR' } : {}),
-    evalFormula, calcValue, calcCheck, useProject, configInfo, repeatRows, parseLayout, serializeLayout, wallOf, describePos, WALLS, fillText, hashText,
+    evalFormula, calcValue, calcCheck, useProject, configInfo, repeatRows, planLine, planLineText, planRows, linkedTo, parseLayout, serializeLayout, wallOf, describePos, WALLS, fillText, hashText,
     isBuiltin: id => builtins[id] != null };
 })();
 
@@ -10689,7 +10876,106 @@ ${H}| open_points | Open punten / voor het volgende overleg | textarea | +option
 | next_note | Soort / plaats volgend overleg | text | +optional | | bijv. kick-off op locatie |
 `;
 
-  [opnameAll, opname('diesel'), opname('electro'), prefabSpec, fat, qa, pressureTest, dieselTank, notulen].forEach(text => PM.surveys.registerBuiltin(text));
+
+  /* ---------------- Werkplan (work plan, linked to the planning) ---------------- */
+  const werkplan = `---
+id: werkplan
+name: Werkplan
+short: Werkplan
+lang: nl
+layout: report
+header: Werkplan; {wp_title}; {client}; Datum: {wp_date}
+footer: Opgesteld door: {made_by} · revisie {revision}
+signatures: Opgesteld (uitvoerder); Akkoord opdrachtgever
+description: Werkplan voor de uitvoering: partijen, opdracht, locatie, toegangseisen, de planning (uit Planning), de werkzaamheden met materieel, materiaal en risico's (gekoppeld aan planningsregels), veiligheid, kwaliteit en communicatie.
+---
+# Werkplan
+
+Het werkplan beschrijft wie wat doet, waar, wanneer en hoe. De planning komt uit Planning: daar kies je per regel of hij in de export komt en of de taken als subregels meekomen. Koppel elke werkzaamheid aan een planningsregel, dan lopen de datums vanzelf mee.
+
+## Gegevens [nopdf]
+
+${H}| wp_title | Titel | text | default=Werkplan uitvoering | | bijv. Vervanging dieselpompset – pompkamer 2 |
+| client | Opdrachtgever | text | prefill=client | | |
+| wp_date | Datum | date | default=today | | |
+| made_by | Opgesteld door | person | | | |
+| revision | Revisie | text | default=0 | | verhoog bij elke uitgegeven wijziging |
+| wp_status | Status | choice | Concept; Ter goedkeuring; Definitief | | |
+| wz_count | Aantal werkzaamheden | number | default=3 | | maximaal 8; elke werkzaamheid krijgt een eigen hoofdstuk |
+
+## Partijen
+
+${H}| client_name | Opdrachtgever | text | prefill=client | | de partij die de opdracht geeft |
+| client_contact | Contactpersoon opdrachtgever | text | prefill=contact; +optional | | naam en telefoonnummer |
+| contractor | Uitvoerder (aannemer) | text | | | de partij die het werk uitvoert en verantwoordelijk is voor de uitvoering |
+| site_lead | Uitvoerder op locatie | text | +optional | | aanspreekpunt op de bouwplaats, met telefoonnummer |
+| project_lead | Projectleider | person | +optional | | |
+| subcontractors | Onderaannemers | textarea | +optional; rows=4 | | één per regel: bedrijf – werkzaamheden – contactpersoon / telefoon |
+| other_parties | Overige betrokkenen | textarea | +optional; rows=3 | | bijv. gebruiker of beheerder, installateur, constructeur, inspectie-instelling of verzekeraar, beveiliging |
+
+## Opdracht
+
+${H}| scope | Omschrijving van de opdracht | textarea | rows=5 | | wat wordt er gerealiseerd, en waarom; kort en concreet |
+| included | Inbegrepen | textarea | +optional; rows=3 | | de werkzaamheden en leveringen die in de opdracht zitten |
+| excluded | Niet inbegrepen / door derden | textarea | +optional; rows=3 | | voorkomt discussie: bouwkundig werk, elektrische aansluiting, vergunningen, steigers… |
+| documents | Referentiedocumenten | textarea | +optional; rows=3 | | tekeningen, offerte, bestek of lastenboek, berekeningen – met nummer en revisie |
+
+## Locatie
+
+${H}| address | Adres | textarea | prefill=address; rows=2 | | |
+| site_contact | Contactpersoon op locatie | text | +optional | | bijv. facilitair beheerder of beveiliging, met telefoonnummer |
+| logistics | Bereikbaarheid en logistiek | textarea | +optional; rows=3 | | aanrijroute, laden en lossen, kraanopstelplaats, maximale hoogte of aslast, parkeren, opslag |
+| facilities | Voorzieningen | textarea | +optional; rows=2 | | stroom, water, verlichting, sanitair, kantine, afvalcontainers |
+
+## Toegangseisen
+
+${H}| access | Eisen voor toegang | multi | VCA (basis of VOL); Veiligheidsinstructie vooraf; Aanmelden bij receptie of poort; Toegangspas of badge; Geldig ID-bewijs; Werkvergunning; LMRA vóór aanvang; Heetwerkvergunning; Vergunning besloten ruimte; Gasmeting; ATEX-zone; +other | | wat iedereen nodig heeft vóór het betreden van de locatie |
+| ppe | Persoonlijke beschermingsmiddelen | multi | Veiligheidsschoenen; Helm; Veiligheidsbril; Gehoorbescherming; Handschoenen; Hoge-zichtbaarheidskleding; Vlamvertragende kleding; Valbescherming; Reddingsvest; +other | | minimaal verplicht op de locatie |
+| work_hours | Werktijden | text | default=Maandag t/m vrijdag 07:00 – 16:00 | | inclusief afspraken over werken buiten werktijd |
+| access_notes | Overige afspraken | textarea | +optional; rows=2 | | bijv. aanmeldtijd, begeleiding, rookverbod, foto’s maken |
+
+## Planning
+
+${H}| planning | Planning | planning | +nolabel | | komt uit Planning: regels met “In export”, taken als subregels waar dat per regel aan staat |
+| plan_notes | Toelichting op de planning | textarea | +optional; rows=3 | | kritieke punten en afhankelijkheden: leveringen, vergunningen, buitengebruikstelling, werk buiten werktijd |
+
+## Werkzaamheid {n}: {wz_title} [repeat=wz_count]
+
+${H}| wz_title | Werkzaamheid | text | +nopdf | | korte naam, bijv. Demontage oude pompset (komt in de titel) |
+| wz_line | Planningsregel | planline | +optional | | koppel aan een regel uit de planning; de datums komen dan uit de planning |
+| wz_who | Uitgevoerd door | text | | | eigen ploeg of onderaannemer, met aantal personen |
+| wz_how | Werkwijze | textarea | rows=5 | | de stappen in volgorde, en de raakvlakken met andere partijen |
+| wz_equipment | Materieel | textarea | +optional; rows=2 | | bijv. kraan of hoogwerker, heftruck, steiger, lasapparatuur, persproefpomp, aggregaat |
+| wz_material | Materiaal | textarea | +optional; rows=2 | | wat wordt geleverd en door wie; aanvoer en opslag |
+| wz_risks | Risico’s en maatregelen | textarea | +optional; rows=3 | | per risico de maatregel, bijv. hijsen → hijsplan en afzetten gebied |
+
+## Overzicht uitvoering
+
+${H}| wz_overview | Overzicht | rtable | +nolabel; +left; cols=wz_title, wz_who, wz_line | | |
+
+## Veiligheid, gezondheid en milieu
+
+${H}| risks | Algemene risico’s en maatregelen | textarea | rows=4 | | bijv. werken op hoogte, hijsen, heet werk, elektrische installaties, besloten ruimte, werken nabij water |
+| impairment | Buitengebruikstelling brandbeveiliging | textarea | +optional; rows=3 | | bij werk aan brandbeveiliging: vooraf melden bij gebruiker, meldkamer en verzekeraar; vervangende maatregelen (bijv. brandwacht); zo kort mogelijk; schriftelijk vastleggen |
+| emergency | Noodprocedure | textarea | rows=3; default=Bij een ongeval: 112 bellen, BHV op locatie waarschuwen, opdrachtgever informeren.\nVerzamelplaats: … | | BHV en EHBO, verzamelplaats, alarmnummers, dichtstbijzijnde ziekenhuis |
+| environment | Milieu en afval | textarea | +optional; rows=2 | | afvalscheiding, olie en diesel (lekbakken, absorptiemiddel), lozen van spoel- en persproefwater |
+
+## Kwaliteit en oplevering
+
+${H}| tests | Keuringen en testen | multi | Drukproef; Spoelen; Inbedrijfstelling; Pomptest / functietest; FAT; SAT; Keuring door inspectie-instelling; Instructie en overdracht aan gebruiker; +other | | wat er getest wordt vóór de oplevering |
+| deliverables | Opleverdocumenten | textarea | +optional; rows=3 | | revisietekeningen, testrapporten, certificaten, handleidingen, onderhoudsinstructies |
+
+## Communicatie
+
+${H}| meetings | Overleg en rapportage | textarea | +optional; rows=3 | | bijv. startwerkoverleg, dagstart, bouwvergadering, weekrapport: wie, wanneer, hoe |
+| contacts | Contactlijst | textarea | +optional; rows=4 | | één per regel: naam – functie – bedrijf – telefoon |
+
+## Opmerkingen
+
+${H}| remarks | Opmerkingen | textarea | +optional; +nolabel; rows=3 | | |
+`;
+
+  [opnameAll, opname('diesel'), opname('electro'), prefabSpec, fat, qa, pressureTest, dieselTank, notulen, werkplan].forEach(text => PM.surveys.registerBuiltin(text));
 })();
 
   </script>
@@ -10820,6 +11106,167 @@ Kies per positie een opgeslagen ontwerp uit Kosten → Configurator, of vul een 
 | key | question | type | options | unit | hint |
 | --- | --- | --- | --- | --- | --- |
 | terms | Voorwaarden | textarea | +nolabel; rows=5; default=Prijzen in euro, exclusief btw. Levertijd: 4 – 6 weken na opdracht en goedkeuring van de tekening.\\nLevering af werkplaats Dordrecht (EXW). Betaling 30 dagen na factuurdatum. Geldig tot 30 dagen na offertedatum.\\nOp deze offerte zijn onze algemene voorwaarden van toepassing.\\n\\nMet vriendelijke groet, {made_by} – ULTech | | Eén regel per afspraak |
+` },
+  { id: 'pompberekening', name: 'Pompberekening (Dutch) — end suction, split case, multistage, vertical; electric or diesel', text: `---
+id: pompberekening
+name: Pompberekening
+short: Pompberekening
+lang: nl
+layout: report
+header: Pompberekening; {calc_title}; {client}; Datum: {calc_date}
+footer: Berekend door: {made_by} · versie {revision} · indicatieve berekening, controleren met de pompcurve
+description: Uitgebreide pompberekening voor brandbluspompen (end suction, split case, multistage, verticale pomp) met E-motor of dieselmotor: opvoerhoogte, vermogens bij nominaal en 150%, motormaat, NPSH, onderdompeling, leidingmaten, aansluitingen en aandrijfmogelijkheden.
+---
+# Pompberekening
+
+Vul het werkpunt, het pomptype en de aandrijving in; de berekening en de passende uitleg (aansluitingen, aandrijving, normeisen) verschijnen vanzelf. Alle uitkomsten zijn indicatief: controleer ze altijd met de pompcurve en de gegevens van de pomp- en motorleverancier.
+
+## Gegevens [nopdf]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| calc_title | Omschrijving | text | default=Brandbluspomp | | bijv. Pompkamer Unitank – pomp 1 |
+| client | Klant | text | prefill=client | | |
+| calc_date | Datum | date | default=today | | |
+| made_by | Berekend door | person | | | |
+| revision | Versie | text | default=1 | | |
+
+## Uitgangspunten
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| norm | Norm | choice | NFPA 20; FM; NFPA 20 + FM; EN 12845; VdS / CEA | | |
+| flow | Nominaal debiet | number | default=300 | m³/u | werkpunt (rated flow) |
+| pressure | Nominale opvoerdruk | number | default=10 | bar | netto druk van de pomp (rated pressure) |
+| medium | Medium | choice | Zoet water; Brak water; Zeewater | | |
+| temp | Watertemperatuur | number | default=15 | °C | |
+| altitude | Hoogte boven zeeniveau | number | default=0 | m | |
+| freq | Netfrequentie | choice | 50 Hz; 60 Hz; default=50 Hz | | |
+| speed | Toerental | number | default=2950 | omw/min | 50 Hz: 2950 of 1480 · 60 Hz: 3550 of 1780 |
+
+## Pomp en aandrijving
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| pump_type | Pomptype | choice | End suction; Split case; Multistage; Verticale pomp | | |
+| driver | Aandrijving | choice | E-motor; Dieselmotor | | |
+| eff_manual | Pomprendement uit de curve | number | +optional | % | leeg = typische waarde per pomptype |
+| npshr | NPSHr bij 150% debiet | number | +optional; when=pump_type != "Verticale pomp" | m | uit de pompcurve |
+| suction_kind | Aanzuiging | choice | Positieve toeloop (water boven pomphart); Zuighoogte (water onder pomphart); when=pump_type != "Verticale pomp" | | |
+| hs | Hoogteverschil laagste waterstand – pomphart | number | default=1; when=pump_type != "Verticale pomp" | m | altijd positief invullen |
+| hf | Wrijvingsverlies zuigleiding bij 150% | number | default=0.5; when=pump_type != "Verticale pomp" | m | leiding, bochten, appendages, filter |
+| bell_d | Diameter zuigmond (bell) | number | default=350; when=pump_type = "Verticale pomp" | mm | uit de pompgegevens |
+| sub_avail | Beschikbare onderdompeling bij laagste waterstand | number | default=1000; when=pump_type = "Verticale pomp" | mm | waterspiegel tot onderkant zuigmond |
+| ambient | Maximale omgevingstemperatuur pompkamer | number | default=25; when=driver = "Dieselmotor" | °C | |
+| voltage | Spanning | number | default=400; when=driver = "E-motor" | V | |
+| cosphi | Arbeidsfactor (cos φ) | number | default=0.87; when=driver = "E-motor" | | |
+
+## Hydraulica
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| rho | Dichtheid | calc | formula=if(medium = "Zeewater", 1025, if(medium = "Brak water", 1010, 998)); decimals=0 | kg/m³ | |
+| head | Opvoerhoogte | calc | formula=pressure * 100000 / (rho * 9.81); decimals=1 | m | |
+| flow_gpm | Debiet in US-eenheden | calc | formula=flow * 4.4029; decimals=0 | gpm | |
+| press_psi | Druk in US-eenheden | calc | formula=pressure * 14.5038; decimals=0 | psi | |
+| flow_150 | Debiet 150%-punt | calc | formula=flow * 1.5; decimals=0 | m³/u | NFPA/FM: bij 150% minimaal 65% van de nominale druk |
+| press_150 | Minimale druk bij 150% | calc | formula=pressure * 0.65; decimals=1 | bar | |
+| press_churn | Maximale druk bij gesloten afsluiter (churn) | calc | formula=pressure * 1.4; decimals=1 | bar | NFPA 20: ten hoogste 140% van de nominale druk |
+
+## Vermogen
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| eff_typ | Typisch pomprendement | calc | formula=if(pump_type = "End suction", 72, if(pump_type = "Split case", 82, if(pump_type = "Multistage", 68, 78))); decimals=0; +nopdf | % | |
+| eff | Gebruikt pomprendement | calc | formula=if(eff_manual > 0, eff_manual, eff_typ); decimals=0 | % | |
+| p_hyd | Hydraulisch vermogen | calc | formula=rho * 9.81 * (flow / 3600) * head / 1000; decimals=1 | kW | |
+| p_shaft | Asvermogen bij nominaal | calc | formula=p_hyd / (eff / 100); decimals=1 | kW | |
+| p_150 | Asvermogen bij 150% debiet en 65% druk | calc | formula=rho * 9.81 * (flow * 1.5 / 3600) * (head * 0.65) / 1000 / (eff * 0.92 / 100); decimals=1 | kW | aangenomen rendement 92% van nominaal |
+| p_max | Maximaal opgenomen vermogen (schatting) | calc | formula=max(p_shaft, p_150) * 1.05; decimals=1 | kW | hoogste punt van de curve + 5%; controleren met de curve |
+
+## E-motor [when=driver = "E-motor"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| motor_kw | Motorvermogen (IEC-standaardmaat) | calc | formula=if(p_max <= 5.5, 5.5, if(p_max <= 7.5, 7.5, if(p_max <= 11, 11, if(p_max <= 15, 15, if(p_max <= 18.5, 18.5, if(p_max <= 22, 22, if(p_max <= 30, 30, if(p_max <= 37, 37, if(p_max <= 45, 45, if(p_max <= 55, 55, if(p_max <= 75, 75, if(p_max <= 90, 90, if(p_max <= 110, 110, if(p_max <= 132, 132, if(p_max <= 160, 160, if(p_max <= 200, 200, if(p_max <= 250, 250, if(p_max <= 315, 315, if(p_max <= 355, 355, if(p_max <= 400, 400, if(p_max <= 450, 450, if(p_max <= 500, 500, if(p_max <= 560, 560, 630))))))))))))))))))))))); decimals=1 | kW | eerstvolgende standaardmaat ≥ maximaal vermogen |
+| motor_load | Belasting bij maximaal vermogen | calc | formula=p_max / motor_kw * 100; decimals=0 | % | NFPA 20: niet boven de service factor (meestal 115%) |
+| motor_in | Nominale stroom (indicatief) | calc | formula=motor_kw * 1000 / (sqrt(3) * voltage * cosphi * 0.94); decimals=0 | A | motorrendement 94% aangenomen |
+| motor_dol | Aanloopstroom direct (DOL, ca. 6,5 × In) | calc | formula=motor_in * 6.5; decimals=0 | A | |
+| motor_sd | Aanloopstroom ster-driehoek (ca. 2,2 × In) | calc | formula=motor_in * 2.2; decimals=0 | A | |
+| motor_info | Toelichting | info |  | | NFPA 20 / FM: de motor mag bij elk punt van de pompcurve niet boven de service factor belast worden; schakelkast als listed/approved fire pump controller met noodbediening. EN 12845: het motorvermogen moet minimaal gelijk zijn aan het maximaal opgenomen vermogen over de pompcurve. Aanloopmethode afstemmen op de netbeheerder (direct, ster-driehoek, soft starter). |
+
+## Dieselmotor [when=driver = "Dieselmotor"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| derate_alt | Correctie hoogte | calc | formula=max(0, (altitude - 91) / 300) * 3; decimals=1 | % | NFPA 20: 3% per 300 m boven 91 m |
+| derate_temp | Correctie temperatuur | calc | formula=max(0, (ambient - 25) / 5.6) * 1; decimals=1 | % | NFPA 20: 1% per 5,6 °C boven 25 °C |
+| engine_kw | Benodigd motorvermogen na correctie | calc | formula=p_max / (1 - (derate_alt + derate_temp) / 100); decimals=1 | kW | |
+| tank_l | Brandstoftank (minimaal) | calc | formula=ceil(engine_kw * 5.07 * 1.1 / 50) * 50; decimals=0 | l | 5,07 l per kW + 10% (bezinking en uitzetting) |
+| fuel_lh | Brandstofverbruik (indicatief) | calc | formula=engine_kw * 0.25; decimals=0 | l/u | ca. 0,25 l per kWh |
+| diesel_info | Toelichting | info |  | | Het motorvermogen na correctie voor hoogte en temperatuur moet minimaal gelijk zijn aan het maximaal opgenomen vermogen van de pomp. Tank: dubbelwandig, met niveaumeting, ontluchting en vulpunt; de tankinhoud is voldoende voor minimaal 8 uur (NFPA 20) of de door de norm geëiste looptijd. Uitlaat met coulissedemper en ruim afgevoerde verbrandingslucht/koeling (radiator of warmtewisselaar). |
+
+## Aanzuiging en NPSH [when=pump_type != "Verticale pomp"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| p_atm | Atmosferische druk (in meter waterkolom) | calc | formula=10.33 * (1 - 0.0000226 * altitude) ^ 5.26 * 1000 / rho; decimals=2 | m | |
+| h_vap | Dampdruk water | calc | formula=0.61094 * 2.718282 ^ (17.625 * temp / (temp + 243.04)) * 1000 / (rho * 9.81); decimals=2 | m | |
+| npsha | NPSH beschikbaar bij 150% | calc | formula=p_atm + if(suction_kind = "Zuighoogte (water onder pomphart)", 0 - hs, hs) - hf - h_vap; decimals=2; min=npsh_need | m | |
+| npsh_need | NPSH vereist incl. 1 m marge | calc | formula=if(npshr > 0, npshr + 1, 0); decimals=2 | m | |
+| lift_nfpa | Let op | info | when=suction_kind = "Zuighoogte (water onder pomphart)" and norm != "EN 12845" and norm != "VdS / CEA" | | NFPA 20 / FM staan geen zuighoogte toe bij horizontale pompen (end suction, split case, multistage): de pomp moet een positieve toeloop hebben. Ligt het water onder de pomp, kies dan een verticale pomp (vertical turbine). |
+| lift_en | Let op | info | when=suction_kind = "Zuighoogte (water onder pomphart)" and (norm = "EN 12845" or norm = "VdS / CEA") | | EN 12845 staat zuighoogte beperkt toe (maximaal 3,2 m tot het pomphart bij de laagste waterstand), met per pomp een eigen zuigleiding en een vulinrichting (aanzuigvat). Positieve toeloop heeft de voorkeur. |
+
+## Onderdompeling verticale pomp [when=pump_type = "Verticale pomp"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| bell_v | Snelheid in de zuigmond bij 150% | calc | formula=(flow * 1.5 / 3600) / (pi * (bell_d / 1000) ^ 2 / 4); decimals=2 | m/s | |
+| sub_req | Minimale onderdompeling (Hydraulic Institute) | calc | formula=bell_d * (1 + 2.3 * bell_v / sqrt(9.81 * bell_d / 1000)); decimals=0 | mm | S = D × (1 + 2,3 × Froude) |
+| sub_ok | Beschikbare onderdompeling | calc | formula=sub_avail; decimals=0; min=sub_req | mm | |
+| vtp_info | Toelichting | info |  | | Een stilling tube (geleidebuis) rond de pomp beperkt stroming, golfslag en vervuiling bij de zuigmond, vangt zijdelingse krachten op en kan verwarmd worden tegen bevriezing. Houd de afstand van de zuigmond tot de bodem op ca. 0,3–0,5 × D. |
+
+## Leidingmaten
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| q_basis | Maatgevend debiet | calc | formula=flow * if(norm = "EN 12845" or norm = "VdS / CEA", 1.4, 1.5); decimals=0 | m³/u | NFPA/FM: 150% · EN 12845: maximale vraag (hier 140%) |
+| v_suct | Maximale snelheid zuigleiding | calc | formula=if(norm = "EN 12845" or norm = "VdS / CEA", 1.8, 4.57); decimals=2 | m/s | EN 12845: 1,8 m/s · NFPA 20: 4,57 m/s (15 ft/s) bij 150% |
+| d_suct | Minimale binnendiameter zuigleiding | calc | formula=sqrt(4 * (q_basis / 3600) / (pi * v_suct)) * 1000; decimals=0; when=pump_type != "Verticale pomp" | mm | |
+| dn_suct | Zuigleiding, DN (indicatief) | calc | formula=if(d_suct <= 54.5, 50, if(d_suct <= 70.3, 65, if(d_suct <= 82.5, 80, if(d_suct <= 107.1, 100, if(d_suct <= 131.7, 125, if(d_suct <= 159.3, 150, if(d_suct <= 207.3, 200, if(d_suct <= 260.4, 250, if(d_suct <= 309.7, 300, if(d_suct <= 339.6, 350, if(d_suct <= 388.8, 400, if(d_suct <= 437, 450, if(d_suct <= 486, 500, 600))))))))))))); decimals=0; when=pump_type != "Verticale pomp" |  | stalen buis, binnendiameter ≥ minimum |
+| d_disc | Minimale binnendiameter persleiding (6 m/s) | calc | formula=sqrt(4 * (q_basis / 3600) / (pi * 6)) * 1000; decimals=0 | mm | |
+| dn_disc | Persleiding, DN (indicatief) | calc | formula=if(d_disc <= 54.5, 50, if(d_disc <= 70.3, 65, if(d_disc <= 82.5, 80, if(d_disc <= 107.1, 100, if(d_disc <= 131.7, 125, if(d_disc <= 159.3, 150, if(d_disc <= 207.3, 200, if(d_disc <= 260.4, 250, if(d_disc <= 309.7, 300, if(d_disc <= 339.6, 350, if(d_disc <= 388.8, 400, if(d_disc <= 437, 450, if(d_disc <= 486, 500, 600))))))))))))); decimals=0 |  | |
+| dn_test | Testleiding, DN (indicatief) | calc | formula=dn_disc; decimals=0 |  | gelijk aan de persleiding; met debietmeter of testkop |
+
+## Aansluitingen en aandrijving – End suction [when=pump_type = "End suction"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| es_info | End suction | info |  | | Aansluitingen: zuig axiaal (horizontaal, in lijn met de as), pers verticaal naar boven (end-top). De zuigflens is meestal één maat groter dan de persflens. Flenzen EN 1092-1 PN16, of ASME B16.5 klasse 150 bij UL/FM. Aandrijving: E-motor of dieselmotor, horizontaal via een flexibele koppeling met tussenstuk (back-pull-out): de waaier kan uitgebouwd worden zonder de leidingen los te nemen. Toepassing: kleine tot middelgrote debieten (tot ca. 500 m³/u) met positieve toeloop. Zuigleiding met excentrisch verloopstuk (vlakke kant boven). |
+
+## Aansluitingen en aandrijving – Split case [when=pump_type = "Split case"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| sc_info | Split case | info |  | | Aansluitingen: zuig en pers horizontaal aan weerszijden van het huis (tegenover elkaar), de zuig is meestal één à twee maten groter. Dubbelzuigende waaier en axiaal gedeeld huis: na verwijderen van de bovenhelft kan de rotor eruit, de leidingen blijven zitten. Aandrijving: E-motor of dieselmotor via een flexibele koppeling. De draairichting (rechtsom of linksom, gezien vanaf de aandrijfzijde) bepaalt aan welke kant de motor komt: kies die op de opstelling. Toepassing: grote debieten (ca. 150 tot meer dan 1500 m³/u) met positieve toeloop. Let op: een bocht in de zuigleiding in het vlak evenwijdig aan de as moet minimaal 10 × de leidingdiameter van de zuigflens af liggen (NFPA 20), met een excentrisch verloopstuk (vlakke kant boven). |
+
+## Aansluitingen en aandrijving – Multistage [when=pump_type = "Multistage"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| ms_info | Multistage | info |  | | Aansluitingen: bij horizontale meertrapspompen zuig en pers meestal radiaal naar boven of opzij, afhankelijk van de uitvoering; bij verticale inline-meertrapspompen zuig en pers in lijn op de voet. Geschikt voor kleine debieten met hoge drukken (bijv. hoge gebouwen) en als jockeypomp. Aandrijving: vrijwel altijd een E-motor; een dieselmotor kan alleen bij horizontale meertrapspompen via een flexibele koppeling. Controleer of het gekozen type listed/approved is voor de norm. |
+
+## Aansluitingen en aandrijving – Verticale pomp [when=pump_type = "Verticale pomp"]
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| vt_info | Verticale pomp | info |  | | Aansluitingen: persflens horizontaal op de perskop (discharge head) boven de vloer; de pomp hangt met de kolom en de zuigmond in het bassin, de put of het oppervlaktewater: er is geen zuigleiding. Aandrijving: E-motor als verticale holle-as motor op de perskop, of dieselmotor via een haakse overbrenging (right-angle gear drive) en een cardanas. Toepassing: water onder het pompniveau (rivier, bassin, put) waar een horizontale pomp niet mag of kan zuigen. Let op: minimale onderdompeling, kolomlengte tot de laagste waterstand, stilling tube bij stroming of golfslag, en kathodische bescherming (anode) in zeewater. |
+
+## Opmerkingen
+
+| key | question | type | options | unit | hint |
+| --- | --- | --- | --- | --- | --- |
+| remarks | Opmerkingen | textarea | +optional; +nolabel; rows=4 | | |
 ` }
 ];
 
@@ -11644,6 +12091,9 @@ PM.surveyPdf = (function () {
       case 'calc': { const c = S.calcCheck(t, v, f); return c.text ? c.text + (f.unit ? ' ' + f.unit : '') : ''; }
       case 'config': { const c = S.configInfo(v[f.key]); return c ? c.cfg.name : (has(v[f.key]) ? String(v[f.key]) : ''); }
       case 'rtable': return '';
+      case 'info': return f.hint || '';
+      case 'planline': { const l = S.planLine('', v[f.key]); return l ? S.planLineText(l) : (has(v[f.key]) ? String(v[f.key]) + ' (removed from the planning)' : ''); }
+      case 'planning': return '';
       case 'layout': { const n = S.parseLayout(v[f.key]).length; return n ? n + ' item(s) placed' : ''; }
       case 'plan': { const p = PM.plan.parse(v[f.key]); return p.rooms.length + p.items.length ? p.rooms.length + ' room(s), ' + p.items.length + ' item(s)' : ''; }
       case 'textarea': case 'text': return has(v[f.key]) ? S.fillText(v[f.key], t, v) : '';
@@ -11789,12 +12239,14 @@ PM.surveyPdf = (function () {
       if (!f) return 8;
       if (f.type === 'photos' && R) { const list = v[f.key] || []; const per = list.length === 1 ? 1 : 2, cw = (CW - 8 - 4 * (per - 1)) / per; return 6 + await firstRowH(list, per, cw, per === 1 ? 150 : 95, 1600) + 4; }
       if (f.type === 'plan') return 105 + 14 + 5;
+      if (f.type === 'planning') return 7 + 5.2 * 4;
       if (f.type === 'layout') return 125 + 14 + 5;
       if (f.type === 'position') return 44 / S.PUMPSET_RATIO + 4;
       if (f.type === 'pumptest') return 30;
       if (f.type === 'rtable' || f.type === 'table') return Math.min(60, 6 + 5.4 * 4);
       if (f.type === 'textarea') return 6 + Math.min(3, lineCount(v[f.key], CW - 8, 9.5)) * 4.6;
       if (f.type === 'check') return 10;
+      if (f.type === 'info') { const hh = (f.hideLabel ? 0 : 5.5) + PM.pdf.wrap(fill(f.hint || ''), CW - (R ? 8 : 0), 9).length * 4.4 + 2; return hh <= 80 ? hh : 20; }
       return 8;
     }
     function newPage() { pg = doc.addPage(); pages.push(pg); header(); }
@@ -11899,6 +12351,76 @@ PM.surveyPdf = (function () {
       y += 2;
     }
 
+    /* the project planning as a compact chart (lines "In export", tasks where "Tasks in export" is on) */
+    function drawPlanChart(f) {
+      const P = S.planRows(rec.project), U = PM.util;
+      const x0 = M + (R ? 8 : 0), W2 = CW - (R ? 8 : 0);
+      if (!P.rows.length) { ensure(8); pg.text(t.lang === 'nl' ? 'Geen planningsregels in de export (Planning → regels met “In export”).' : 'No planning lines in the export (Planning → lines with “In export”).', x0, y + 3, { size: 8.5, color: C.muted }); y += 7; return; }
+      const mon = d => U.addDays(d, -((U.parseDate(d).getUTCDay() + 6) % 7));
+      const from = mon(P.from), to = U.addDays(mon(P.to), 6);
+      const days = U.daysBetween(from, to) + 1;
+      const lw = 58, tlX = x0 + lw, tlW = W2 - lw, dayW = tlW / days;
+      const X = d => tlX + U.daysBetween(from, d) * dayW;
+      const rh = 5.2, th = 4.4, hh = 6;
+      const weeks = days <= 112;
+      const ticks = [];
+      if (weeks) for (let d = from; d <= to; d = U.addDays(d, 7)) {
+        const dt = U.parseDate(d), tt = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate() + 3));
+        const wk = Math.ceil(((tt - Date.UTC(tt.getUTCFullYear(), 0, 1)) / 864e5 + 1) / 7);
+        ticks.push({ d, label: (t.lang === 'nl' ? 'wk ' : 'wk ') + wk });
+      } else { let d = from.slice(0, 8) + '01'; if (d < from) { const dt = U.parseDate(d); d = U.iso(new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1))); }
+        for (; d <= to; ) { const dt = U.parseDate(d); ticks.push({ d, label: U.MONTHS[dt.getUTCMonth()] + (dt.getUTCMonth() === 0 || !ticks.length ? ' ' + dt.getUTCFullYear() : '') }); d = U.iso(new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 1))); } }
+      const head = () => {
+        pg.rect(x0, y, W2, hh, { fill: C.head });
+        pg.text(t.lang === 'nl' ? 'Activiteit' : 'Activity', x0 + 1.2, y + 4.1, { size: 7, bold: true, color: C.muted });
+        ticks.forEach(k => { const tx = X(k.d); if (tx < tlX + tlW - 3) pg.text(k.label, tx + 0.8, y + 4.1, { size: 6.3, color: C.muted }); });
+        y += hh;
+      };
+      if (!f.hideLabel) { ensure(6 + hh + rh * 3); pg.text(f.label, x0, y + 3, { size: 9.5, bold: true, color: C.text }); y += 6; }
+      else ensure(hh + rh * 3);
+      head();
+      const top = [y];
+      const grid = (yTop, yBot) => { ticks.forEach(k => { const tx = X(k.d); if (tx > tlX) pg.line(tx, yTop, tx, yBot, { stroke: C.line, lw: 0.12 }); }); pg.line(tlX, yTop, tlX, yBot, { stroke: C.line, lw: 0.25 }); };
+      const today = U.todayISO();
+      let segTop = y;
+      P.rows.forEach(r => {
+        const hr = r.type === 'task' ? th : rh;
+        if (y + hr > BOTTOM) { grid(segTop, y); newPage(); head(); segTop = y; }
+        const base = y + hr / 2 + 1.1;
+        if (r.type === 'group') {
+          pg.rect(x0, y, W2, rh, { fill: '#f6f7f9' });
+          pg.text(PM.pdf.fit(r.title, lw - 2, 7.5, true), x0 + 1.2, base, { size: 7.5, bold: true, color: C.text });
+        } else if (r.type === 'line') {
+          const l = r.line;
+          pg.text(PM.pdf.fit(l.title || l.id, lw - 2.4, 7.5), x0 + 1.2, base, { size: 7.5, color: C.text });
+          const bx = X(r.start), bw = Math.max(0.8, (U.daysBetween(r.start, r.end) + 1) * dayW), bh = rh * 0.6, by = y + (rh - bh) / 2;
+          if (l.milestone) { const mx = bx + dayW / 2, ms = 1.6; pg.poly([[mx, by + bh / 2 - ms], [mx + ms, by + bh / 2], [mx, by + bh / 2 + ms], [mx - ms, by + bh / 2]], { fill: r.color }); if (r.resp) pg.circle(mx, by + bh / 2, ms + 0.7, { stroke: r.resp, lw: 0.6 }); }
+          else {
+            pg.rect(bx, by, bw, bh, { fill: U.num(l.progress) >= 100 ? '#1f9d55' : r.color, r: 0.5 });
+            if (r.resp) pg.rect(bx - 0.4, by - 0.4, bw + 0.8, bh + 0.8, { stroke: r.resp, lw: 0.7, r: 0.7 });
+          }
+        } else if (r.type === 'task') {
+          const tk = r.task;
+          pg.text(PM.pdf.fit('· ' + (tk.title || tk.id), lw - 5, 6.5), x0 + 4, base - 0.2, { size: 6.5, color: C.muted });
+          if (tk.due) pg.circle(X(tk.due) + dayW / 2, y + hr / 2, 0.9, { fill: tk.status === 'done' ? '#1f9d55' : tk.due < today ? '#d14343' : '#8a93a6' });
+        }
+        y += hr;
+        pg.line(x0, y, x0 + W2, y, { stroke: C.line, lw: 0.1 });
+      });
+      grid(segTop, y);
+      if (today >= from && today <= to) { const tx = X(today) + dayW / 2; pg.line(tx, segTop, tx, y, { stroke: '#d14343', lw: 0.3, dash: [1, 0.7] }); }
+      // legend: responsible persons
+      const rs = []; P.rows.forEach(r => { if (r.resp && !rs.some(x => x.c === r.resp && x.n === r.respName)) rs.push({ c: r.resp, n: r.respName }); });
+      y += 2;
+      if (rs.length) {
+        ensure(5); let lx = x0;
+        pg.text(t.lang === 'nl' ? 'Verantwoordelijk:' : 'Responsible:', lx, y + 2.6, { size: 6.5, color: C.muted }); lx += PM.pdf.textWidth(t.lang === 'nl' ? 'Verantwoordelijk:' : 'Responsible:', 6.5) + 3;
+        rs.forEach(x => { if (lx > x0 + W2 - 25) return; pg.rect(lx, y + 0.6, 5, 2.6, { stroke: x.c, lw: 0.7, r: 0.5 }); lx += 6.5; const nm = PM.pdf.raw(x.n); pg.text(nm, lx, y + 2.6, { size: 6.5, color: C.text }); lx += PM.pdf.textWidth(nm, 6.5) + 5; });
+        y += 5;
+      }
+      y += 2;
+    }
+
     newPage();
 
     // ---- client / contact boxes ----
@@ -11986,11 +12508,22 @@ PM.surveyPdf = (function () {
         // a short question that belongs to the photos / drawing right after it stays on the same page
         const nf = fs[fi + 1];
         if (nf && ((nf.type === 'photos' && R) || nf.type === 'plan' || nf.type === 'layout') && !['photos', 'plan', 'layout', 'rtable', 'table', 'pumptest', 'textarea'].includes(f.type)) ensure(12 + await firstBlock(nf));
+        if (f.type === 'planning') { drawPlanChart(f); continue; }
+        if (f.type === 'info') {
+          const infoLines = PM.pdf.wrap(fill(f.hint || ''), CW - (R ? 8 : 0), 9);
+          const infoH = (f.hideLabel ? 0 : 5.5) + infoLines.length * 4.4 + 2;
+          ensure(infoH <= 80 ? infoH : 20);                 // a short text stays in one piece
+          if (!f.hideLabel) { pg.text(f.label, M + (R ? 8 : 0), y + 3, { size: 9.5, bold: true, color: C.text }); y += 5.5; }
+          infoLines.forEach(ln => { ensure(4.6); pg.text(ln, M + (R ? 8 : 0), y + 3, { size: 9, color: C.text }); y += 4.4; });
+          y += 2;
+          continue;
+        }
         if (f.type === 'rtable') {
           const tb = S.repeatRows(t, v, f);
           if (!tb.rows.length) continue;
           const n = tb.head.length;
-          const first = Math.max(50, CW - (n - 1) * 28);
+          // number columns are narrow; with +left (text columns) the width is shared more evenly
+          const first = f.left ? CW * (n > 2 ? 0.36 : 0.5) : Math.max(50, CW - (n - 1) * 28);
           const widths = tb.head.map((x, i) => (i ? (CW - first) / (n - 1) : first));
           const cellOf = g => { if (!g) return ''; const a = answer(g, v, t); return g.unit && /EUR|€/.test(g.unit) ? a.replace(/\s*EUR$/, '').replace(/^/, '€ ') : a; };
           const body = tb.rows.map(r => r.map(cellOf));
@@ -12317,6 +12850,8 @@ PM.surveyPdf = (function () {
     const rows = [];            // [{field, el}] — for show/hide
     const touched = new Set();  // answered N/A in this session: stays visible until the form is opened again
     const repeatKeys = new Set(t.sections.filter(s => s.repeat).map(s => s.repeat));
+    // answers that switch whole sections on or off (section when=…) also redraw the form
+    t.sections.filter(s => s.when).forEach(s => (s.when.match(/[A-Za-z_][A-Za-z0-9_]*/g) || []).forEach(k => repeatKeys.add(k)));
     let diagramDraws = [];
     const liveUpdates = [];     // calc results and text previews, refreshed on every change
 
@@ -12423,7 +12958,7 @@ PM.surveyPdf = (function () {
       const label = h('label', { class: 'sv-label', for: id }, f.optional ? null : mark, h('span', null, f.label));
       const ctl = control(f, id);
       const row = h('div', { class: 'sv-row svr-' + f.type + (f.hideLabel ? ' no-label' : '') }, f.hideLabel ? null : label, ctl,
-        f.hint && f.type !== 'estimate' ? h('p', { class: 'small muted sv-hint' }, f.hint) : null);
+        f.hint && f.type !== 'estimate' && f.type !== 'info' ? h('p', { class: 'small muted sv-hint' }, f.hint) : null);
       rows.push({ field: f, el: row });
       return row;
     }
@@ -12483,6 +13018,51 @@ PM.surveyPdf = (function () {
           return out;
         }
         case 'config': return configField(f, id);
+        case 'planline': {
+          const lines = PM.store.list('lines', { project: rec.project });
+          const sel = h('select', { id }, h('option', { value: '' }, lines.length ? T.choose : (t.lang === 'nl' ? '— nog geen planningsregels —' : '— no planning lines yet —')),
+            U.groupBy(lines, l => l.group || '').size > 1
+              ? [...U.groupBy(lines, l => l.group || '')].map(([g, ls]) => h('optgroup', { label: g || '—' }, ls.map(l => h('option', { value: l.id, selected: l.id === v[f.key] || null }, S.planLineText(l)))))
+              : lines.map(l => h('option', { value: l.id, selected: l.id === v[f.key] || null }, S.planLineText(l))));
+          if (v[f.key] && !lines.some(l => l.id === v[f.key])) sel.appendChild(h('option', { value: v[f.key], selected: true }, v[f.key] + (t.lang === 'nl' ? ' (verwijderd uit de planning)' : ' (removed from the planning)')));
+          const info = h('div', { class: 'small muted sv-planline' });
+          const draw = () => {
+            const l = S.planLine(rec.project, v[f.key]);
+            info.innerHTML = '';
+            if (!l) return;
+            const pers = l.person ? PM.store.find('people', l.person) : null;
+            info.append([pers ? pers.name : '', l.who || '', PM.planResp && !PM.planResp.inExport(l) ? (t.lang === 'nl' ? 'niet in de export' : 'not in the export') : ''].filter(Boolean).join(' · '), ' ',
+              h('a', { href: '#/planning?project=' + rec.project }, t.lang === 'nl' ? 'Planning openen' : 'Open planning'));
+          };
+          sel.addEventListener('change', () => { set(f.key, sel.value, true); draw(); });
+          draw();
+          return h('div', null, sel, info);
+        }
+        case 'planning': {
+          const box = h('div', { class: 'sv-plan', id });
+          const P = S.planRows(rec.project);
+          if (!P.rows.length) { box.appendChild(h('p', { class: 'small muted' }, t.lang === 'nl' ? 'Geen planningsregels in de export. Maak de planning in Planning; regels met “In export” komen hier.' : 'No planning lines in the export yet. Lines with “In export” in Planning appear here.')); return box; }
+          const from = P.from, days = U.daysBetween(P.from, P.to) + 1;
+          const pct = d => (U.daysBetween(from, d) / days * 100);
+          P.rows.forEach(r => {
+            if (r.type === 'group') { box.appendChild(h('div', { class: 'svp-row group' }, h('span', { class: 'svp-l', translate: 'no' }, r.title), h('span', { class: 'svp-t' }))); return; }
+            if (r.type === 'task') {
+              box.appendChild(h('div', { class: 'svp-row task' }, h('span', { class: 'svp-l', translate: 'no' }, '· ' + (r.task.title || r.task.id)),
+                h('span', { class: 'svp-t' }, r.task.due ? h('i', { class: 'svp-dot' + (r.task.status === 'done' ? ' done' : ''), style: { left: pct(r.task.due) + '%' } }) : null)));
+              return;
+            }
+            const l = r.line;
+            box.appendChild(h('div', { class: 'svp-row' }, h('span', { class: 'svp-l', translate: 'no', title: S.planLineText(l) }, l.title || l.id),
+              h('span', { class: 'svp-t' }, h('i', { class: 'svp-bar' + (l.milestone ? ' ms' : ''), title: S.planLineText(l) + (r.respName ? ' · ' + r.respName : ''),
+                style: { left: pct(r.start) + '%', width: Math.max(0.8, (U.daysBetween(r.start, r.end) + 1) / days * 100) + '%', '--pc': r.color, '--rc': r.resp || 'transparent' } }))));
+          });
+          box.appendChild(h('p', { class: 'small muted' }, U.fmtDate(P.from) + ' – ' + U.fmtDate(P.to) + ' · ',
+            t.lang === 'nl' ? 'wat er in staat kies je in Planning (vinkjes per regel)' : 'choose what is in it in Planning (per line)',
+            P.hidden ? ' · ' + P.hidden + (t.lang === 'nl' ? ' regel(s) niet in de export' : ' line(s) not in the export') : '', ' · ',
+            h('a', { href: '#/planning?project=' + rec.project }, t.lang === 'nl' ? 'Planning openen' : 'Open planning')));
+          return box;
+        }
+        case 'info': return h('p', { class: 'sv-info' }, S.fillText(f.hint || '', t, v, (ff, vv) => PM.surveyPdf.answer(ff, vv, t)));
         case 'rtable': {
           const box = h('div', { class: 'tbl-scroll sv-rtable', id });
           const upd = () => {
@@ -12986,7 +13566,7 @@ PM.formsEditor = (function () {
 
   function clone(t) {
     return { id: t.id, name: t.name, short: t.short, lang: t.lang || 'en', description: t.description || '', signatures: (t.signatures || []).slice(), diagram: Object.assign({}, t.diagram), intro: t.intro || '', retired: !!t.retired, report: !!t.report, hideNA: !!t.hideNA, header: (t.header || []).slice(), footer: t.footer || '',
-      sections: t.sections.map(s => ({ id: s.id, title: s.title, note: s.note || '', repeat: s.repeat || '', diagram: !!s.diagram, nopdf: !!s.nopdf,
+      sections: t.sections.map(s => ({ id: s.id, title: s.title, note: s.note || '', repeat: s.repeat || '', diagram: !!s.diagram, nopdf: !!s.nopdf, when: s.when || '',
         fields: s.fields.map(f => ({ key: f.key, label: f.label, type: f.type, opt: f.opt != null ? f.opt : '', unit: f.unit || '', hint: f.hint || '' })) })) };
   }
   function uniqueId(base) { let id = U.slugify(base) || 'form', i = 2; const b = id; while (S.get(id)) id = b + '-' + i++; return id; }
